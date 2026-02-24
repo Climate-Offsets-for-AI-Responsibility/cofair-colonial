@@ -1,0 +1,44 @@
+services:
+  postgres:
+    # Allows docker to set up Postgres Container
+    image: postgres:16 # Postgres Version
+    container_name: analytics-postgres
+    env_file:
+      - .env
+    ports:
+      - "${POSTGRES_PORT:-5434}:5432" # host port : container port
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - analytics-network
+
+  dbt:
+    # Allows docker to set up dbt Container
+    build:
+      context: .
+      dockerfile: Dockerfile.dbt # Dockerfile used to build the dbt service
+    container_name: analytics-dbt
+    env_file:
+      - .env
+    volumes:
+      - ./dbt:/usr/app/dbt
+      - ./db/init:/db/init
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - analytics-network
+    command: tail -f /dev/null # Keep container running
+
+networks:
+  analytics-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

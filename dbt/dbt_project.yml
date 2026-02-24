@@ -1,0 +1,23 @@
+# dbt_project.yml
+name: 'cofair_db'
+version: '1.0.0'
+config-version: 2
+
+profile: 'cofair_db'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  cofair_db:
+    +materialized: view
+

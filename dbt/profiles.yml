@@ -1,0 +1,13 @@
+cofair_db:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: localhost
+      user: postgres
+      password: postgres
+      port: 5434
+      dbname: cofair_db
+      schema: staging
+      threads: 4
+
