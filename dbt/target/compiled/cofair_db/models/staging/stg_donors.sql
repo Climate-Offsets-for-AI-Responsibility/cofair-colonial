@@ -18,7 +18,7 @@ with exploded as (
         x.current_cycle_end::date              as current_cycle_end,
         x.days_remaining_in_cycle::int         as days_remaining_in_cycle
 
-    from "cofair_db"."raw"."donor_csv" as r
+    from "neondb"."raw"."donor_csv" as r
     cross join lateral jsonb_to_recordset(r.payload) as x(    -- This look complicated but its just parsing the CSV
         donor_id text,
         org_type text,

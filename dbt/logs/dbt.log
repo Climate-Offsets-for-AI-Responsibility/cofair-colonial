@@ -2660,3 +2660,390 @@ drop view if exists "cofair_db"."staging"."stg_pricing__dbt_backup" cascade
 [0m13:16:28.644963 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x103bad5d0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x104d88190>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x105e02d70>]}
 [0m13:16:28.645153 [debug] [MainThread]: Flushing usage events
 [0m13:16:31.055384 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m19:25:59.207474 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1041e1750>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1052d4f70>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1052d5600>]}
+
+
+============================== 19:25:59.210246 | 03f9fa25-f652-495e-b907-12b01794b691 ==============================
+[0m19:25:59.210246 [info ] [MainThread]: Running with dbt=1.11.6
+[0m19:25:59.210587 [debug] [MainThread]: running dbt with arguments {'printer_width': '80', 'static_parser': 'True', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'log_path': '/Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt/logs', 'empty': 'False', 'log_cache_events': 'False', 'write_json': 'True', 'send_anonymous_usage_stats': 'True', 'profiles_dir': '/Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt', 'warn_error': 'None', 'log_format': 'default', 'invocation_command': 'dbt run --select staging', 'no_print': 'None', 'cache_selected_only': 'False', 'partial_parse': 'True', 'version_check': 'True', 'introspect': 'True', 'use_colors': 'True', 'target_path': 'None', 'use_experimental_parser': 'False', 'quiet': 'False', 'indirect_selection': 'eager', 'debug': 'False', 'fail_fast': 'False'}
+[0m19:25:59.238763 [error] [MainThread]: Encountered an error:
+Runtime Error
+  Credentials in profile "cofair_db", target "dev" invalid: 'database' is a required property
+[0m19:25:59.386381 [debug] [MainThread]: Resource report: {"command_name": "run", "command_success": false, "command_wall_clock_time": 0.23319378, "process_in_blocks": "0", "process_kernel_time": 0.163147, "process_mem_max_rss": "106512384", "process_out_blocks": "0", "process_user_time": 0.813646}
+[0m19:25:59.387227 [debug] [MainThread]: Command `dbt run` failed at 19:25:59.387093 after 0.23 seconds
+[0m19:25:59.387705 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1041e1750>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1052d5660>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1052a9b40>]}
+[0m19:25:59.388216 [debug] [MainThread]: Flushing usage events
+[0m19:25:59.789018 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m19:27:10.103453 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x105c39720>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x111bf4f10>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x111bf55a0>]}
+
+
+============================== 19:27:10.106354 | dec24b5b-76b7-417c-9fc7-9eb32c365e1f ==============================
+[0m19:27:10.106354 [info ] [MainThread]: Running with dbt=1.11.6
+[0m19:27:10.106696 [debug] [MainThread]: running dbt with arguments {'use_colors': 'True', 'version_check': 'True', 'use_experimental_parser': 'False', 'printer_width': '80', 'partial_parse': 'True', 'log_cache_events': 'False', 'empty': 'None', 'warn_error': 'None', 'invocation_command': 'dbt debug --target dev', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'static_parser': 'True', 'introspect': 'True', 'log_path': '/Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt/logs', 'fail_fast': 'False', 'no_print': 'None', 'profiles_dir': '/Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt', 'log_format': 'default', 'target_path': 'None', 'write_json': 'True', 'cache_selected_only': 'False', 'indirect_selection': 'eager', 'debug': 'False', 'send_anonymous_usage_stats': 'True', 'quiet': 'False'}
+[0m19:27:10.118720 [info ] [MainThread]: dbt version: 1.11.6
+[0m19:27:10.119027 [info ] [MainThread]: python version: 3.10.11
+[0m19:27:10.119247 [info ] [MainThread]: python path: /Users/andrewtaylor/Desktop/Cofair-repo/data-pipeline/venv/bin/python3
+[0m19:27:10.119424 [info ] [MainThread]: os info: macOS-26.2-arm64-arm-64bit
+[0m19:27:10.160579 [info ] [MainThread]: Using profiles dir at /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt
+[0m19:27:10.160889 [info ] [MainThread]: Using profiles.yml file at /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt/profiles.yml
+[0m19:27:10.161076 [info ] [MainThread]: Using dbt_project.yml file at /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt/dbt_project.yml
+[0m19:27:10.217848 [info ] [MainThread]: Configuration:
+[0m19:27:10.218221 [info ] [MainThread]:   profiles.yml file [[31mERROR invalid[0m]
+[0m19:27:10.218424 [info ] [MainThread]:   dbt_project.yml file [[32mOK found and valid[0m]
+[0m19:27:10.218599 [info ] [MainThread]: Required dependencies:
+[0m19:27:10.218822 [debug] [MainThread]: Executing "git --help"
+[0m19:27:10.236048 [debug] [MainThread]: STDOUT: "b"usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]\n           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]\n           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]\n           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]\n           [--super-prefix=<path>] [--config-env=<name>=<envvar>]\n           <command> [<args>]\n\nThese are common Git commands used in various situations:\n\nstart a working area (see also: git help tutorial)\n   clone     Clone a repository into a new directory\n   init      Create an empty Git repository or reinitialize an existing one\n\nwork on the current change (see also: git help everyday)\n   add       Add file contents to the index\n   mv        Move or rename a file, a directory, or a symlink\n   restore   Restore working tree files\n   rm        Remove files from the working tree and from the index\n\nexamine the history and state (see also: git help revisions)\n   bisect    Use binary search to find the commit that introduced a bug\n   diff      Show changes between commits, commit and working tree, etc\n   grep      Print lines matching a pattern\n   log       Show commit logs\n   show      Show various types of objects\n   status    Show the working tree status\n\ngrow, mark and tweak your common history\n   branch    List, create, or delete branches\n   commit    Record changes to the repository\n   merge     Join two or more development histories together\n   rebase    Reapply commits on top of another base tip\n   reset     Reset current HEAD to the specified state\n   switch    Switch branches\n   tag       Create, list, delete or verify a tag object signed with GPG\n\ncollaborate (see also: git help workflows)\n   fetch     Download objects and refs from another repository\n   pull      Fetch from and integrate with another repository or a local branch\n   push      Update remote refs along with associated objects\n\n'git help -a' and 'git help -g' list available subcommands and some\nconcept guides. See 'git help <command>' or 'git help <concept>'\nto read about a specific subcommand or concept.\nSee 'git help git' for an overview of the system.\n""
+[0m19:27:10.236611 [debug] [MainThread]: STDERR: "b''"
+[0m19:27:10.236826 [info ] [MainThread]:  - git [[32mOK found[0m]
+
+[0m19:27:10.237050 [info ] [MainThread]: Connection test skipped since no profile was found
+[0m19:27:10.237247 [info ] [MainThread]: [31m1 check failed:[0m
+[0m19:27:10.237520 [info ] [MainThread]: Profile loading failed for the following reason:
+Runtime Error
+  Credentials in profile "cofair_db", target "dev" invalid: 'host' is a required property
+
+
+[0m19:27:10.240913 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.18015195, "process_in_blocks": "0", "process_kernel_time": 0.133062, "process_mem_max_rss": "110575616", "process_out_blocks": "0", "process_user_time": 0.75989}
+[0m19:27:10.241422 [debug] [MainThread]: Command `dbt debug` failed at 19:27:10.241329 after 0.18 seconds
+[0m19:27:10.243030 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x105c39720>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10617c4c0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x106185ba0>]}
+[0m19:27:10.243692 [debug] [MainThread]: Flushing usage events
+[0m19:27:10.592863 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m19:30:55.742600 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107c0d6f0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1092f0ca0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1092f1330>]}
+
+
+============================== 19:30:55.745641 | 03819e7e-0194-4cf1-a250-f49037a1ecc3 ==============================
+[0m19:30:55.745641 [info ] [MainThread]: Running with dbt=1.11.6
+[0m19:30:55.746034 [debug] [MainThread]: running dbt with arguments {'partial_parse': 'True', 'warn_error': 'None', 'write_json': 'True', 'use_experimental_parser': 'False', 'empty': 'None', 'printer_width': '80', 'profiles_dir': '/Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt', 'version_check': 'True', 'static_parser': 'True', 'log_path': '/Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt/logs', 'indirect_selection': 'eager', 'log_format': 'default', 'cache_selected_only': 'False', 'introspect': 'True', 'target_path': 'None', 'log_cache_events': 'False', 'debug': 'False', 'quiet': 'False', 'invocation_command': 'dbt debug --target dev', 'fail_fast': 'False', 'use_colors': 'True', 'no_print': 'None', 'send_anonymous_usage_stats': 'True', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])'}
+[0m19:30:55.756447 [info ] [MainThread]: dbt version: 1.11.6
+[0m19:30:55.756714 [info ] [MainThread]: python version: 3.10.11
+[0m19:30:55.756892 [info ] [MainThread]: python path: /Users/andrewtaylor/Desktop/Cofair-repo/data-pipeline/venv/bin/python3
+[0m19:30:55.757055 [info ] [MainThread]: os info: macOS-26.2-arm64-arm-64bit
+[0m19:30:55.759880 [error] [MainThread]: Encountered an error:
+Parsing Error
+  Env var required but not provided: 'NEON_HOST'
+[0m19:30:55.762408 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.07309309, "process_in_blocks": "0", "process_kernel_time": 0.160246, "process_mem_max_rss": "105103360", "process_out_blocks": "0", "process_user_time": 0.770993}
+[0m19:30:55.762756 [debug] [MainThread]: Command `dbt debug` failed at 19:30:55.762692 after 0.07 seconds
+[0m19:30:55.762974 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107c0d6f0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x109237310>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1092f6a40>]}
+[0m19:30:55.763196 [debug] [MainThread]: Flushing usage events
+[0m19:30:56.143538 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m19:33:27.771747 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x104161810>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10524cf70>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10524d600>]}
+
+
+============================== 19:33:27.778207 | ae51ed29-148a-4363-b878-a9ad2d19edb9 ==============================
+[0m19:33:27.778207 [info ] [MainThread]: Running with dbt=1.11.6
+[0m19:33:27.778666 [debug] [MainThread]: running dbt with arguments {'send_anonymous_usage_stats': 'True', 'target_path': 'None', 'use_colors': 'True', 'debug': 'False', 'invocation_command': 'dbt debug --target dev', 'no_print': 'None', 'warn_error': 'None', 'quiet': 'False', 'log_cache_events': 'False', 'use_experimental_parser': 'False', 'printer_width': '80', 'partial_parse': 'True', 'write_json': 'True', 'cache_selected_only': 'False', 'version_check': 'True', 'introspect': 'True', 'indirect_selection': 'eager', 'empty': 'None', 'fail_fast': 'False', 'profiles_dir': '/Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt', 'log_path': '/Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt/logs', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'static_parser': 'True', 'log_format': 'default'}
+[0m19:33:27.795791 [info ] [MainThread]: dbt version: 1.11.6
+[0m19:33:27.796245 [info ] [MainThread]: python version: 3.10.11
+[0m19:33:27.796488 [info ] [MainThread]: python path: /Users/andrewtaylor/Desktop/Cofair-repo/data-pipeline/venv/bin/python3
+[0m19:33:27.796669 [info ] [MainThread]: os info: macOS-26.2-arm64-arm-64bit
+[0m19:33:27.867547 [info ] [MainThread]: Using profiles dir at /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt
+[0m19:33:27.867926 [info ] [MainThread]: Using profiles.yml file at /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt/profiles.yml
+[0m19:33:27.868145 [info ] [MainThread]: Using dbt_project.yml file at /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt/dbt_project.yml
+[0m19:33:27.868638 [info ] [MainThread]: adapter type: postgres
+[0m19:33:27.868933 [info ] [MainThread]: adapter version: 1.10.0
+[0m19:33:27.927951 [info ] [MainThread]: Configuration:
+[0m19:33:27.928348 [info ] [MainThread]:   profiles.yml file [[32mOK found and valid[0m]
+[0m19:33:27.928592 [info ] [MainThread]:   dbt_project.yml file [[32mOK found and valid[0m]
+[0m19:33:27.928804 [info ] [MainThread]: Required dependencies:
+[0m19:33:27.929068 [debug] [MainThread]: Executing "git --help"
+[0m19:33:27.948002 [debug] [MainThread]: STDOUT: "b"usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]\n           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]\n           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]\n           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]\n           [--super-prefix=<path>] [--config-env=<name>=<envvar>]\n           <command> [<args>]\n\nThese are common Git commands used in various situations:\n\nstart a working area (see also: git help tutorial)\n   clone     Clone a repository into a new directory\n   init      Create an empty Git repository or reinitialize an existing one\n\nwork on the current change (see also: git help everyday)\n   add       Add file contents to the index\n   mv        Move or rename a file, a directory, or a symlink\n   restore   Restore working tree files\n   rm        Remove files from the working tree and from the index\n\nexamine the history and state (see also: git help revisions)\n   bisect    Use binary search to find the commit that introduced a bug\n   diff      Show changes between commits, commit and working tree, etc\n   grep      Print lines matching a pattern\n   log       Show commit logs\n   show      Show various types of objects\n   status    Show the working tree status\n\ngrow, mark and tweak your common history\n   branch    List, create, or delete branches\n   commit    Record changes to the repository\n   merge     Join two or more development histories together\n   rebase    Reapply commits on top of another base tip\n   reset     Reset current HEAD to the specified state\n   switch    Switch branches\n   tag       Create, list, delete or verify a tag object signed with GPG\n\ncollaborate (see also: git help workflows)\n   fetch     Download objects and refs from another repository\n   pull      Fetch from and integrate with another repository or a local branch\n   push      Update remote refs along with associated objects\n\n'git help -a' and 'git help -g' list available subcommands and some\nconcept guides. See 'git help <command>' or 'git help <concept>'\nto read about a specific subcommand or concept.\nSee 'git help git' for an overview of the system.\n""
+[0m19:33:27.948707 [debug] [MainThread]: STDERR: "b''"
+[0m19:33:27.948987 [info ] [MainThread]:  - git [[32mOK found[0m]
+
+[0m19:33:27.949889 [info ] [MainThread]: Connection:
+[0m19:33:27.950299 [info ] [MainThread]:   host: ep-hidden-firefly-ae9a9kc1.c-2.us-east-2.aws.neon.tech
+[0m19:33:27.950511 [info ] [MainThread]:   port: 5432
+[0m19:33:27.950732 [info ] [MainThread]:   user: neondb_owner
+[0m19:33:27.950968 [info ] [MainThread]:   database: neondb
+[0m19:33:27.951158 [info ] [MainThread]:   schema: staging
+[0m19:33:27.951337 [info ] [MainThread]:   connect_timeout: 10
+[0m19:33:27.951503 [info ] [MainThread]:   role: None
+[0m19:33:27.951672 [info ] [MainThread]:   search_path: None
+[0m19:33:27.951831 [info ] [MainThread]:   keepalives_idle: 0
+[0m19:33:27.951990 [info ] [MainThread]:   sslmode: require
+[0m19:33:27.952153 [info ] [MainThread]:   sslcert: None
+[0m19:33:27.952314 [info ] [MainThread]:   sslkey: None
+[0m19:33:27.952477 [info ] [MainThread]:   sslrootcert: None
+[0m19:33:27.952647 [info ] [MainThread]:   application_name: dbt
+[0m19:33:27.952816 [info ] [MainThread]:   retries: 1
+[0m19:33:27.953258 [info ] [MainThread]: Registered adapter: postgres=1.10.0
+[0m19:33:28.123774 [debug] [MainThread]: Acquiring new postgres connection 'debug'
+[0m19:33:28.173696 [debug] [MainThread]: Using postgres connection "debug"
+[0m19:33:28.173993 [debug] [MainThread]: On debug: select 1 as id
+[0m19:33:28.174183 [debug] [MainThread]: Opening a new connection, currently in state init
+[0m19:33:29.312247 [debug] [MainThread]: SQL status: SELECT 1 in 1.137 seconds
+[0m19:33:29.315523 [debug] [MainThread]: On debug: Close
+[0m19:33:29.316752 [info ] [MainThread]:   Connection test: [[32mOK connection ok[0m]
+
+[0m19:33:29.317415 [info ] [MainThread]: [32mAll checks passed![0m
+[0m19:33:29.322397 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": true, "command_wall_clock_time": 1.642722, "process_in_blocks": "0", "process_kernel_time": 0.28388, "process_mem_max_rss": "122732544", "process_out_blocks": "0", "process_user_time": 0.913553}
+[0m19:33:29.323417 [debug] [MainThread]: Command `dbt debug` succeeded at 19:33:29.323210 after 1.64 seconds
+[0m19:33:29.324347 [debug] [MainThread]: Connection 'debug' was properly closed.
+[0m19:33:29.325439 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x104161810>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x105938a00>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10520a470>]}
+[0m19:33:29.326403 [debug] [MainThread]: Flushing usage events
+[0m19:33:29.687054 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m19:34:35.309680 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x105ddd810>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107200850>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107200ee0>]}
+
+
+============================== 19:34:35.312343 | 448f9345-aa9c-4a71-9f47-599a2cb809d8 ==============================
+[0m19:34:35.312343 [info ] [MainThread]: Running with dbt=1.11.6
+[0m19:34:35.312676 [debug] [MainThread]: running dbt with arguments {'fail_fast': 'False', 'quiet': 'False', 'debug': 'False', 'target_path': 'None', 'write_json': 'True', 'cache_selected_only': 'False', 'log_cache_events': 'False', 'use_colors': 'True', 'introspect': 'True', 'static_parser': 'True', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'printer_width': '80', 'use_experimental_parser': 'False', 'warn_error': 'None', 'no_print': 'None', 'log_path': '/Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt/logs', 'partial_parse': 'True', 'invocation_command': 'dbt run --select staging', 'log_format': 'default', 'send_anonymous_usage_stats': 'True', 'empty': 'False', 'profiles_dir': '/Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt', 'indirect_selection': 'eager', 'version_check': 'True'}
+[0m19:34:35.425459 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'project_id', 'label': '448f9345-aa9c-4a71-9f47-599a2cb809d8', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x106aeb5e0>]}
+[0m19:34:35.463424 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'adapter_info', 'label': '448f9345-aa9c-4a71-9f47-599a2cb809d8', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10605dde0>]}
+[0m19:34:35.464861 [info ] [MainThread]: Registered adapter: postgres=1.10.0
+[0m19:34:35.556697 [debug] [MainThread]: checksum: ec27062d18352e9cfca161c166fcc73d2201661a23a3cf3c89196a27f32cfcb8, vars: {}, profile: , target: , version: 1.11.6
+[0m19:34:35.604790 [info ] [MainThread]: Unable to do partial parsing because profile has changed
+[0m19:34:35.605130 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'partial_parser', 'label': '448f9345-aa9c-4a71-9f47-599a2cb809d8', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107cbe440>]}
+[0m19:34:36.231535 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'load_project', 'label': '448f9345-aa9c-4a71-9f47-599a2cb809d8', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x11070df90>]}
+[0m19:34:36.298805 [debug] [MainThread]: Wrote artifact WritableManifest to /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt/target/manifest.json
+[0m19:34:36.300535 [debug] [MainThread]: Wrote artifact SemanticManifest to /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt/target/semantic_manifest.json
+[0m19:34:36.313116 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'resource_counts', 'label': '448f9345-aa9c-4a71-9f47-599a2cb809d8', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1106f71f0>]}
+[0m19:34:36.313423 [info ] [MainThread]: Found 2 models, 2 sources, 464 macros
+[0m19:34:36.313631 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'runnable_timing', 'label': '448f9345-aa9c-4a71-9f47-599a2cb809d8', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1106e2650>]}
+[0m19:34:36.314287 [info ] [MainThread]: 
+[0m19:34:36.314504 [info ] [MainThread]: Concurrency: 4 threads (target='dev')
+[0m19:34:36.314673 [info ] [MainThread]: 
+[0m19:34:36.314932 [debug] [MainThread]: Acquiring new postgres connection 'master'
+[0m19:34:36.317017 [debug] [ThreadPool]: Acquiring new postgres connection 'list_neondb'
+[0m19:34:36.350335 [debug] [ThreadPool]: Using postgres connection "list_neondb"
+[0m19:34:36.350585 [debug] [ThreadPool]: On list_neondb: /* {"app": "dbt", "dbt_version": "1.11.6", "profile_name": "cofair_db", "target_name": "dev", "connection_name": "list_neondb"} */
+
+    select distinct nspname from pg_namespace
+  
+[0m19:34:36.350754 [debug] [ThreadPool]: Opening a new connection, currently in state init
+[0m19:34:36.989587 [debug] [ThreadPool]: SQL status: SELECT 6 in 0.639 seconds
+[0m19:34:36.992549 [debug] [ThreadPool]: On list_neondb: Close
+[0m19:34:36.994850 [debug] [ThreadPool]: Re-using an available connection from the pool (formerly list_neondb, now list_neondb_staging)
+[0m19:34:37.003676 [debug] [ThreadPool]: Using postgres connection "list_neondb_staging"
+[0m19:34:37.004015 [debug] [ThreadPool]: On list_neondb_staging: /* {"app": "dbt", "dbt_version": "1.11.6", "profile_name": "cofair_db", "target_name": "dev", "connection_name": "list_neondb_staging"} */
+select
+      'neondb' as database,
+      tablename as name,
+      schemaname as schema,
+      'table' as type
+    from pg_tables
+    where schemaname ilike 'staging'
+    union all
+    select
+      'neondb' as database,
+      viewname as name,
+      schemaname as schema,
+      'view' as type
+    from pg_views
+    where schemaname ilike 'staging'
+    union all
+    select
+      'neondb' as database,
+      matviewname as name,
+      schemaname as schema,
+      'materialized_view' as type
+    from pg_matviews
+    where schemaname ilike 'staging'
+  
+[0m19:34:37.004222 [debug] [ThreadPool]: Opening a new connection, currently in state closed
+[0m19:34:37.644442 [debug] [ThreadPool]: SQL status: SELECT 0 in 0.640 seconds
+[0m19:34:37.647598 [debug] [ThreadPool]: On list_neondb_staging: ROLLBACK
+[0m19:34:37.725481 [debug] [ThreadPool]: On list_neondb_staging: Close
+[0m19:34:37.733109 [debug] [MainThread]: Using postgres connection "master"
+[0m19:34:37.733930 [debug] [MainThread]: On master: /* {"app": "dbt", "dbt_version": "1.11.6", "profile_name": "cofair_db", "target_name": "dev", "connection_name": "master"} */
+select distinct
+        dependent_namespace.nspname as dependent_schema,
+        dependent_class.relname as dependent_name,
+        referenced_namespace.nspname as referenced_schema,
+        referenced_class.relname as referenced_name
+
+    -- Query for views: views are entries in pg_class with an entry in pg_rewrite, but we avoid
+    -- a seq scan on pg_rewrite by leveraging the fact there is an "internal" row in pg_depend for
+    -- the view...
+    from pg_class as dependent_class
+    join pg_namespace as dependent_namespace on dependent_namespace.oid = dependent_class.relnamespace
+    join pg_depend as dependent_depend on dependent_depend.refobjid = dependent_class.oid
+        and dependent_depend.classid = 'pg_rewrite'::regclass
+        and dependent_depend.refclassid = 'pg_class'::regclass
+        and dependent_depend.deptype = 'i'
+
+    -- ... and via pg_depend (that has a row per column, hence the need for "distinct" above, and
+    -- making sure to exclude the internal row to avoid a view appearing to depend on itself)...
+    join pg_depend as joining_depend on joining_depend.objid = dependent_depend.objid
+        and joining_depend.classid = 'pg_rewrite'::regclass
+        and joining_depend.refclassid = 'pg_class'::regclass
+        and joining_depend.refobjid != dependent_depend.refobjid
+
+    -- ... we can find the tables they query from in pg_class, but excluding system tables. Note we
+    -- don't need need to exclude _dependent_ system tables, because they only query from other
+    -- system tables, and so are automatically excluded by excluding _referenced_ system tables
+    join pg_class as referenced_class on referenced_class.oid = joining_depend.refobjid
+    join pg_namespace as referenced_namespace on referenced_namespace.oid = referenced_class.relnamespace
+        and referenced_namespace.nspname != 'information_schema'
+        and referenced_namespace.nspname not like 'pg\_%'
+
+    order by
+        dependent_schema, dependent_name, referenced_schema, referenced_name;
+[0m19:34:37.734491 [debug] [MainThread]: Opening a new connection, currently in state init
+[0m19:34:38.378395 [debug] [MainThread]: SQL status: SELECT 0 in 0.643 seconds
+[0m19:34:38.382046 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'runnable_timing', 'label': '448f9345-aa9c-4a71-9f47-599a2cb809d8', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x11064aa70>]}
+[0m19:34:38.382935 [debug] [MainThread]: On master: ROLLBACK
+[0m19:34:38.455008 [debug] [MainThread]: On master: COMMIT
+[0m19:34:38.456584 [debug] [MainThread]: Using postgres connection "master"
+[0m19:34:38.458125 [debug] [MainThread]: On master: COMMIT
+[0m19:34:38.604948 [debug] [MainThread]: SQL status: COMMIT in 0.146 seconds
+[0m19:34:38.606307 [debug] [MainThread]: On master: Close
+[0m19:34:38.616254 [debug] [Thread-1 (]: Began running node model.cofair_db.stg_donors
+[0m19:34:38.617034 [debug] [Thread-2 (]: Began running node model.cofair_db.stg_pricing
+[0m19:34:38.618120 [info ] [Thread-1 (]: 1 of 2 START sql view model staging.stg_donors ................................. [RUN]
+[0m19:34:38.619127 [info ] [Thread-2 (]: 2 of 2 START sql view model staging.stg_pricing ................................ [RUN]
+[0m19:34:38.619987 [debug] [Thread-1 (]: Re-using an available connection from the pool (formerly list_neondb_staging, now model.cofair_db.stg_donors)
+[0m19:34:38.620739 [debug] [Thread-2 (]: Acquiring new postgres connection 'model.cofair_db.stg_pricing'
+[0m19:34:38.621415 [debug] [Thread-1 (]: Began compiling node model.cofair_db.stg_donors
+[0m19:34:38.621910 [debug] [Thread-2 (]: Began compiling node model.cofair_db.stg_pricing
+[0m19:34:38.629396 [debug] [Thread-1 (]: Writing injected SQL for node "model.cofair_db.stg_donors"
+[0m19:34:38.631637 [debug] [Thread-2 (]: Writing injected SQL for node "model.cofair_db.stg_pricing"
+[0m19:34:38.632239 [debug] [Thread-1 (]: Began executing node model.cofair_db.stg_donors
+[0m19:34:38.632464 [debug] [Thread-2 (]: Began executing node model.cofair_db.stg_pricing
+[0m19:34:38.674692 [debug] [Thread-1 (]: Writing runtime sql for node "model.cofair_db.stg_donors"
+[0m19:34:38.675567 [debug] [Thread-2 (]: Writing runtime sql for node "model.cofair_db.stg_pricing"
+[0m19:34:38.676199 [debug] [Thread-1 (]: Using postgres connection "model.cofair_db.stg_donors"
+[0m19:34:38.676452 [debug] [Thread-2 (]: Using postgres connection "model.cofair_db.stg_pricing"
+[0m19:34:38.676763 [debug] [Thread-1 (]: On model.cofair_db.stg_donors: /* {"app": "dbt", "dbt_version": "1.11.6", "profile_name": "cofair_db", "target_name": "dev", "node_id": "model.cofair_db.stg_donors"} */
+
+  create view "neondb"."staging"."stg_donors__dbt_tmp"
+    
+    
+  as (
+    
+
+with exploded as (
+    select
+        r.content_sha256,
+        r.ingested_at,
+
+        x.donor_id,
+        x.org_type,
+        x.platform,
+        x.monthly_budget::numeric              as monthly_budget,
+        x.volatility::numeric                  as volatility,
+        x.weekend_factor::numeric              as weekend_factor,
+        x.subscription_start_date::date        as subscription_start_date,
+        x.billing_cycle,
+        x.billing_cycle_days::int              as billing_cycle_days,
+        x.current_cycle_start::date            as current_cycle_start,
+        x.current_cycle_end::date              as current_cycle_end,
+        x.days_remaining_in_cycle::int         as days_remaining_in_cycle
+
+    from "neondb"."raw"."donor_csv" as r
+    cross join lateral jsonb_to_recordset(r.payload) as x(    -- This look complicated but its just parsing the CSV
+        donor_id text,
+        org_type text,
+        platform text,
+        monthly_budget text,
+        volatility text,
+        weekend_factor text,
+        subscription_start_date text,
+        billing_cycle text,
+        billing_cycle_days text,
+        current_cycle_start text,
+        current_cycle_end text,
+        days_remaining_in_cycle text
+    )
+)
+
+select *
+from exploded
+  );
+[0m19:34:38.677068 [debug] [Thread-2 (]: On model.cofair_db.stg_pricing: /* {"app": "dbt", "dbt_version": "1.11.6", "profile_name": "cofair_db", "target_name": "dev", "node_id": "model.cofair_db.stg_pricing"} */
+
+  create view "neondb"."staging"."stg_pricing__dbt_tmp"
+    
+    
+  as (
+    
+
+with exploded as (
+    select
+        r.content_sha256,
+        r.ingested_at,
+        r.payload->>'version'  as pricing_version,
+        r.payload->>'currency' as currency,
+
+        x.provider,
+        x.model,
+        x.sku_type,
+        x.price_per_1m_tokens_usd,
+        x.price_per_1k_tokens_usd,
+        x.source
+    from "neondb"."raw"."pricing_json" as r
+    cross join lateral jsonb_to_recordset(r.payload->'rows') as x(  -- This look complicated but its just parsing the JSON
+        provider text,
+        model text,
+        sku_type text,
+        price_per_1m_tokens_usd numeric,
+        price_per_1k_tokens_usd numeric,
+        source text
+    )
+)
+
+select *
+from exploded
+  );
+[0m19:34:38.677311 [debug] [Thread-1 (]: Opening a new connection, currently in state closed
+[0m19:34:38.677539 [debug] [Thread-2 (]: Opening a new connection, currently in state init
+[0m19:34:39.306674 [debug] [Thread-1 (]: SQL status: CREATE VIEW in 0.629 seconds
+[0m19:34:39.316868 [debug] [Thread-1 (]: Using postgres connection "model.cofair_db.stg_donors"
+[0m19:34:39.317784 [debug] [Thread-2 (]: SQL status: CREATE VIEW in 0.640 seconds
+[0m19:34:39.318595 [debug] [Thread-1 (]: On model.cofair_db.stg_donors: /* {"app": "dbt", "dbt_version": "1.11.6", "profile_name": "cofair_db", "target_name": "dev", "node_id": "model.cofair_db.stg_donors"} */
+alter table "neondb"."staging"."stg_donors__dbt_tmp" rename to "stg_donors"
+[0m19:34:39.323352 [debug] [Thread-2 (]: Using postgres connection "model.cofair_db.stg_pricing"
+[0m19:34:39.323807 [debug] [Thread-2 (]: On model.cofair_db.stg_pricing: /* {"app": "dbt", "dbt_version": "1.11.6", "profile_name": "cofair_db", "target_name": "dev", "node_id": "model.cofair_db.stg_pricing"} */
+alter table "neondb"."staging"."stg_pricing__dbt_tmp" rename to "stg_pricing"
+[0m19:34:39.396069 [debug] [Thread-1 (]: SQL status: ALTER TABLE in 0.072 seconds
+[0m19:34:39.405610 [debug] [Thread-2 (]: SQL status: ALTER TABLE in 0.081 seconds
+[0m19:34:39.413458 [debug] [Thread-1 (]: On model.cofair_db.stg_donors: COMMIT
+[0m19:34:39.414553 [debug] [Thread-2 (]: On model.cofair_db.stg_pricing: COMMIT
+[0m19:34:39.414876 [debug] [Thread-1 (]: Using postgres connection "model.cofair_db.stg_donors"
+[0m19:34:39.415150 [debug] [Thread-2 (]: Using postgres connection "model.cofair_db.stg_pricing"
+[0m19:34:39.415380 [debug] [Thread-1 (]: On model.cofair_db.stg_donors: COMMIT
+[0m19:34:39.415594 [debug] [Thread-2 (]: On model.cofair_db.stg_pricing: COMMIT
+[0m19:34:39.489334 [debug] [Thread-1 (]: SQL status: COMMIT in 0.073 seconds
+[0m19:34:39.497657 [debug] [Thread-2 (]: SQL status: COMMIT in 0.082 seconds
+[0m19:34:39.499910 [debug] [Thread-1 (]: Applying DROP to: "neondb"."staging"."stg_donors__dbt_backup"
+[0m19:34:39.502248 [debug] [Thread-2 (]: Applying DROP to: "neondb"."staging"."stg_pricing__dbt_backup"
+[0m19:34:39.504543 [debug] [Thread-1 (]: Using postgres connection "model.cofair_db.stg_donors"
+[0m19:34:39.505018 [debug] [Thread-2 (]: Using postgres connection "model.cofair_db.stg_pricing"
+[0m19:34:39.505270 [debug] [Thread-1 (]: On model.cofair_db.stg_donors: /* {"app": "dbt", "dbt_version": "1.11.6", "profile_name": "cofair_db", "target_name": "dev", "node_id": "model.cofair_db.stg_donors"} */
+drop view if exists "neondb"."staging"."stg_donors__dbt_backup" cascade
+[0m19:34:39.505485 [debug] [Thread-2 (]: On model.cofair_db.stg_pricing: /* {"app": "dbt", "dbt_version": "1.11.6", "profile_name": "cofair_db", "target_name": "dev", "node_id": "model.cofair_db.stg_pricing"} */
+drop view if exists "neondb"."staging"."stg_pricing__dbt_backup" cascade
+[0m19:34:39.579794 [debug] [Thread-1 (]: SQL status: DROP VIEW in 0.074 seconds
+[0m19:34:39.581778 [debug] [Thread-1 (]: On model.cofair_db.stg_donors: Close
+[0m19:34:39.583602 [debug] [Thread-1 (]: Sending event: {'category': 'dbt', 'action': 'run_model', 'label': '448f9345-aa9c-4a71-9f47-599a2cb809d8', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x104510520>]}
+[0m19:34:39.584109 [info ] [Thread-1 (]: 1 of 2 OK created sql view model staging.stg_donors ............................ [[32mCREATE VIEW[0m in 0.96s]
+[0m19:34:39.584442 [debug] [Thread-2 (]: SQL status: DROP VIEW in 0.079 seconds
+[0m19:34:39.584889 [debug] [Thread-1 (]: Finished running node model.cofair_db.stg_donors
+[0m19:34:39.585772 [debug] [Thread-2 (]: On model.cofair_db.stg_pricing: Close
+[0m19:34:39.586338 [debug] [Thread-2 (]: Sending event: {'category': 'dbt', 'action': 'run_model', 'label': '448f9345-aa9c-4a71-9f47-599a2cb809d8', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1105ace20>]}
+[0m19:34:39.586758 [info ] [Thread-2 (]: 2 of 2 OK created sql view model staging.stg_pricing ........................... [[32mCREATE VIEW[0m in 0.97s]
+[0m19:34:39.587116 [debug] [Thread-2 (]: Finished running node model.cofair_db.stg_pricing
+[0m19:34:39.587850 [debug] [MainThread]: On master: COMMIT
+[0m19:34:39.588126 [debug] [MainThread]: Using postgres connection "master"
+[0m19:34:39.588342 [debug] [MainThread]: On master: COMMIT
+[0m19:34:39.588542 [debug] [MainThread]: Opening a new connection, currently in state closed
+[0m19:34:40.201459 [debug] [MainThread]: SQL status: COMMIT in 0.613 seconds
+[0m19:34:40.202992 [debug] [MainThread]: On master: Close
+[0m19:34:40.204115 [debug] [MainThread]: Connection 'master' was properly closed.
+[0m19:34:40.204677 [debug] [MainThread]: Connection 'model.cofair_db.stg_donors' was properly closed.
+[0m19:34:40.205198 [debug] [MainThread]: Connection 'model.cofair_db.stg_pricing' was properly closed.
+[0m19:34:40.205873 [info ] [MainThread]: 
+[0m19:34:40.206515 [info ] [MainThread]: Finished running 2 view models in 0 hours 0 minutes and 3.89 seconds (3.89s).
+[0m19:34:40.207904 [debug] [MainThread]: Command end result
+[0m19:34:40.226990 [debug] [MainThread]: Wrote artifact WritableManifest to /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt/target/manifest.json
+[0m19:34:40.228518 [debug] [MainThread]: Wrote artifact SemanticManifest to /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt/target/semantic_manifest.json
+[0m19:34:40.231997 [debug] [MainThread]: Wrote artifact RunExecutionResult to /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/dbt/target/run_results.json
+[0m19:34:40.232223 [info ] [MainThread]: 
+[0m19:34:40.232469 [info ] [MainThread]: [32mCompleted successfully[0m
+[0m19:34:40.232651 [info ] [MainThread]: 
+[0m19:34:40.232846 [info ] [MainThread]: Done. PASS=2 WARN=0 ERROR=0 SKIP=0 NO-OP=0 TOTAL=2
+[0m19:34:40.235162 [debug] [MainThread]: Resource report: {"command_name": "run", "command_success": true, "command_wall_clock_time": 4.9689474, "process_in_blocks": "0", "process_kernel_time": 0.24416, "process_mem_max_rss": "143065088", "process_out_blocks": "0", "process_user_time": 1.807807}
+[0m19:34:40.235448 [debug] [MainThread]: Command `dbt run` succeeded at 19:34:40.235401 after 4.97 seconds
+[0m19:34:40.235673 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x105ddd810>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x106aeb5e0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107cb0430>]}
+[0m19:34:40.235893 [debug] [MainThread]: Flushing usage events
+[0m19:34:40.569812 [debug] [MainThread]: An error was encountered while trying to flush usage events
