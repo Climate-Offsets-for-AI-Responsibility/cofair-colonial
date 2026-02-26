@@ -12,7 +12,7 @@ If anything is unclear or not working correctly feel free to ask me (Andrew).
 
 Create a `.env` file in the root directory (`the-colonial`).
 
-See `.env.example` for an example of what yours should look like.
+See `.env.example` for an example of what yours should look like, the info is also on trello!
 
 Run the following code in your terminal to set up a virtual environment and install dependancies:
 ```bash
@@ -35,7 +35,7 @@ If you see a Docker version pop up, Docker is successfully installed.
 - Run `docker-compose up -d` to tell Docker to build its containers.
 - Run `docker ps` to make sure its up and running. (You should see a table of containers)
 
-TDLR: Everytime you start up docker just run this sequence from the `the-colonial` directory:
+TDLR: Everytime you start up docker just copy, paste, and run this code from the `the-colonial` directory:
 ```bash
 open -a Docker
 docker-compose up -d
@@ -55,9 +55,10 @@ This part is easy! Just run the following script from the `the-colonial` directo
 ```bash
 python3 build_db.py
 ```
-After this code runs, all of the data should be inserted into the Postgres DB
 
-# Inspecting the Database
+After this code runs, all of the data should be inserted into the Neon DB through Netlify
+
+# Inspecting the Database (You can ignore this for now! It doesnt apply to the Neon DB that we'll be using)
 ### Postgres Setup
 After the data has been inserted, you can check if everythign worked correctly by looking inside the database.
 
