@@ -1,16 +1,16 @@
-# Data Pipeline
+# Data Pipeline (the-colonial)
 
 You can clone this repo into a local folder by running:
-`git clone https://github.com/Climate-Offsets-for-AI-Responsibility/data-pipeline.git`
+`git clone https://github.com/Climate-Offsets-for-AI-Responsibility/the-colonial.git`
 
 This repo contains scripts and documentation for the Postgres database setup and ingestion.
 
 If anything is unclear or not working correctly feel free to ask me (Andrew).
 
 # Setup
-*IMPORTANT* - Always run commands from the `data-pipeline` directory!
+*IMPORTANT* - Always run commands from the `the-colonial` directory!
 
-Create a `.env` file in the root directory (`data-pipeline`).
+Create a `.env` file in the root directory (`the-colonial`).
 
 See `.env.example` for an example of what yours should look like.
 
@@ -35,7 +35,7 @@ If you see a Docker version pop up, Docker is successfully installed.
 - Run `docker-compose up -d` to tell Docker to build its containers.
 - Run `docker ps` to make sure its up and running. (You should see a table of containers)
 
-TDLR: Everytime you start up docker just run this sequence from the `data-pipeline` directory:
+TDLR: Everytime you start up docker just run this sequence from the `the-colonial` directory:
 ```bash
 open -a Docker
 docker-compose up -d
@@ -51,7 +51,7 @@ This section includes the `scrape_pricing` and `donors_generate` scripts used to
 
 Before running, make sure the docker containers are running and all dependancies are installed.
 
-This part is easy! Just run the following script from the `data-pipeline` directory:
+This part is easy! Just run the following script from the `the-colonial` directory:
 ```bash
 python3 build_db.py
 ```
