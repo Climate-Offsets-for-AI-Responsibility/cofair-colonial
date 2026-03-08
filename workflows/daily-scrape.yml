@@ -1,0 +1,47 @@
+name: Daily Pricing Scraper
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: "0 19 * * *"    # run daily at 19:00 UTC
+  workflow_dispatch:       # manual run button
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: 'pip' # Speeds up subsequent runs
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          # These two lines are mandatory for Playwright to work in GitHub Actions
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: Run scraper
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+        run: |
+          python scrape_pricing.py
+
+      - name: Commit updated pricing.json
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add pricing.json
+          # Using [skip ci] prevents the action from triggering itself in a loop
+          git commit -m "Auto-update pricing.json [skip ci]" || echo "No changes to commit"
+          git push
