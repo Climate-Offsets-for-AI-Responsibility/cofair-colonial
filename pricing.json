@@ -1,6 +1,6 @@
 {
   "meta": {
-    "last_run_datetime": "2026-03-09T19:38:12Z",
+    "last_run_datetime": "2026-03-10T19:35:35Z",
     "schema_version": "1.1.0",
     "description": "Consolidated pricing for AI models."
   },
@@ -1411,6 +1411,42 @@
       "currency": "USD",
       "input_price": null,
       "output_price": 0.000375,
+      "context_window": null,
+      "is_active": true
+    },
+    {
+      "model_id": "gemini-embedding-2-unified-multimodal-preview-generate-embeddings-using-image-as-input",
+      "display_name": "Gemini Embedding 2 (Unified Multimodal, Preview) (Generate embeddings using image as input)",
+      "provider_id": "google",
+      "type": "chat",
+      "unit": "per_1M_tokens",
+      "currency": "USD",
+      "input_price": 0.00012,
+      "output_price": null,
+      "context_window": null,
+      "is_active": true
+    },
+    {
+      "model_id": "gemini-embedding-2-unified-multimodal-preview-generate-embeddings-using-video-as-input",
+      "display_name": "Gemini Embedding 2 (Unified Multimodal, Preview) (Generate embeddings using video as input)",
+      "provider_id": "google",
+      "type": "chat",
+      "unit": "per_1M_tokens",
+      "currency": "USD",
+      "input_price": 0.00079,
+      "output_price": null,
+      "context_window": null,
+      "is_active": true
+    },
+    {
+      "model_id": "gemini-embedding-2-unified-multimodal-preview-generate-embeddings-using-audio-as-input",
+      "display_name": "Gemini Embedding 2 (Unified Multimodal, Preview) (Generate embeddings using audio as input)",
+      "provider_id": "google",
+      "type": "chat",
+      "unit": "per_1M_tokens",
+      "currency": "USD",
+      "input_price": 0.00016,
+      "output_price": null,
       "context_window": null,
       "is_active": true
     },
