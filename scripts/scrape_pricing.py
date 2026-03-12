@@ -29,34 +29,28 @@ def now_iso_z():
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def http_get(url):
+def http_get(url, retries=3):
     with sync_playwright() as p:
-        # Launch browser (headless=True for background, False to watch it work)
         browser = p.chromium.launch(headless=True)
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-        )
-        page = context.new_page()
-
-        print(f"FETCHING via Playwright: {url}")
-        
         try:
-            # Increase timeout for heavy documentation pages
-            page.goto(url, wait_until="networkidle", timeout=60000)
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+            )
+            page = context.new_page()
+            print(f"FETCHING via Playwright: {url}")
             
-            # Scroll to bottom to trigger any lazy-loading tables
-            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            
-            # Wait a moment for any JS-driven tables to finish rendering
-            page.wait_for_timeout(2000) 
-            
-            html = page.content()
-            browser.close()
-            return html
-            
-        except Exception as e:
-            browser.close()
-            raise RuntimeError(f"Playwright failed to fetch {url}: {str(e)}")
+            for i in range(retries):
+                try:
+                    page.goto(url, wait_until="networkidle", timeout=60000)
+                    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                    page.wait_for_timeout(2000) 
+                    return page.content()
+                except Exception as e:
+                    if i == retries - 1:
+                        raise RuntimeError(f"Failed after {retries} attempts: {e}")
+                    time.sleep(5)
+        finally:
+            browser.close() # This now runs even if an error is raised
 
 def norm(s):
     return " ".join((s or "").strip().split())
@@ -106,8 +100,8 @@ def parse_claude(html):
             continue
 
         col_model = 0
-        col_input = next(i for i, h in enumerate(headers) if "base input" in h)
-        col_output = next(i for i, h in enumerate(headers) if "output" in h)
+        col_input = next(i for i, h in enumerate(headers) if h == "input" or h == "base input")
+        col_output = next(i for i, h in enumerate(headers) if h == "output" or h == "base output")
 
         for r in mat[1:]:
             name = r[col_model]
@@ -172,29 +166,34 @@ def parse_vertex(html):
             if "grounding" in row_text:
                 continue
 
-            # detect prices in row
-            prices = [money(x) for x in r]
-
-            prices = [p for p in prices if p is not None]
-
-            if not prices:
-                continue
-
-            label = norm(r[0] if len(r) == 1 else r[1])
-
-            label_id = model_id_from_name(label)
-
+            # --- FIX: ROBUST COLUMN DETECTION ---
             input_price = None
             output_price = None
 
-            if "input" in label.lower():
-                input_price = prices[0]
+            # Iterate through the row using headers to find the right index
+            for idx, h in enumerate(headers):
+                if idx >= len(r): 
+                    continue
+                
+                cell_val = money(r[idx])
+                if cell_val is None: 
+                    continue
 
-            elif "output" in label.lower():
-                output_price = prices[0]
+                if "input" in h:
+                    input_price = cell_val
+                elif "output" in h:
+                    output_price = cell_val
 
-            else:
+            # Fallback: if no clear headers, try to grab the first number found
+            if input_price is None and output_price is None:
+                prices = [money(x) for x in r if money(x) is not None]
+                if not prices:
+                    continue
                 output_price = prices[0]
+            # ------------------------------------
+
+            label = norm(r[0] if len(r) == 1 else r[1])
+            label_id = model_id_from_name(label)
 
             rows_out.append({
                 "model_id": f"{base_id}-{label_id}",
@@ -231,11 +230,10 @@ def parse_openai(html):
 
         col_model = 0
 
-        col_input = next((i for i, h in enumerate(headers) if "input" in h), None)
+        col_input = next((i for i, h in enumerate(headers) if h == "input"), None)
         col_cached = next((i for i, h in enumerate(headers) if "cached" in h), None)
-        col_output = next((i for i, h in enumerate(headers) if "output" in h), None)
+        col_output = next((i for i, h in enumerate(headers) if h == "output"), None)
         col_cost = next((i for i, h in enumerate(headers) if "cost" in h or "price" in h), None)
-
         for r in mat[1:]:
 
             if len(r) <= col_model:
@@ -345,26 +343,22 @@ def detect_changes(old_rows, new_rows):
 
 def format_changes(changes):
     lines = []
-
     for c in changes:
         if c[0] == "NEW_MODEL":
             r = c[1]
-            lines.append(
-                f"New model: {r['display_name']} "
-                f"(input ${r['input_price']}, output ${r['output_price']})"
-            )
+            lines.append(f"• {r['display_name']} (In: ${r['input_price']}, Out: ${r['output_price']})")
 
         elif c[0] == "PRICE_CHANGED":
             new_r, old_r = c[1], c[2]
             lines.append(
-                f"💰 Price changed: {new_r['display_name']}\n"
-                f"   Input: {old_r['input_price']} → {new_r['input_price']}\n"
-                f"   Output: {old_r['output_price']} → {new_r['output_price']}"
+                f"• *{new_r['display_name']}*\n"
+                f"  Input: ${old_r['input_price']} → ${new_r['input_price']}\n"
+                f"  Output: ${old_r['output_price']} → ${new_r['output_price']}"
             )
 
         elif c[0] == "REMOVED_MODEL":
             r = c[1]
-            lines.append(f"Removed model: {r['display_name']}")
+            lines.append(f"• {r['display_name']}")
 
     return "\n".join(lines)
 
@@ -397,10 +391,17 @@ def main():
         seen = set()
         clean = []
         for r in rows:
-            key = (r["provider_id"], r["model_id"])
+            key = (r["provider_id"], r["model_id"], r["type"])
             if key not in seen:
                 seen.add(key)
                 clean.append(r)
+
+        # sanity check
+        if len(old_rows) > 0 and len(clean) < (len(old_rows) * 0.5):
+            raise RuntimeError(
+                f"Sanity check failed: Scraped only {len(clean)} models, "
+                f"expected roughly {len(old_rows)}. Potential parser failure."
+            )
 
         pricing_doc = {
             "meta": {
@@ -438,11 +439,45 @@ def main():
 
         changes = detect_changes(old_rows, clean)
         if changes:
-            message = "🚨 PRICING UPDATE DETECTED \n\n"
-            message += format_changes(changes)
-            send_slack(message)
+            # Categorize the changes
+            new_models = [c for c in changes if c[0] == "NEW_MODEL"]
+            price_changes = [c for c in changes if c[0] == "PRICE_CHANGED"]
+            removed_models = [c for c in changes if c[0] == "REMOVED_MODEL"]
+
+            message_blocks = []
+
+            if price_changes:
+                message_blocks.append("💰 *PRICING CHANGES DETECTED*")
+                message_blocks.append(format_changes(price_changes))
+            
+            if new_models:
+                # Add a separator if there was a previous block
+                if message_blocks: message_blocks.append("---")
+                message_blocks.append("✨ *NEW MODELS DETECTED*")
+                message_blocks.append(format_changes(new_models))
+            
+            if removed_models:
+                if message_blocks: message_blocks.append("---")
+                message_blocks.append("❌ *MODELS REMOVED*")
+                message_blocks.append(format_changes(removed_models))
+
+            # Join everything into one message
+            full_message = "\n\n".join(message_blocks)
+            send_slack(full_message)
         else:
-            send_slack("✅ No pricing changes detected.")
+            send_slack("✅ No changes detected (Pricing and Model list stable).")
+
+        # Log and return success
+        report = {
+            "run_id": run_id,
+            "started_at": start,
+            "finished_at": now_iso_z(),
+            "status": "success",
+            "error": None
+        }
+        RUN_REPORT_PATH.write_text(json.dumps(report, indent=2))
+        print(json.dumps({"event": "pricing_update_success", "run_id": run_id, "error": None}))
+        return 0
 
     except Exception as e:
         status = "failed"
@@ -453,17 +488,14 @@ def main():
             f"Error: {error}\n"
             f"Time: {now_iso_z()}"
         )
-
-    report = {
-        "run_id": run_id,
-        "started_at": start,
-        "finished_at": now_iso_z(),
-        "status": status,
-        "error": error
-    }
-    RUN_REPORT_PATH.write_text(json.dumps(report, indent=2))
-
-    print(json.dumps({"event": f"pricing_update_{status}", "run_id": run_id, "error": error}))
-
-if __name__ == "__main__":
-    sys.exit(main())
+        
+        report = {
+            "run_id": run_id,
+            "started_at": start,
+            "finished_at": now_iso_z(),
+            "status": "failed",
+            "error": error
+        }
+        RUN_REPORT_PATH.write_text(json.dumps(report, indent=2))
+        print(json.dumps({"event": "pricing_update_failed", "run_id": run_id, "error": error}))
+        return 1
