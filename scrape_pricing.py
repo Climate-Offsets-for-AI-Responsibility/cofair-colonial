@@ -567,50 +567,30 @@ def parse_openai(html):
 
 print("🚨 send_slack CALLED")
 def send_slack(text):
-
     token = os.environ.get("SLACK_BOT_TOKEN")
+    channel = os.environ.get("SLACK_CHANNEL")
 
-    channel = os.environ.get("SLACK_CHANNEL", "#notifications")
-
-
-
-    if not token:
-
-        raise RuntimeError("Missing SLACK_BOT_TOKEN")
-
-
+    print("SLACK TOKEN EXISTS:", bool(token))
+    print("SLACK CHANNEL:", channel)
 
     r = requests.post(
-
         "https://slack.com/api/chat.postMessage",
-
         headers={
-
             "Authorization": f"Bearer {token}",
-
             "Content-Type": "application/json",
-
         },
-
         json={
-
             "channel": channel,
-
             "text": text,
-
         },
-
         timeout=20,
-
     )
 
-
-
     data = r.json()
+    print("SLACK RESPONSE:", data)
 
     if not data.get("ok"):
-
-        raise RuntimeError(f"Slack error: {data}")
+        print("❌ Slack failed")
 
     
 
