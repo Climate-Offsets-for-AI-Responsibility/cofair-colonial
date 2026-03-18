@@ -565,7 +565,7 @@ def parse_openai(html):
     return rows_out
 
 
-
+print("🚨 send_slack CALLED")
 def send_slack(text):
 
     token = os.environ.get("SLACK_BOT_TOKEN")
