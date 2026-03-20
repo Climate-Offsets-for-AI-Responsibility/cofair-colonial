@@ -25,7 +25,7 @@ def get_connection(local: bool = True):
 
     return psycopg2.connect(
         host=os.getenv("POSTGRES_HOST", "localhost"),
-        port=int(os.getenv("POSTGRES_PORT", "5432")),
+        port=int(os.getenv("POSTGRES_PORT", "5434")),
         dbname=os.getenv("POSTGRES_DB", "cofair_db"),
         user=os.getenv("POSTGRES_USER", "postgres"),
         password=os.getenv("POSTGRES_PASSWORD", "postgres"),

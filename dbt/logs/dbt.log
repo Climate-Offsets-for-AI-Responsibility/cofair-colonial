@@ -3047,3 +3047,552 @@ drop view if exists "neondb"."staging"."stg_pricing__dbt_backup" cascade
 [0m19:34:40.235673 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x105ddd810>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x106aeb5e0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107cb0430>]}
 [0m19:34:40.235893 [debug] [MainThread]: Flushing usage events
 [0m19:34:40.569812 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m22:22:37.665795 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1078a0eb0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1114c80d0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1114c8760>]}
+
+
+============================== 22:22:37.668643 | c39777d0-370b-41d7-9b3c-74297ad9838b ==============================
+[0m22:22:37.668643 [info ] [MainThread]: Running with dbt=1.11.7
+[0m22:22:37.668985 [debug] [MainThread]: running dbt with arguments {'log_cache_events': 'False', 'quiet': 'False', 'empty': 'False', 'use_experimental_parser': 'False', 'use_colors': 'True', 'printer_width': '80', 'fail_fast': 'False', 'log_path': '/Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/the-colonial/dbt/logs', 'indirect_selection': 'eager', 'version_check': 'True', 'target_path': 'None', 'log_format': 'default', 'cache_selected_only': 'False', 'no_print': 'None', 'static_parser': 'True', 'debug': 'False', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'partial_parse': 'True', 'profiles_dir': '/Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/the-colonial/dbt', 'introspect': 'True', 'invocation_command': 'dbt run --select staging --target local', 'warn_error': 'None', 'send_anonymous_usage_stats': 'True', 'write_json': 'True'}
+[0m22:22:37.765838 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'project_id', 'label': 'c39777d0-370b-41d7-9b3c-74297ad9838b', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107b05450>]}
+[0m22:22:37.795754 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'adapter_info', 'label': 'c39777d0-370b-41d7-9b3c-74297ad9838b', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1114c4af0>]}
+[0m22:22:37.796418 [info ] [MainThread]: Registered adapter: postgres=1.10.0
+[0m22:22:38.077202 [debug] [MainThread]: checksum: 6ed6e62ffc1f133f90563bb3f065b7ef0e8b11328c3a55588a32c16b5ed76e10, vars: {}, profile: , target: local, version: 1.11.7
+[0m22:22:38.124658 [info ] [MainThread]: Unable to do partial parsing because of a version mismatch
+[0m22:22:38.124950 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'partial_parser', 'label': 'c39777d0-370b-41d7-9b3c-74297ad9838b', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107b48820>]}
+[0m22:22:38.682873 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'load_project', 'label': 'c39777d0-370b-41d7-9b3c-74297ad9838b', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1139e4fa0>]}
+[0m22:22:38.721636 [debug] [MainThread]: Wrote artifact WritableManifest to /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/the-colonial/dbt/target/manifest.json
+[0m22:22:38.722972 [debug] [MainThread]: Wrote artifact SemanticManifest to /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/the-colonial/dbt/target/semantic_manifest.json
+[0m22:22:38.733797 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'resource_counts', 'label': 'c39777d0-370b-41d7-9b3c-74297ad9838b', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x113984be0>]}
+[0m22:22:38.734087 [info ] [MainThread]: Found 2 models, 2 sources, 464 macros
+[0m22:22:38.734297 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'runnable_timing', 'label': 'c39777d0-370b-41d7-9b3c-74297ad9838b', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x106c26e60>]}
+[0m22:22:38.735017 [info ] [MainThread]: 
+[0m22:22:38.735222 [info ] [MainThread]: Concurrency: 4 threads (target='local')
+[0m22:22:38.735397 [info ] [MainThread]: 
+[0m22:22:38.735661 [debug] [MainThread]: Acquiring new postgres connection 'master'
+[0m22:22:38.737708 [debug] [ThreadPool]: Acquiring new postgres connection 'list_cofair_db'
+[0m22:22:38.799710 [debug] [ThreadPool]: Using postgres connection "list_cofair_db"
+[0m22:22:38.800015 [debug] [ThreadPool]: On list_cofair_db: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "connection_name": "list_cofair_db"} */
+
+    select distinct nspname from pg_namespace
+  
+[0m22:22:38.800212 [debug] [ThreadPool]: Opening a new connection, currently in state init
+[0m22:22:38.830829 [debug] [ThreadPool]: SQL status: SELECT 5 in 0.031 seconds
+[0m22:22:38.831510 [debug] [ThreadPool]: On list_cofair_db: Close
+[0m22:22:38.831886 [debug] [ThreadPool]: Re-using an available connection from the pool (formerly list_cofair_db, now create_cofair_db_staging)
+[0m22:22:38.832125 [debug] [ThreadPool]: Creating schema "database: "cofair_db"
+schema: "staging"
+"
+[0m22:22:38.834923 [debug] [ThreadPool]: Using postgres connection "create_cofair_db_staging"
+[0m22:22:38.835114 [debug] [ThreadPool]: On create_cofair_db_staging: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "connection_name": "create_cofair_db_staging"} */
+create schema if not exists "staging"
+[0m22:22:38.835272 [debug] [ThreadPool]: Opening a new connection, currently in state closed
+[0m22:22:38.845352 [debug] [ThreadPool]: SQL status: CREATE SCHEMA in 0.010 seconds
+[0m22:22:38.845788 [debug] [ThreadPool]: On create_cofair_db_staging: COMMIT
+[0m22:22:38.845958 [debug] [ThreadPool]: Using postgres connection "create_cofair_db_staging"
+[0m22:22:38.846109 [debug] [ThreadPool]: On create_cofair_db_staging: COMMIT
+[0m22:22:38.847554 [debug] [ThreadPool]: SQL status: COMMIT in 0.001 seconds
+[0m22:22:38.847709 [debug] [ThreadPool]: On create_cofair_db_staging: Close
+[0m22:22:38.848232 [debug] [ThreadPool]: Re-using an available connection from the pool (formerly create_cofair_db_staging, now list_cofair_db_staging)
+[0m22:22:38.851171 [debug] [ThreadPool]: Using postgres connection "list_cofair_db_staging"
+[0m22:22:38.851415 [debug] [ThreadPool]: On list_cofair_db_staging: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "connection_name": "list_cofair_db_staging"} */
+select
+      'cofair_db' as database,
+      tablename as name,
+      schemaname as schema,
+      'table' as type
+    from pg_tables
+    where schemaname ilike 'staging'
+    union all
+    select
+      'cofair_db' as database,
+      viewname as name,
+      schemaname as schema,
+      'view' as type
+    from pg_views
+    where schemaname ilike 'staging'
+    union all
+    select
+      'cofair_db' as database,
+      matviewname as name,
+      schemaname as schema,
+      'materialized_view' as type
+    from pg_matviews
+    where schemaname ilike 'staging'
+  
+[0m22:22:38.851620 [debug] [ThreadPool]: Opening a new connection, currently in state closed
+[0m22:22:38.866358 [debug] [ThreadPool]: SQL status: SELECT 0 in 0.015 seconds
+[0m22:22:38.866961 [debug] [ThreadPool]: On list_cofair_db_staging: ROLLBACK
+[0m22:22:38.867441 [debug] [ThreadPool]: On list_cofair_db_staging: Close
+[0m22:22:38.869739 [debug] [MainThread]: Using postgres connection "master"
+[0m22:22:38.869996 [debug] [MainThread]: On master: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "connection_name": "master"} */
+select distinct
+        dependent_namespace.nspname as dependent_schema,
+        dependent_class.relname as dependent_name,
+        referenced_namespace.nspname as referenced_schema,
+        referenced_class.relname as referenced_name
+
+    -- Query for views: views are entries in pg_class with an entry in pg_rewrite, but we avoid
+    -- a seq scan on pg_rewrite by leveraging the fact there is an "internal" row in pg_depend for
+    -- the view...
+    from pg_class as dependent_class
+    join pg_namespace as dependent_namespace on dependent_namespace.oid = dependent_class.relnamespace
+    join pg_depend as dependent_depend on dependent_depend.refobjid = dependent_class.oid
+        and dependent_depend.classid = 'pg_rewrite'::regclass
+        and dependent_depend.refclassid = 'pg_class'::regclass
+        and dependent_depend.deptype = 'i'
+
+    -- ... and via pg_depend (that has a row per column, hence the need for "distinct" above, and
+    -- making sure to exclude the internal row to avoid a view appearing to depend on itself)...
+    join pg_depend as joining_depend on joining_depend.objid = dependent_depend.objid
+        and joining_depend.classid = 'pg_rewrite'::regclass
+        and joining_depend.refclassid = 'pg_class'::regclass
+        and joining_depend.refobjid != dependent_depend.refobjid
+
+    -- ... we can find the tables they query from in pg_class, but excluding system tables. Note we
+    -- don't need need to exclude _dependent_ system tables, because they only query from other
+    -- system tables, and so are automatically excluded by excluding _referenced_ system tables
+    join pg_class as referenced_class on referenced_class.oid = joining_depend.refobjid
+    join pg_namespace as referenced_namespace on referenced_namespace.oid = referenced_class.relnamespace
+        and referenced_namespace.nspname != 'information_schema'
+        and referenced_namespace.nspname not like 'pg\_%'
+
+    order by
+        dependent_schema, dependent_name, referenced_schema, referenced_name;
+[0m22:22:38.870220 [debug] [MainThread]: Opening a new connection, currently in state init
+[0m22:22:38.883136 [debug] [MainThread]: SQL status: SELECT 0 in 0.013 seconds
+[0m22:22:38.883750 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'runnable_timing', 'label': 'c39777d0-370b-41d7-9b3c-74297ad9838b', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1139860e0>]}
+[0m22:22:38.884020 [debug] [MainThread]: On master: ROLLBACK
+[0m22:22:38.884449 [debug] [MainThread]: On master: COMMIT
+[0m22:22:38.884626 [debug] [MainThread]: Using postgres connection "master"
+[0m22:22:38.884790 [debug] [MainThread]: On master: COMMIT
+[0m22:22:38.885380 [debug] [MainThread]: SQL status: COMMIT in 0.000 seconds
+[0m22:22:38.885565 [debug] [MainThread]: On master: Close
+[0m22:22:38.887119 [debug] [Thread-1 (]: Began running node model.cofair_db.stg_pricing
+[0m22:22:38.887351 [debug] [Thread-2 (]: Began running node model.cofair_db.stg_usage
+[0m22:22:38.887642 [info ] [Thread-1 (]: 1 of 2 START sql view model staging.stg_pricing ................................ [RUN]
+[0m22:22:38.887945 [info ] [Thread-2 (]: 2 of 2 START sql view model staging.stg_usage .................................. [RUN]
+[0m22:22:38.888201 [debug] [Thread-1 (]: Re-using an available connection from the pool (formerly list_cofair_db_staging, now model.cofair_db.stg_pricing)
+[0m22:22:38.888474 [debug] [Thread-2 (]: Acquiring new postgres connection 'model.cofair_db.stg_usage'
+[0m22:22:38.888761 [debug] [Thread-1 (]: Began compiling node model.cofair_db.stg_pricing
+[0m22:22:38.888964 [debug] [Thread-2 (]: Began compiling node model.cofair_db.stg_usage
+[0m22:22:38.894580 [debug] [Thread-1 (]: Writing injected SQL for node "model.cofair_db.stg_pricing"
+[0m22:22:38.896226 [debug] [Thread-2 (]: Writing injected SQL for node "model.cofair_db.stg_usage"
+[0m22:22:38.896871 [debug] [Thread-1 (]: Began executing node model.cofair_db.stg_pricing
+[0m22:22:38.910913 [debug] [Thread-2 (]: Began executing node model.cofair_db.stg_usage
+[0m22:22:38.914538 [debug] [Thread-1 (]: Writing runtime sql for node "model.cofair_db.stg_pricing"
+[0m22:22:38.916559 [debug] [Thread-2 (]: Writing runtime sql for node "model.cofair_db.stg_usage"
+[0m22:22:38.917067 [debug] [Thread-1 (]: Using postgres connection "model.cofair_db.stg_pricing"
+[0m22:22:38.917354 [debug] [Thread-1 (]: On model.cofair_db.stg_pricing: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "node_id": "model.cofair_db.stg_pricing"} */
+
+  create view "cofair_db"."staging"."stg_pricing__dbt_tmp"
+    
+    
+  as (
+    
+
+
+with pricing_rows as (
+    select
+        r.content_sha256,
+        r.ingested_at,
+        r.payload->'meta'->>'last_run_datetime' as pricing_version,
+        x.provider_id as provider,
+        x.model_id as model,
+        x.input_price,
+        x.output_price,
+        x.type as row_type
+    from "cofair_db"."raw"."pricing_json" as r
+    cross join lateral jsonb_to_recordset(r.payload->'pricing') as x(
+        provider_id text,
+        model_id text,
+        input_price numeric,
+        output_price numeric,
+        type text
+    )
+),
+unpivoted as (
+    select content_sha256, ingested_at, pricing_version, provider, model,
+           'base_input_tokens' as sku_type, input_price as price_per_1m_tokens_usd
+    from pricing_rows
+    where row_type = 'chat' and input_price is not null
+
+    union all
+
+    select content_sha256, ingested_at, pricing_version, provider, model,
+           'output_tokens' as sku_type, output_price as price_per_1m_tokens_usd
+    from pricing_rows
+    where row_type = 'chat' and output_price is not null
+
+    union all
+
+    select content_sha256, ingested_at, pricing_version, provider, model,
+           'cache_hit_refresh' as sku_type, input_price as price_per_1m_tokens_usd
+    from pricing_rows
+    where row_type = 'cache' and input_price is not null
+)
+select
+    content_sha256,
+    ingested_at,
+    pricing_version,
+    'USD' as currency,
+    provider,
+    model,
+    sku_type,
+    price_per_1m_tokens_usd,
+    round(price_per_1m_tokens_usd / 1000.0, 6) as price_per_1k_tokens_usd
+from unpivoted
+  );
+[0m22:22:38.917621 [debug] [Thread-2 (]: Using postgres connection "model.cofair_db.stg_usage"
+[0m22:22:38.917813 [debug] [Thread-1 (]: Opening a new connection, currently in state closed
+[0m22:22:38.918014 [debug] [Thread-2 (]: On model.cofair_db.stg_usage: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "node_id": "model.cofair_db.stg_usage"} */
+
+  create view "cofair_db"."staging"."stg_usage__dbt_tmp"
+    
+    
+  as (
+    
+
+
+select
+    r.content_sha256,
+    r.ingested_at,
+    r.payload
+from "cofair_db"."raw"."usage_json" as r
+  );
+[0m22:22:38.918277 [debug] [Thread-2 (]: Opening a new connection, currently in state init
+[0m22:22:38.929412 [debug] [Thread-2 (]: SQL status: CREATE VIEW in 0.011 seconds
+[0m22:22:38.932727 [debug] [Thread-2 (]: Using postgres connection "model.cofair_db.stg_usage"
+[0m22:22:38.932959 [debug] [Thread-1 (]: SQL status: CREATE VIEW in 0.015 seconds
+[0m22:22:38.933201 [debug] [Thread-2 (]: On model.cofair_db.stg_usage: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "node_id": "model.cofair_db.stg_usage"} */
+alter table "cofair_db"."staging"."stg_usage__dbt_tmp" rename to "stg_usage"
+[0m22:22:38.934723 [debug] [Thread-1 (]: Using postgres connection "model.cofair_db.stg_pricing"
+[0m22:22:38.934981 [debug] [Thread-1 (]: On model.cofair_db.stg_pricing: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "node_id": "model.cofair_db.stg_pricing"} */
+alter table "cofair_db"."staging"."stg_pricing__dbt_tmp" rename to "stg_pricing"
+[0m22:22:38.935396 [debug] [Thread-2 (]: SQL status: ALTER TABLE in 0.000 seconds
+[0m22:22:38.941913 [debug] [Thread-1 (]: SQL status: ALTER TABLE in 0.007 seconds
+[0m22:22:38.943230 [debug] [Thread-2 (]: On model.cofair_db.stg_usage: COMMIT
+[0m22:22:38.944049 [debug] [Thread-1 (]: On model.cofair_db.stg_pricing: COMMIT
+[0m22:22:38.944279 [debug] [Thread-2 (]: Using postgres connection "model.cofair_db.stg_usage"
+[0m22:22:38.944520 [debug] [Thread-1 (]: Using postgres connection "model.cofair_db.stg_pricing"
+[0m22:22:38.946274 [debug] [Thread-2 (]: On model.cofair_db.stg_usage: COMMIT
+[0m22:22:38.946508 [debug] [Thread-1 (]: On model.cofair_db.stg_pricing: COMMIT
+[0m22:22:38.948159 [debug] [Thread-1 (]: SQL status: COMMIT in 0.001 seconds
+[0m22:22:38.948333 [debug] [Thread-2 (]: SQL status: COMMIT in 0.002 seconds
+[0m22:22:38.953663 [debug] [Thread-1 (]: Applying DROP to: "cofair_db"."staging"."stg_pricing__dbt_backup"
+[0m22:22:38.954905 [debug] [Thread-2 (]: Applying DROP to: "cofair_db"."staging"."stg_usage__dbt_backup"
+[0m22:22:38.957086 [debug] [Thread-1 (]: Using postgres connection "model.cofair_db.stg_pricing"
+[0m22:22:38.957522 [debug] [Thread-2 (]: Using postgres connection "model.cofair_db.stg_usage"
+[0m22:22:38.957732 [debug] [Thread-1 (]: On model.cofair_db.stg_pricing: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "node_id": "model.cofair_db.stg_pricing"} */
+drop view if exists "cofair_db"."staging"."stg_pricing__dbt_backup" cascade
+[0m22:22:38.957949 [debug] [Thread-2 (]: On model.cofair_db.stg_usage: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "node_id": "model.cofair_db.stg_usage"} */
+drop view if exists "cofair_db"."staging"."stg_usage__dbt_backup" cascade
+[0m22:22:38.958995 [debug] [Thread-1 (]: SQL status: DROP VIEW in 0.001 seconds
+[0m22:22:38.959183 [debug] [Thread-2 (]: SQL status: DROP VIEW in 0.001 seconds
+[0m22:22:38.960360 [debug] [Thread-1 (]: On model.cofair_db.stg_pricing: Close
+[0m22:22:38.960954 [debug] [Thread-2 (]: On model.cofair_db.stg_usage: Close
+[0m22:22:38.962163 [debug] [Thread-1 (]: Sending event: {'category': 'dbt', 'action': 'run_model', 'label': 'c39777d0-370b-41d7-9b3c-74297ad9838b', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1135e7670>]}
+[0m22:22:38.962344 [debug] [Thread-2 (]: Sending event: {'category': 'dbt', 'action': 'run_model', 'label': 'c39777d0-370b-41d7-9b3c-74297ad9838b', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x111d3e440>]}
+[0m22:22:38.962678 [info ] [Thread-1 (]: 1 of 2 OK created sql view model staging.stg_pricing ........................... [[32mCREATE VIEW[0m in 0.07s]
+[0m22:22:38.963027 [info ] [Thread-2 (]: 2 of 2 OK created sql view model staging.stg_usage ............................. [[32mCREATE VIEW[0m in 0.07s]
+[0m22:22:38.963325 [debug] [Thread-1 (]: Finished running node model.cofair_db.stg_pricing
+[0m22:22:38.963584 [debug] [Thread-2 (]: Finished running node model.cofair_db.stg_usage
+[0m22:22:38.964215 [debug] [MainThread]: On master: COMMIT
+[0m22:22:38.964375 [debug] [MainThread]: Using postgres connection "master"
+[0m22:22:38.964523 [debug] [MainThread]: On master: COMMIT
+[0m22:22:38.964658 [debug] [MainThread]: Opening a new connection, currently in state closed
+[0m22:22:38.973795 [debug] [MainThread]: SQL status: COMMIT in 0.009 seconds
+[0m22:22:38.973964 [debug] [MainThread]: On master: Close
+[0m22:22:38.974155 [debug] [MainThread]: Connection 'master' was properly closed.
+[0m22:22:38.974297 [debug] [MainThread]: Connection 'model.cofair_db.stg_pricing' was properly closed.
+[0m22:22:38.974431 [debug] [MainThread]: Connection 'model.cofair_db.stg_usage' was properly closed.
+[0m22:22:38.974607 [info ] [MainThread]: 
+[0m22:22:38.974845 [info ] [MainThread]: Finished running 2 view models in 0 hours 0 minutes and 0.24 seconds (0.24s).
+[0m22:22:38.975289 [debug] [MainThread]: Command end result
+[0m22:22:38.986993 [debug] [MainThread]: Wrote artifact WritableManifest to /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/the-colonial/dbt/target/manifest.json
+[0m22:22:38.987904 [debug] [MainThread]: Wrote artifact SemanticManifest to /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/the-colonial/dbt/target/semantic_manifest.json
+[0m22:22:38.991708 [debug] [MainThread]: Wrote artifact RunExecutionResult to /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/the-colonial/dbt/target/run_results.json
+[0m22:22:38.991899 [info ] [MainThread]: 
+[0m22:22:38.992126 [info ] [MainThread]: [32mCompleted successfully[0m
+[0m22:22:38.992301 [info ] [MainThread]: 
+[0m22:22:38.992483 [info ] [MainThread]: Done. PASS=2 WARN=0 ERROR=0 SKIP=0 NO-OP=0 TOTAL=2
+[0m22:22:39.145280 [debug] [MainThread]: Resource report: {"command_name": "run", "command_success": true, "command_wall_clock_time": 1.5369586, "process_in_blocks": "0", "process_kernel_time": 0.216888, "process_mem_max_rss": "143949824", "process_out_blocks": "0", "process_user_time": 1.756129}
+[0m22:22:39.145976 [debug] [MainThread]: Command `dbt run` succeeded at 22:22:39.145879 after 1.54 seconds
+[0m22:22:39.146723 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1078a0eb0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x106c247c0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1136300a0>]}
+[0m22:22:39.147237 [debug] [MainThread]: Flushing usage events
+[0m22:22:39.605746 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m22:44:41.039880 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1042f8f10>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1053ec730>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1053efb20>]}
+
+
+============================== 22:44:41.043464 | 11e91d5d-0928-4528-ae65-be9201600f48 ==============================
+[0m22:44:41.043464 [info ] [MainThread]: Running with dbt=1.11.7
+[0m22:44:41.043903 [debug] [MainThread]: running dbt with arguments {'cache_selected_only': 'False', 'use_colors': 'True', 'version_check': 'True', 'partial_parse': 'True', 'printer_width': '80', 'warn_error': 'None', 'introspect': 'True', 'profiles_dir': '/Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/the-colonial/dbt', 'write_json': 'True', 'fail_fast': 'False', 'use_experimental_parser': 'False', 'send_anonymous_usage_stats': 'True', 'quiet': 'False', 'no_print': 'None', 'debug': 'False', 'log_cache_events': 'False', 'invocation_command': 'dbt run --select staging --target local', 'log_format': 'default', 'target_path': 'None', 'log_path': '/Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/the-colonial/dbt/logs', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'empty': 'False', 'indirect_selection': 'eager', 'static_parser': 'True'}
+[0m22:44:41.189421 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'project_id', 'label': '11e91d5d-0928-4528-ae65-be9201600f48', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1059a5c90>]}
+[0m22:44:41.222728 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'adapter_info', 'label': '11e91d5d-0928-4528-ae65-be9201600f48', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x105332d10>]}
+[0m22:44:41.223853 [info ] [MainThread]: Registered adapter: postgres=1.10.0
+[0m22:44:41.311822 [debug] [MainThread]: checksum: 6ed6e62ffc1f133f90563bb3f065b7ef0e8b11328c3a55588a32c16b5ed76e10, vars: {}, profile: , target: local, version: 1.11.7
+[0m22:44:41.387544 [debug] [MainThread]: Partial parsing enabled: 0 files deleted, 0 files added, 2 files changed.
+[0m22:44:41.387996 [debug] [MainThread]: Partial parsing: updated file: cofair_db://models/sources.yml
+[0m22:44:41.388196 [debug] [MainThread]: Partial parsing: updated file: cofair_db://models/staging/stg_usage.sql
+[0m22:44:41.600383 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'load_project', 'label': '11e91d5d-0928-4528-ae65-be9201600f48', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1067f7fa0>]}
+[0m22:44:41.638785 [debug] [MainThread]: Wrote artifact WritableManifest to /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/the-colonial/dbt/target/manifest.json
+[0m22:44:41.640185 [debug] [MainThread]: Wrote artifact SemanticManifest to /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/the-colonial/dbt/target/semantic_manifest.json
+[0m22:44:41.651345 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'resource_counts', 'label': '11e91d5d-0928-4528-ae65-be9201600f48', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10633c5b0>]}
+[0m22:44:41.651636 [info ] [MainThread]: Found 2 models, 2 sources, 464 macros
+[0m22:44:41.651842 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'runnable_timing', 'label': '11e91d5d-0928-4528-ae65-be9201600f48', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10633c2e0>]}
+[0m22:44:41.652557 [info ] [MainThread]: 
+[0m22:44:41.652763 [info ] [MainThread]: Concurrency: 4 threads (target='local')
+[0m22:44:41.652927 [info ] [MainThread]: 
+[0m22:44:41.653188 [debug] [MainThread]: Acquiring new postgres connection 'master'
+[0m22:44:41.655501 [debug] [ThreadPool]: Acquiring new postgres connection 'list_cofair_db'
+[0m22:44:41.689758 [debug] [ThreadPool]: Using postgres connection "list_cofair_db"
+[0m22:44:41.690040 [debug] [ThreadPool]: On list_cofair_db: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "connection_name": "list_cofair_db"} */
+
+    select distinct nspname from pg_namespace
+  
+[0m22:44:41.690227 [debug] [ThreadPool]: Opening a new connection, currently in state init
+[0m22:44:41.787862 [debug] [ThreadPool]: SQL status: SELECT 6 in 0.098 seconds
+[0m22:44:41.788859 [debug] [ThreadPool]: On list_cofair_db: Close
+[0m22:44:41.789859 [debug] [ThreadPool]: Re-using an available connection from the pool (formerly list_cofair_db, now list_cofair_db_staging)
+[0m22:44:41.794494 [debug] [ThreadPool]: Using postgres connection "list_cofair_db_staging"
+[0m22:44:41.794796 [debug] [ThreadPool]: On list_cofair_db_staging: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "connection_name": "list_cofair_db_staging"} */
+select
+      'cofair_db' as database,
+      tablename as name,
+      schemaname as schema,
+      'table' as type
+    from pg_tables
+    where schemaname ilike 'staging'
+    union all
+    select
+      'cofair_db' as database,
+      viewname as name,
+      schemaname as schema,
+      'view' as type
+    from pg_views
+    where schemaname ilike 'staging'
+    union all
+    select
+      'cofair_db' as database,
+      matviewname as name,
+      schemaname as schema,
+      'materialized_view' as type
+    from pg_matviews
+    where schemaname ilike 'staging'
+  
+[0m22:44:41.795017 [debug] [ThreadPool]: Opening a new connection, currently in state closed
+[0m22:44:41.819543 [debug] [ThreadPool]: SQL status: SELECT 2 in 0.024 seconds
+[0m22:44:41.820493 [debug] [ThreadPool]: On list_cofair_db_staging: ROLLBACK
+[0m22:44:41.821024 [debug] [ThreadPool]: On list_cofair_db_staging: Close
+[0m22:44:41.824241 [debug] [MainThread]: Using postgres connection "master"
+[0m22:44:41.824565 [debug] [MainThread]: On master: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "connection_name": "master"} */
+select distinct
+        dependent_namespace.nspname as dependent_schema,
+        dependent_class.relname as dependent_name,
+        referenced_namespace.nspname as referenced_schema,
+        referenced_class.relname as referenced_name
+
+    -- Query for views: views are entries in pg_class with an entry in pg_rewrite, but we avoid
+    -- a seq scan on pg_rewrite by leveraging the fact there is an "internal" row in pg_depend for
+    -- the view...
+    from pg_class as dependent_class
+    join pg_namespace as dependent_namespace on dependent_namespace.oid = dependent_class.relnamespace
+    join pg_depend as dependent_depend on dependent_depend.refobjid = dependent_class.oid
+        and dependent_depend.classid = 'pg_rewrite'::regclass
+        and dependent_depend.refclassid = 'pg_class'::regclass
+        and dependent_depend.deptype = 'i'
+
+    -- ... and via pg_depend (that has a row per column, hence the need for "distinct" above, and
+    -- making sure to exclude the internal row to avoid a view appearing to depend on itself)...
+    join pg_depend as joining_depend on joining_depend.objid = dependent_depend.objid
+        and joining_depend.classid = 'pg_rewrite'::regclass
+        and joining_depend.refclassid = 'pg_class'::regclass
+        and joining_depend.refobjid != dependent_depend.refobjid
+
+    -- ... we can find the tables they query from in pg_class, but excluding system tables. Note we
+    -- don't need need to exclude _dependent_ system tables, because they only query from other
+    -- system tables, and so are automatically excluded by excluding _referenced_ system tables
+    join pg_class as referenced_class on referenced_class.oid = joining_depend.refobjid
+    join pg_namespace as referenced_namespace on referenced_namespace.oid = referenced_class.relnamespace
+        and referenced_namespace.nspname != 'information_schema'
+        and referenced_namespace.nspname not like 'pg\_%'
+
+    order by
+        dependent_schema, dependent_name, referenced_schema, referenced_name;
+[0m22:44:41.824835 [debug] [MainThread]: Opening a new connection, currently in state init
+[0m22:44:41.841461 [debug] [MainThread]: SQL status: SELECT 2 in 0.017 seconds
+[0m22:44:41.842330 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'runnable_timing', 'label': '11e91d5d-0928-4528-ae65-be9201600f48', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x106804d30>]}
+[0m22:44:41.842665 [debug] [MainThread]: On master: ROLLBACK
+[0m22:44:41.843187 [debug] [MainThread]: On master: COMMIT
+[0m22:44:41.843456 [debug] [MainThread]: Using postgres connection "master"
+[0m22:44:41.843675 [debug] [MainThread]: On master: COMMIT
+[0m22:44:41.844325 [debug] [MainThread]: SQL status: COMMIT in 0.000 seconds
+[0m22:44:41.844559 [debug] [MainThread]: On master: Close
+[0m22:44:41.846384 [debug] [Thread-1 (]: Began running node model.cofair_db.stg_pricing
+[0m22:44:41.846630 [debug] [Thread-2 (]: Began running node model.cofair_db.stg_usage
+[0m22:44:41.846991 [info ] [Thread-1 (]: 1 of 2 START sql view model staging.stg_pricing ................................ [RUN]
+[0m22:44:41.847324 [info ] [Thread-2 (]: 2 of 2 START sql view model staging.stg_usage .................................. [RUN]
+[0m22:44:41.847625 [debug] [Thread-1 (]: Re-using an available connection from the pool (formerly list_cofair_db_staging, now model.cofair_db.stg_pricing)
+[0m22:44:41.848024 [debug] [Thread-2 (]: Acquiring new postgres connection 'model.cofair_db.stg_usage'
+[0m22:44:41.848269 [debug] [Thread-1 (]: Began compiling node model.cofair_db.stg_pricing
+[0m22:44:41.848504 [debug] [Thread-2 (]: Began compiling node model.cofair_db.stg_usage
+[0m22:44:41.853908 [debug] [Thread-1 (]: Writing injected SQL for node "model.cofair_db.stg_pricing"
+[0m22:44:41.855762 [debug] [Thread-2 (]: Writing injected SQL for node "model.cofair_db.stg_usage"
+[0m22:44:41.856394 [debug] [Thread-2 (]: Began executing node model.cofair_db.stg_usage
+[0m22:44:41.856674 [debug] [Thread-1 (]: Began executing node model.cofair_db.stg_pricing
+[0m22:44:41.881098 [debug] [Thread-1 (]: Writing runtime sql for node "model.cofair_db.stg_pricing"
+[0m22:44:41.881451 [debug] [Thread-2 (]: Writing runtime sql for node "model.cofair_db.stg_usage"
+[0m22:44:41.882085 [debug] [Thread-2 (]: Using postgres connection "model.cofair_db.stg_usage"
+[0m22:44:41.882338 [debug] [Thread-2 (]: On model.cofair_db.stg_usage: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "node_id": "model.cofair_db.stg_usage"} */
+
+  create view "cofair_db"."staging"."stg_usage__dbt_tmp"
+    
+    
+  as (
+    
+
+
+SELECT
+    dataset_id,
+    payload->>'session_id' AS session_id,
+    payload->>'model' AS model,
+    payload->>'git_branch' AS git_branch,
+    (payload->>'start_time')::timestamp AS start_time,
+    (payload->>'end_time')::timestamp AS end_time,
+    payload->>'project' AS project,
+    payload->'messages' AS messages,
+    (payload->'stats'->>'input_tokens')::bigint AS input_tokens,
+    (payload->'stats'->>'output_tokens')::bigint AS output_tokens
+FROM "cofair_db"."raw"."usage"
+WHERE dataset_id IS NOT NULL
+  );
+[0m22:44:41.882601 [debug] [Thread-1 (]: Using postgres connection "model.cofair_db.stg_pricing"
+[0m22:44:41.882808 [debug] [Thread-2 (]: Opening a new connection, currently in state init
+[0m22:44:41.883087 [debug] [Thread-1 (]: On model.cofair_db.stg_pricing: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "node_id": "model.cofair_db.stg_pricing"} */
+
+  create view "cofair_db"."staging"."stg_pricing__dbt_tmp"
+    
+    
+  as (
+    
+
+
+with pricing_rows as (
+    select
+        r.content_sha256,
+        r.ingested_at,
+        r.payload->'meta'->>'last_run_datetime' as pricing_version,
+        x.provider_id as provider,
+        x.model_id as model,
+        x.input_price,
+        x.output_price,
+        x.type as row_type
+    from "cofair_db"."raw"."pricing_json" as r
+    cross join lateral jsonb_to_recordset(r.payload->'pricing') as x(
+        provider_id text,
+        model_id text,
+        input_price numeric,
+        output_price numeric,
+        type text
+    )
+),
+unpivoted as (
+    select content_sha256, ingested_at, pricing_version, provider, model,
+           'base_input_tokens' as sku_type, input_price as price_per_1m_tokens_usd
+    from pricing_rows
+    where row_type = 'chat' and input_price is not null
+
+    union all
+
+    select content_sha256, ingested_at, pricing_version, provider, model,
+           'output_tokens' as sku_type, output_price as price_per_1m_tokens_usd
+    from pricing_rows
+    where row_type = 'chat' and output_price is not null
+
+    union all
+
+    select content_sha256, ingested_at, pricing_version, provider, model,
+           'cache_hit_refresh' as sku_type, input_price as price_per_1m_tokens_usd
+    from pricing_rows
+    where row_type = 'cache' and input_price is not null
+)
+select
+    content_sha256,
+    ingested_at,
+    pricing_version,
+    'USD' as currency,
+    provider,
+    model,
+    sku_type,
+    price_per_1m_tokens_usd,
+    round(price_per_1m_tokens_usd / 1000.0, 6) as price_per_1k_tokens_usd
+from unpivoted
+  );
+[0m22:44:41.883449 [debug] [Thread-1 (]: Opening a new connection, currently in state closed
+[0m22:44:41.898891 [debug] [Thread-2 (]: SQL status: CREATE VIEW in 0.016 seconds
+[0m22:44:41.899192 [debug] [Thread-1 (]: SQL status: CREATE VIEW in 0.016 seconds
+[0m22:44:41.902837 [debug] [Thread-2 (]: Using postgres connection "model.cofair_db.stg_usage"
+[0m22:44:41.904666 [debug] [Thread-1 (]: Using postgres connection "model.cofair_db.stg_pricing"
+[0m22:44:41.904911 [debug] [Thread-2 (]: On model.cofair_db.stg_usage: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "node_id": "model.cofair_db.stg_usage"} */
+alter table "cofair_db"."staging"."stg_usage" rename to "stg_usage__dbt_backup"
+[0m22:44:41.905243 [debug] [Thread-1 (]: On model.cofair_db.stg_pricing: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "node_id": "model.cofair_db.stg_pricing"} */
+alter table "cofair_db"."staging"."stg_pricing" rename to "stg_pricing__dbt_backup"
+[0m22:44:41.906846 [debug] [Thread-1 (]: SQL status: ALTER TABLE in 0.001 seconds
+[0m22:44:41.907051 [debug] [Thread-2 (]: SQL status: ALTER TABLE in 0.001 seconds
+[0m22:44:41.908655 [debug] [Thread-1 (]: Using postgres connection "model.cofair_db.stg_pricing"
+[0m22:44:41.910154 [debug] [Thread-2 (]: Using postgres connection "model.cofair_db.stg_usage"
+[0m22:44:41.910357 [debug] [Thread-1 (]: On model.cofair_db.stg_pricing: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "node_id": "model.cofair_db.stg_pricing"} */
+alter table "cofair_db"."staging"."stg_pricing__dbt_tmp" rename to "stg_pricing"
+[0m22:44:41.910579 [debug] [Thread-2 (]: On model.cofair_db.stg_usage: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "node_id": "model.cofair_db.stg_usage"} */
+alter table "cofair_db"."staging"."stg_usage__dbt_tmp" rename to "stg_usage"
+[0m22:44:41.911158 [debug] [Thread-2 (]: SQL status: ALTER TABLE in 0.000 seconds
+[0m22:44:41.911367 [debug] [Thread-1 (]: SQL status: ALTER TABLE in 0.001 seconds
+[0m22:44:41.919498 [debug] [Thread-2 (]: On model.cofair_db.stg_usage: COMMIT
+[0m22:44:41.920371 [debug] [Thread-1 (]: On model.cofair_db.stg_pricing: COMMIT
+[0m22:44:41.920587 [debug] [Thread-2 (]: Using postgres connection "model.cofair_db.stg_usage"
+[0m22:44:41.920791 [debug] [Thread-1 (]: Using postgres connection "model.cofair_db.stg_pricing"
+[0m22:44:41.920999 [debug] [Thread-2 (]: On model.cofair_db.stg_usage: COMMIT
+[0m22:44:41.921217 [debug] [Thread-1 (]: On model.cofair_db.stg_pricing: COMMIT
+[0m22:44:41.923127 [debug] [Thread-2 (]: SQL status: COMMIT in 0.002 seconds
+[0m22:44:41.923418 [debug] [Thread-1 (]: SQL status: COMMIT in 0.002 seconds
+[0m22:44:41.927784 [debug] [Thread-2 (]: Applying DROP to: "cofair_db"."staging"."stg_usage__dbt_backup"
+[0m22:44:41.929269 [debug] [Thread-1 (]: Applying DROP to: "cofair_db"."staging"."stg_pricing__dbt_backup"
+[0m22:44:41.931901 [debug] [Thread-2 (]: Using postgres connection "model.cofair_db.stg_usage"
+[0m22:44:41.932452 [debug] [Thread-1 (]: Using postgres connection "model.cofair_db.stg_pricing"
+[0m22:44:41.932721 [debug] [Thread-2 (]: On model.cofair_db.stg_usage: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "node_id": "model.cofair_db.stg_usage"} */
+drop view if exists "cofair_db"."staging"."stg_usage__dbt_backup" cascade
+[0m22:44:41.933201 [debug] [Thread-1 (]: On model.cofair_db.stg_pricing: /* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "cofair_db", "target_name": "local", "node_id": "model.cofair_db.stg_pricing"} */
+drop view if exists "cofair_db"."staging"."stg_pricing__dbt_backup" cascade
+[0m22:44:41.937012 [debug] [Thread-2 (]: SQL status: DROP VIEW in 0.004 seconds
+[0m22:44:41.937246 [debug] [Thread-1 (]: SQL status: DROP VIEW in 0.004 seconds
+[0m22:44:41.940049 [debug] [Thread-2 (]: On model.cofair_db.stg_usage: Close
+[0m22:44:41.940780 [debug] [Thread-1 (]: On model.cofair_db.stg_pricing: Close
+[0m22:44:41.943474 [debug] [Thread-1 (]: Sending event: {'category': 'dbt', 'action': 'run_model', 'label': '11e91d5d-0928-4528-ae65-be9201600f48', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x106c51ed0>]}
+[0m22:44:41.943691 [debug] [Thread-2 (]: Sending event: {'category': 'dbt', 'action': 'run_model', 'label': '11e91d5d-0928-4528-ae65-be9201600f48', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x106c51fc0>]}
+[0m22:44:41.944092 [info ] [Thread-1 (]: 1 of 2 OK created sql view model staging.stg_pricing ........................... [[32mCREATE VIEW[0m in 0.09s]
+[0m22:44:41.944467 [info ] [Thread-2 (]: 2 of 2 OK created sql view model staging.stg_usage ............................. [[32mCREATE VIEW[0m in 0.09s]
+[0m22:44:41.944823 [debug] [Thread-1 (]: Finished running node model.cofair_db.stg_pricing
+[0m22:44:41.945112 [debug] [Thread-2 (]: Finished running node model.cofair_db.stg_usage
+[0m22:44:41.945924 [debug] [MainThread]: On master: COMMIT
+[0m22:44:41.946132 [debug] [MainThread]: Using postgres connection "master"
+[0m22:44:41.946304 [debug] [MainThread]: On master: COMMIT
+[0m22:44:41.946465 [debug] [MainThread]: Opening a new connection, currently in state closed
+[0m22:44:41.953612 [debug] [MainThread]: SQL status: COMMIT in 0.007 seconds
+[0m22:44:41.953895 [debug] [MainThread]: On master: Close
+[0m22:44:41.954178 [debug] [MainThread]: Connection 'master' was properly closed.
+[0m22:44:41.954353 [debug] [MainThread]: Connection 'model.cofair_db.stg_pricing' was properly closed.
+[0m22:44:41.954514 [debug] [MainThread]: Connection 'model.cofair_db.stg_usage' was properly closed.
+[0m22:44:41.954733 [info ] [MainThread]: 
+[0m22:44:41.954930 [info ] [MainThread]: Finished running 2 view models in 0 hours 0 minutes and 0.30 seconds (0.30s).
+[0m22:44:41.955443 [debug] [MainThread]: Command end result
+[0m22:44:41.969256 [debug] [MainThread]: Wrote artifact WritableManifest to /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/the-colonial/dbt/target/manifest.json
+[0m22:44:41.970261 [debug] [MainThread]: Wrote artifact SemanticManifest to /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/the-colonial/dbt/target/semantic_manifest.json
+[0m22:44:41.973953 [debug] [MainThread]: Wrote artifact RunExecutionResult to /Users/andrewtaylor/Desktop/Cofair-repo/the-colonial/the-colonial/dbt/target/run_results.json
+[0m22:44:41.974171 [info ] [MainThread]: 
+[0m22:44:41.974403 [info ] [MainThread]: [32mCompleted successfully[0m
+[0m22:44:41.974581 [info ] [MainThread]: 
+[0m22:44:41.974769 [info ] [MainThread]: Done. PASS=2 WARN=0 ERROR=0 SKIP=0 NO-OP=0 TOTAL=2
+[0m22:44:41.977394 [debug] [MainThread]: Resource report: {"command_name": "run", "command_success": true, "command_wall_clock_time": 0.9925366, "process_in_blocks": "0", "process_kernel_time": 0.237036, "process_mem_max_rss": "140525568", "process_out_blocks": "0", "process_user_time": 1.361274}
+[0m22:44:41.977679 [debug] [MainThread]: Command `dbt run` succeeded at 22:44:41.977632 after 0.99 seconds
+[0m22:44:41.977910 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1042f8f10>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x106804a30>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1059a5c90>]}
+[0m22:44:41.978117 [debug] [MainThread]: Flushing usage events
+[0m22:44:42.400166 [debug] [MainThread]: An error was encountered while trying to flush usage events
