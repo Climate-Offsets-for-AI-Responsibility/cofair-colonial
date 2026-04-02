@@ -33,7 +33,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     local = not args.neon  # True = Docker Postgres, False = Neon
 
-    run([sys.executable, "scripts/scrape_pricing.py"], cwd=ROOT)
+    run([sys.executable, "scrape_pricing.py"], cwd=ROOT)
     ingest_pricing(local=local)
     ingest_usage(local=local)  # no-op until usage script is implemented
 
