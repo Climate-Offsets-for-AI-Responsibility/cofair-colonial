@@ -26,9 +26,6 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-          # These two lines are mandatory for Playwright to work in GitHub Actions
-          pip install playwright
-          playwright install --with-deps chromium
 
       - name: Run scraper
         env:
@@ -36,6 +33,14 @@ jobs:
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
         run: |
           python scrape_pricing.py
+
+      - name: Upload run report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pricing-run-report
+          path: run_report.json
+          if-no-files-found: ignore
 
       - name: Commit updated pricing.json
         run: |
