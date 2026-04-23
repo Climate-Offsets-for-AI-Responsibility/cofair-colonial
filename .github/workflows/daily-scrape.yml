@@ -5,8 +5,8 @@ permissions:
 
 on:
   schedule:
-    - cron: "0 19 * * *"    # run daily at 19:00 UTC
-  workflow_dispatch:       # manual run button
+    - cron: "0 19 * * *" # run daily at 19:00 UTC
+  workflow_dispatch: # manual run button
 
 jobs:
   scrape:
@@ -14,13 +14,13 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6 
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v6 
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-          cache: 'pip' # Speeds up subsequent runs
+          cache: "pip"
 
       - name: Install dependencies
         run: |
@@ -33,6 +33,21 @@ jobs:
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
         run: |
           python scrape_pricing.py
+
+      - name: Ingest pricing snapshot into Neon
+        env:
+          NETLIFY_DATABASE_URL_UNPOOLED: ${{ secrets.NETLIFY_DATABASE_URL_UNPOOLED }}
+        run: |
+          python scripts/ingest_pricing.py --neon
+
+      - name: Refresh pricing views in Neon
+        env:
+          NEON_HOST: ${{ secrets.NEON_HOST }}
+          NEON_USER: ${{ secrets.NEON_USER }}
+          NEON_PASSWORD: ${{ secrets.NEON_PASSWORD }}
+          NEON_DB: ${{ secrets.NEON_DB }}
+        run: |
+          dbt run --select stg_pricing_history stg_pricing --target dev --profiles-dir dbt --project-dir dbt
 
       - name: Upload run report
         if: always()
@@ -47,6 +62,5 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add pricing.json
-          # Using [skip ci] prevents the action from triggering itself in a loop
           git commit -m "Auto-update pricing.json [skip ci]" || echo "No changes to commit"
           git push
