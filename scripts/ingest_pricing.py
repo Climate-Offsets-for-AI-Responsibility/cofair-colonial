@@ -5,6 +5,7 @@ import uuid
 import argparse
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import psycopg2
 from psycopg2.extras import Json
@@ -16,6 +17,31 @@ load_dotenv(ROOT / ".env")
 RUN_REPORT_PATH = ROOT / "run_report.json"
 
 
+def normalize_database_url(db_url: str) -> str:
+    """
+    Neon URLs copied from dashboards sometimes include surrounding quotes or
+    channel_binding=require. psycopg2 on GitHub Actions can reject that option,
+    so remove it and make sure SSL remains enabled.
+    """
+    cleaned = db_url.strip().strip("\"'")
+    parsed = urlsplit(cleaned)
+
+    if parsed.scheme not in {"postgres", "postgresql"}:
+        return cleaned
+
+    query = [
+        (key, value)
+        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        if key != "channel_binding"
+    ]
+
+    if not any(key == "sslmode" for key, _ in query):
+        query.append(("sslmode", "require"))
+
+    scheme = "postgresql" if parsed.scheme == "postgres" else parsed.scheme
+    return urlunsplit((scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment))
+
+
 def get_connection(local: bool = True):
     """
     local=True  -> inserts into Docker/Postgres
@@ -25,7 +51,7 @@ def get_connection(local: bool = True):
         db_url = os.getenv("NETLIFY_DATABASE_URL_UNPOOLED")
         if not db_url:
             raise RuntimeError("Set NETLIFY_DATABASE_URL_UNPOOLED in your .env! Or ask Andrew for it!")
-        return psycopg2.connect(db_url)
+        return psycopg2.connect(normalize_database_url(db_url))
 
     return psycopg2.connect(
         host=os.getenv("POSTGRES_HOST", "localhost"),
