@@ -57,10 +57,18 @@ jobs:
           path: run_report.json
           if-no-files-found: ignore
 
-      - name: Commit updated pricing.json
+      - name: Snapshot pricing.json for history (only if changed)
+        run: |
+          python scripts/snapshot_if_changed.py
+
+      - name: Update dashboard data
+        run: |
+          python scripts/build_dashboard_data.py --append
+
+      - name: Commit updated pricing.json and history
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add pricing.json
+          git add pricing.json pricing_history/ dashboard/data/
           git commit -m "Auto-update pricing.json [skip ci]" || echo "No changes to commit"
           git push

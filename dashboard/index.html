@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Model Pricing — Historical Trends</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>AI Model Pricing — Historical Trends</h1>
+    <p class="sub" id="rangeSummary">loading…</p>
+  </header>
+
+  <section class="stats" id="stats"></section>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="trends">Trends</button>
+    <button class="tab" data-tab="archive">Archive</button>
+    <button class="tab" data-tab="changes">Price changes</button>
+  </nav>
+
+  <section id="tab-trends" class="tab-panel active">
+    <div class="controls">
+      <fieldset>
+        <legend>Providers</legend>
+        <div id="providerFilter" class="chip-row"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Price field</legend>
+        <select id="priceField">
+          <option value="input_price" selected>Input</option>
+          <option value="output_price">Output</option>
+          <option value="cached_input_price">Cached input</option>
+        </select>
+      </fieldset>
+      <fieldset>
+        <legend>Bucket</legend>
+        <select id="bucket">
+          <option value="daily" selected>Daily</option>
+          <option value="weekly">Weekly (last in week)</option>
+        </select>
+      </fieldset>
+      <fieldset>
+        <legend>Y-axis</legend>
+        <select id="yScale">
+          <option value="logarithmic" selected>Log</option>
+          <option value="linear">Linear</option>
+        </select>
+      </fieldset>
+      <fieldset>
+        <legend>Show</legend>
+        <label><input type="checkbox" id="activeOnly" checked /> Active models only</label>
+        <label><input type="checkbox" id="changedOnly" /> Only changed prices</label>
+      </fieldset>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="trendChart"></canvas>
+    </div>
+    <p class="hint">Click a legend entry to hide/show a model. Hover any line for the model and provider. Y-axis defaults to log — prices span ~6 orders of magnitude.</p>
+  </section>
+
+  <section id="tab-archive" class="tab-panel">
+    <div class="controls">
+      <fieldset>
+        <legend>Show</legend>
+        <select id="archiveFilter">
+          <option value="deprecated" selected>Models flagged deprecated/inactive in current snapshot</option>
+          <option value="disappeared">Models that disappeared from the feed</option>
+          <option value="all">All non-active history</option>
+        </select>
+      </fieldset>
+      <fieldset>
+        <legend>Provider</legend>
+        <select id="archiveProvider">
+          <option value="">All</option>
+        </select>
+      </fieldset>
+    </div>
+    <table class="archive-table">
+      <thead>
+        <tr>
+          <th>Provider</th>
+          <th>Model</th>
+          <th>Display name</th>
+          <th>First seen</th>
+          <th>Last active</th>
+          <th>Deprecated on</th>
+          <th>Last seen</th>
+          <th>Last input</th>
+          <th>Last output</th>
+        </tr>
+      </thead>
+      <tbody id="archiveBody"></tbody>
+    </table>
+  </section>
+
+  <section id="tab-changes" class="tab-panel">
+    <p class="hint">Every detected price change for input, output, or cached-input across the snapshot window.</p>
+    <table class="archive-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Provider</th>
+          <th>Model</th>
+          <th>Field</th>
+          <th>From</th>
+          <th>To</th>
+          <th>Δ</th>
+        </tr>
+      </thead>
+      <tbody id="changesBody"></tbody>
+    </table>
+  </section>
+
+  <footer>
+    <p>Source: <a href="https://github.com/Climate-Offsets-for-AI-Responsibility/the-colonial">the-colonial</a> · pricing.json daily snapshots</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
