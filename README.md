@@ -1,21 +1,39 @@
-# Data Pipeline (the-colonial)
+# cofair-colonial
 
-You can clone this repo into a local folder by running:
+**List-price pipeline for the COFAIR platform.** Scrapes Anthropic, OpenAI, and Google Vertex list prices, commits dated snapshots under `pricing_history/`, and optionally loads them into Postgres/Neon for analytics.
+
+| Consumer | How it uses this repo |
+|----------|------------------------|
+| **`cofair-exchange`** | Ingests `pricing_history/YYYY-MM-DD.json` → `resolvePrice()` for attribution ([PRICING.md](https://github.com/Climate-Offsets-for-AI-Responsibility/cofair-platform/blob/main/PRICING.md)) |
+| **Ops / data** | Daily GitHub Action, dbt staging views, optional dashboard |
+
+**Former name:** `the-colonial` (GitHub redirects after rename).
+
+**Platform docs:** [cofair-platform](https://github.com/Climate-Offsets-for-AI-Responsibility/cofair-platform) · [ARCHITECTURE](https://github.com/Climate-Offsets-for-AI-Responsibility/cofair-platform/blob/main/ARCHITECTURE.md)
+
+---
+
+## Clone
+
 ```bash
-git clone https://github.com/Climate-Offsets-for-AI-Responsibility/the-colonial.git
+cd ~/Documents/GitHub   # or ~/Github
+git clone git@github.com:Climate-Offsets-for-AI-Responsibility/cofair-colonial.git
 ```
 
-This repo contains scripts and documentation for the Postgres database setup and ingestion.
+Local dev for the full stack: set `COLONIAL_PRICING_DIR` in `cofair/.env/.env.cofair`:
 
-If anything is unclear or not working correctly feel free to ask me (Andrew).
+```bash
+COLONIAL_PRICING_DIR=../cofair-colonial/pricing_history
+```
 
-# Setup
+---
 
-*IMPORTANT* - Always run commands from the `the-colonial` directory!
+## Setup
 
-Create a `.env` file in the root directory (`the-colonial`). See `.env.example` for an example of what yours should look like, the info is also on trello!
+Run commands from the **`cofair-colonial`** directory.
 
-Run the following code in your terminal to set up a virtual environment and install dependencies:
+Create `.env` from `.env.example` (Postgres Docker, optional Neon/Slack for CI).
+
 ```bash
 python3 -m venv venv
 source venv/bin/activate
@@ -23,157 +41,80 @@ pip install -r requirements.txt
 playwright install chromium
 ```
 
-If you don't have it, install Docker Desktop here: [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+Install [Docker Desktop](https://www.docker.com/products/docker-desktop/), then:
 
-Run this code to confirm it's installation:
-```bash
-docker --version
-```
-If you see a Docker version pop up, Docker is successfully installed.
-
-## Docker Setup
-
-- Open the Docker Desktop application on your computer or run `open -a Docker` in your terminal.
-- Run `docker-compose up -d` to tell Docker to build its containers.
-- Run `docker ps` to make sure its up and running. (You should see a table of containers)
-
-TLDR: Every time you start up Docker, copy, paste, and run this code from the `the-colonial` directory:
 ```bash
 open -a Docker
-docker-compose up -d
-docker ps  # Check if everything looks normal
-```
-
-## Full Restart (If needed)
-
-If you hit container conflicts or want to start fresh:
-
-```bash
-docker-compose down
-open -a Docker
-# Wait for Docker Desktop to finish starting, then:
-docker-compose up -d
+docker compose up -d
 docker ps
 ```
 
-For a full Python env reset too:
-```bash
-rm -rf venv
-python3 -m venv venv
-source venv/bin/activate
-docke
-playwright install chromium
-```
+---
 
-&nbsp;
+## Run pipeline locally
 
-# Running the Insertion Scripts
-
-This section includes the `scrape_pricing` and usage ingestion scripts used to generate data, and then inserts that data into a Postgres DB.
-
-Before running, make sure the docker containers are running and all dependencies are installed.
-
-Just run the following script from the `the-colonial` directory:
 ```bash
 python3 build_db.py
 ```
 
-After this runs, all of the data should be inserted into the local Docker Postgres DB. To insert into Neon instead (not currently avaliable), use:
-```bash
-python3 build_db.py --neon
-```
-This requires `NETLIFY_DATABASE_URL_UNPOOLED` in `.env`.
+- Runs `scrape_pricing.py` → ingests pricing → usage (dataclaw) → dbt `staging.stg_pricing` / `stg_usage`
+- For Neon: `python3 build_db.py --neon` (requires `NETLIFY_DATABASE_URL_UNPOOLED`)
 
-The pipeline will:
-- Run `scrape_pricing.py` to fetch latest pricing from Claude, OpenAI, and Vertex
-- Ingest pricing into `raw.pricing_json`
-- Ingest usage (dataclaw) from HuggingFace into `raw.usage`
-- Run dbt to build `staging.stg_pricing` and `staging.stg_usage`
+Manual scrape only:
 
-## Scheduled Pricing Updates
-
-The root `scrape_pricing.py` is used by GitHub Actions for daily runs. Run manually:
 ```bash
 python3 scrape_pricing.py
 ```
 
-&nbsp;
+---
 
-# Inspecting the Database
+## `pricing_history/` (exchange contract)
 
-### Postgres Setup
+Each file is `pricing_history/YYYY-MM-DD.json` with:
 
-After the data has been inserted, you can check if everything worked correctly by looking inside the database.
+- `meta.schema_version` (e.g. `2.1.0`)
+- `providers[]` — `provider_id`, `name`
+- `pricing[]` — `pricing_id`, `model_id`, `input_price` / `output_price` per 1M tokens
 
-First execute this command to enter the Postgres container:
-```bash
-docker-compose exec postgres bash
-# enter exit to quit
-```
+Exchange matches `occurred_at` → snapshot date → `(provider_id, model_id)` — see platform [PRICING.md](https://github.com/Climate-Offsets-for-AI-Responsibility/cofair-platform/blob/main/PRICING.md).
 
-You are now inside the Docker container for Postgres. From here you can run the following from inside the container to start Postgres:
-```bash
-psql -U postgres
-# enter \q to quit
-```
+---
 
-You should see a prompt like `postgres=#`, meaning you can now enter postgres commands to navigate the database.
+## Scheduled updates
 
-Some useful commands:
-- `\l` - lists all databases (We'll use `cofair_db`)
-- `\c cofair_db` - connects to a database
-- `\dn` - lists all schemas in a database
-- `\dt` - lists all tables in a database
-- `\dt raw.*` - tables in raw schema
-- `\dv staging.*` - views in staging schema
-- SQL commands like `SELECT * FROM staging.stg_pricing LIMIT 10;`
+`.github/workflows/daily-scrape.yml` — daily scrape, Neon ingest, commit `pricing.json` + `pricing_history/` when changed.
 
-### neon_testing notebook
+Secrets: `SLACK_*`, `NETLIFY_DATABASE_URL_UNPOOLED`, `NEON_*` (see `.env.example`).
 
-Use `neon_testing.ipynb` to load pricing and usage data into pandas DataFrames. Connects to local Postgres (ensure Docker is running).
+---
 
-&nbsp;
-
-# Database Architecture
+## Database layout (local Docker)
 
 ```
 cofair_db
-├── raw (schema)
-│   ├── pricing_json (table)  – scraped pricing data
-│   └── usage (table)         – dataclaw usage from HuggingFace
-│
-├── staging (schema)
-│   ├── stg_pricing (view)    – parsed pricing by provider/model/sku
-│   └── stg_usage (view)      – parsed usage: session_id, model, tokens, etc.
+├── raw.pricing_json
+├── raw.usage
+├── staging.stg_pricing
+└── staging.stg_usage
 ```
 
-## Staging Schema Reference
+Inspect: `docker compose exec postgres psql -U postgres -d cofair_db`
 
-### staging.stg_pricing
+Notebook: `neon_testing.ipynb` for pandas exploration.
 
-| Column                  | Type        |
-|-------------------------|-------------|
-| content_sha256          | text        |
-| ingested_at             | timestamptz |
-| pricing_version         | text        |
-| currency                | text        |
-| provider                | text        |
-| model                   | text        |
-| sku_type                | text        |
-| price_per_1m_tokens_usd | numeric     |
-| price_per_1k_tokens_usd | numeric     |
+---
 
-### staging.stg_usage
+## Rename from `the-colonial`
 
-| Column        | Type      |
-|---------------|-----------|
-| dataset_id    | text      |
-| session_id    | text      |
-| model         | text      |
-| git_branch    | text      |
-| start_time    | timestamp |
-| end_time      | timestamp |
-| project       | text      |
-| messages      | jsonb     |
-| input_tokens  | bigint    |
-| output_tokens | bigint    |
+Org admins:
+
+```bash
+gh auth login   # COFAIR org account
+gh repo rename cofair-colonial --repo Climate-Offsets-for-AI-Responsibility/the-colonial
+```
+
+GitHub keeps redirects from the old URL. Update remotes:
+
+```bash
+git remote set-url origin git@github.com:Climate-Offsets-for-AI-Responsibility/cofair-colonial.git
+```
