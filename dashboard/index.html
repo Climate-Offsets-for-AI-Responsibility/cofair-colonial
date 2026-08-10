@@ -3,6 +3,25 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!--
+    When proxied at cofair.org/pricing (no trailing slash), relative asset
+    URLs would resolve to cofair.org/vendor/… and 404. Set <base> before any
+    stylesheet/script so both /pricing and /pricing/ work. On the origin
+    site (cofair-colonial.netlify.app/) pathname is "/" — leave base alone.
+  -->
+  <script>
+    (function () {
+      var path = location.pathname;
+      if (path === "/pricing" || path === "/pricing/") {
+        var base = document.createElement("base");
+        base.href = "/pricing/";
+        document.head.prepend(base);
+        if (path === "/pricing") {
+          history.replaceState(null, "", "/pricing/" + location.search + location.hash);
+        }
+      }
+    })();
+  </script>
   <title>AI model pricing — historical trends · COFAIR</title>
   <meta name="description" content="Daily list-price snapshots for Anthropic, OpenAI, and Google Vertex models — the upstream valuation source for COFAIR attribution." />
   <link rel="canonical" href="https://cofair.org/pricing/" />
