@@ -1,11 +1,22 @@
 // Single-page dashboard for AI model pricing history.
-// Reads pre-computed artifacts from ../pricing_history/.
+// Reads pre-computed artifacts from ./data/ (see scripts/build_dashboard_data.py).
+//
+// Markup uses @cofair/ui's own `cofair-*` classes from vendor/cofair-ui.css, and
+// every color the chart draws comes from a `--cofair-*` token — nothing visual
+// is hard-coded here (hub R13).
 
-const PROVIDER_COLORS = {
-  anthropic: "#d97706",
-  openai: "#10b981",
-  google: "#6366f1",
-};
+const SERIES_COUNT = 6; // --cofair-dataviz-1 … -6
+
+// Badge variants matched to the data-viz steps so a provider's badge and its
+// chart lines read as the same color.
+const SERIES_BADGE = [
+  "cofair-badge--primary",
+  "cofair-badge--accent",
+  "cofair-badge--warning",
+  "cofair-badge--success",
+  "cofair-badge--danger",
+  "",
+];
 
 const state = {
   series: [],          // raw rows
@@ -13,8 +24,109 @@ const state = {
   index: null,
   providers: new Set(),
   selectedProviders: new Set(),
+  providerSeries: new Map(), // provider_id → 0-based data-viz step
   chart: null,
 };
+
+// ---- tokens ----------------------------------------------------------------
+
+/** Read the live token values so the chart follows the active theme. */
+function theme() {
+  const style = getComputedStyle(document.documentElement);
+  const token = (name) => style.getPropertyValue(name).trim();
+  const rootSize = parseFloat(style.fontSize) || 16;
+  const px = (name) => {
+    const raw = token(name);
+    return raw.endsWith("rem") ? parseFloat(raw) * rootSize : parseFloat(raw);
+  };
+  return {
+    text: token("--cofair-color-text"),
+    muted: token("--cofair-color-text-muted"),
+    grid: token("--cofair-color-border-subtle"),
+    surface: token("--cofair-color-bg-elevated"),
+    border: token("--cofair-color-border"),
+    sans: token("--cofair-font-sans"),
+    mono: token("--cofair-font-mono"),
+    sizeXs: px("--cofair-font-size-xs"),
+    series: Array.from({ length: SERIES_COUNT }, (_, i) =>
+      token(`--cofair-dataviz-${i + 1}`),
+    ),
+  };
+}
+
+function hexToHsl(hex) {
+  const raw = hex.replace("#", "").trim();
+  const full = raw.length === 3 ? raw.split("").map((c) => c + c).join("") : raw;
+  const r = parseInt(full.slice(0, 2), 16) / 255;
+  const g = parseInt(full.slice(2, 4), 16) / 255;
+  const b = parseInt(full.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  let h = 0;
+  let s = 0;
+  if (d !== 0) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return { h, s: s * 100, l: l * 100 };
+}
+
+function hash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+/**
+ * One line per model, tinted within its provider's brand color.
+ *
+ * Lightness carries the per-model variation (deterministic in `pricing_id`), so
+ * every line stays inside the provider's hue and the palette stays on-brand.
+ */
+function seriesColor(pricingId, providerId, palette) {
+  const step = state.providerSeries.get(providerId) ?? 0;
+  const raw = palette.series[step % SERIES_COUNT] || palette.muted;
+  if (!raw.startsWith("#")) return raw || "currentColor";
+  const base = hexToHsl(raw);
+  const spread = ((hash(pricingId) % 2001) / 1000 - 1) * 12; // -12…+12
+  const l = Math.min(82, Math.max(18, base.l + spread));
+  return `hsl(${base.h.toFixed(1)}, ${base.s.toFixed(1)}%, ${l.toFixed(1)}%)`;
+}
+
+// ---- helpers ---------------------------------------------------------------
+
+/** Snapshot data is scraped from third-party sites — never inject it raw. */
+function esc(value) {
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+  );
+}
+
+function fmtDate(d) { return d || "—"; }
+
+function providerBadge(providerId) {
+  const step = state.providerSeries.get(providerId) ?? 0;
+  const variant = SERIES_BADGE[step % SERIES_BADGE.length];
+  return `<span class="cofair-badge ${variant}">${esc(providerId)}</span>`;
+}
+
+function emptyRow(colspan, title, body) {
+  return `<tr class="cofair-table__row">
+    <td class="cofair-table__td" colspan="${colspan}">
+      <div class="empty-state">
+        <p class="empty-state__title">${esc(title)}</p>
+        <p class="empty-state__body cofair-text cofair-text--small">${esc(body)}</p>
+      </div>
+    </td>
+  </tr>`;
+}
 
 // ---- loading ---------------------------------------------------------------
 
@@ -30,11 +142,10 @@ async function loadData() {
   state.index = index;
   for (const r of series) state.providers.add(r.provider_id);
   state.selectedProviders = new Set(state.providers);
+  [...state.providers].sort().forEach((pid, i) => state.providerSeries.set(pid, i));
 }
 
 // ---- header / stats --------------------------------------------------------
-
-function fmtDate(d) { return d || "—"; }
 
 function renderHeader() {
   const i = state.index;
@@ -53,7 +164,12 @@ function renderHeader() {
     { label: "Snapshots", value: i.snapshot_count },
   ];
   document.getElementById("stats").innerHTML = stats.map(s =>
-    `<div class="stat"><div class="label">${s.label}</div><div class="value">${s.value}</div></div>`
+    `<div class="cofair-card stat">
+       <div class="cofair-card__body stat__body">
+         <div class="cofair-text cofair-text--xs cofair-text--muted stat__label">${esc(s.label)}</div>
+         <div class="stat__value">${esc(s.value)}</div>
+       </div>
+     </div>`
   ).join("");
 }
 
@@ -63,18 +179,19 @@ function renderProviderChips() {
   const el = document.getElementById("providerFilter");
   el.innerHTML = "";
   for (const pid of [...state.providers].sort()) {
-    const chip = document.createElement("span");
-    chip.className = "chip on";
+    const step = state.providerSeries.get(pid) ?? 0;
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = `chip cofair-badge ${SERIES_BADGE[step % SERIES_BADGE.length]}`;
     chip.dataset.provider = pid;
-    chip.innerHTML = `<span class="swatch" style="background:${PROVIDER_COLORS[pid] || '#888'}"></span>${pid}`;
+    chip.dataset.series = String((step % SERIES_COUNT) + 1);
+    chip.setAttribute("aria-pressed", "true");
+    chip.innerHTML = `<span class="chip__swatch"></span>${esc(pid)}`;
     chip.addEventListener("click", () => {
-      if (state.selectedProviders.has(pid)) {
-        state.selectedProviders.delete(pid);
-        chip.classList.remove("on");
-      } else {
-        state.selectedProviders.add(pid);
-        chip.classList.add("on");
-      }
+      const on = state.selectedProviders.has(pid);
+      if (on) state.selectedProviders.delete(pid);
+      else state.selectedProviders.add(pid);
+      chip.setAttribute("aria-pressed", String(!on));
       renderTrendChart();
     });
     el.appendChild(chip);
@@ -104,19 +221,6 @@ function bucketed(rows, bucket) {
   return [...byKey.values()];
 }
 
-// ---- color per model (stable hash by pricing_id) ---------------------------
-
-function colorForModel(pid, providerId) {
-  // Hue within provider's family. Provider sets base; pricing_id varies hue slightly.
-  const baseHue = { anthropic: 30, openai: 155, google: 240 }[providerId] ?? 200;
-  let h = 0;
-  for (let i = 0; i < pid.length; i++) h = (h * 31 + pid.charCodeAt(i)) >>> 0;
-  const jitter = (h % 80) - 40; // -40..40
-  const sat = 60 + (h % 20);
-  const light = 55 + ((h >> 5) % 15);
-  return `hsl(${(baseHue + jitter + 360) % 360}, ${sat}%, ${light}%)`;
-}
-
 // ---- trend chart -----------------------------------------------------------
 
 function pricingIdsThatChanged(rows, field) {
@@ -138,6 +242,7 @@ function renderTrendChart() {
   const yScale = document.getElementById("yScale").value;
   const activeOnly = document.getElementById("activeOnly").checked;
   const changedOnly = document.getElementById("changedOnly").checked;
+  const palette = theme();
 
   let rows = state.series.filter(r => state.selectedProviders.has(r.provider_id));
   if (activeOnly) {
@@ -163,11 +268,12 @@ function renderTrendChart() {
   const datasets = [];
   for (const [pid, { row, points }] of byPid) {
     points.sort((a, b) => a.x.localeCompare(b.x));
+    const color = seriesColor(pid, row.provider_id, palette);
     datasets.push({
       label: `${row.display_name} (${row.provider_id})`,
       data: points,
-      borderColor: colorForModel(pid, row.provider_id),
-      backgroundColor: colorForModel(pid, row.provider_id),
+      borderColor: color,
+      backgroundColor: color,
       borderWidth: 1.5,
       pointRadius: points.length === 1 ? 3 : 1.5,
       pointHoverRadius: 5,
@@ -194,14 +300,21 @@ function renderTrendChart() {
         legend: {
           position: "right",
           labels: {
-            color: "#e6e9ef",
-            font: { size: 11 },
+            color: palette.text,
+            font: { family: palette.sans, size: palette.sizeXs },
             boxWidth: 10,
             boxHeight: 10,
             usePointStyle: true,
           },
         },
         tooltip: {
+          backgroundColor: palette.surface,
+          titleColor: palette.text,
+          bodyColor: palette.text,
+          borderColor: palette.border,
+          borderWidth: 1,
+          titleFont: { family: palette.sans },
+          bodyFont: { family: palette.mono },
           callbacks: {
             label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(4)} / 1M tok`,
           },
@@ -211,17 +324,23 @@ function renderTrendChart() {
         x: {
           type: "time",
           time: { unit: bucket === "weekly" ? "week" : "day", tooltipFormat: "yyyy-MM-dd" },
-          ticks: { color: "#9aa3b2" },
-          grid: { color: "#222730" },
+          ticks: { color: palette.muted, font: { family: palette.mono, size: palette.sizeXs } },
+          grid: { color: palette.grid },
         },
         y: {
           type: yScale,
           ticks: {
-            color: "#9aa3b2",
+            color: palette.muted,
+            font: { family: palette.mono, size: palette.sizeXs },
             callback: (v) => `$${v}`,
           },
-          grid: { color: "#222730" },
-          title: { display: true, text: `${field.replace(/_/g, " ")} (USD per 1M tokens)`, color: "#9aa3b2" },
+          grid: { color: palette.grid },
+          title: {
+            display: true,
+            text: `${field.replace(/_/g, " ")} (USD per 1M tokens)`,
+            color: palette.muted,
+            font: { family: palette.sans, size: palette.sizeXs },
+          },
         },
       },
     },
@@ -252,18 +371,18 @@ function renderArchive() {
 
   const tbody = document.getElementById("archiveBody");
   tbody.innerHTML = rows.map(m => `
-    <tr>
-      <td><span class="tag provider-${m.provider_id}">${m.provider_id}</span></td>
-      <td>${m.model_id}</td>
-      <td>${m.display_name}</td>
-      <td>${fmtDate(m.first_seen)}</td>
-      <td>${fmtDate(m.last_active)}</td>
-      <td>${fmtDate(m.deprecated_on)}</td>
-      <td>${fmtDate(m.last_seen)}</td>
-      <td class="num">${m.latest_input != null ? `$${m.latest_input}` : "—"}</td>
-      <td class="num">${m.latest_output != null ? `$${m.latest_output}` : "—"}</td>
+    <tr class="cofair-table__row">
+      <td class="cofair-table__td">${providerBadge(m.provider_id)}</td>
+      <td class="cofair-table__td">${esc(m.model_id)}</td>
+      <td class="cofair-table__td">${esc(m.display_name)}</td>
+      <td class="cofair-table__td">${esc(fmtDate(m.first_seen))}</td>
+      <td class="cofair-table__td">${esc(fmtDate(m.last_active))}</td>
+      <td class="cofair-table__td">${esc(fmtDate(m.deprecated_on))}</td>
+      <td class="cofair-table__td">${esc(fmtDate(m.last_seen))}</td>
+      <td class="cofair-table__td cofair-table__td--num">${m.latest_input != null ? `$${esc(m.latest_input)}` : "—"}</td>
+      <td class="cofair-table__td cofair-table__td--num">${m.latest_output != null ? `$${esc(m.latest_output)}` : "—"}</td>
     </tr>
-  `).join("") || `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px">No matching models.</td></tr>`;
+  `).join("") || emptyRow(9, "No matching models", "Try a different filter or provider.");
 }
 
 function populateArchiveProviderSelect() {
@@ -320,21 +439,26 @@ function renderChanges() {
   const events = detectChanges();
   const tbody = document.getElementById("changesBody");
   if (!events.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No price changes detected in the snapshot window — pricing has been stable.</td></tr>`;
+    tbody.innerHTML = emptyRow(
+      7,
+      "No price changes detected",
+      "List prices have been stable across the whole snapshot window.",
+    );
     return;
   }
   tbody.innerHTML = events.map(e => {
     const pct = e.from ? ((e.delta / e.from) * 100).toFixed(1) : "∞";
     const sign = e.delta > 0 ? "+" : "";
+    const dir = e.delta > 0 ? "delta--up" : "delta--down";
     return `
-      <tr>
-        <td>${e.date}</td>
-        <td><span class="tag provider-${e.provider_id}">${e.provider_id}</span></td>
-        <td>${e.display_name} <span class="tag">${e.model_id}</span></td>
-        <td>${e.field.replace(/_/g, " ")}</td>
-        <td class="num">$${e.from}</td>
-        <td class="num">$${e.to}</td>
-        <td class="num">${sign}${e.delta.toFixed(4)} (${sign}${pct}%)</td>
+      <tr class="cofair-table__row">
+        <td class="cofair-table__td">${esc(e.date)}</td>
+        <td class="cofair-table__td">${providerBadge(e.provider_id)}</td>
+        <td class="cofair-table__td">${esc(e.display_name)} <span class="cofair-badge">${esc(e.model_id)}</span></td>
+        <td class="cofair-table__td">${esc(e.field.replace(/_/g, " "))}</td>
+        <td class="cofair-table__td cofair-table__td--num">$${esc(e.from)}</td>
+        <td class="cofair-table__td cofair-table__td--num">$${esc(e.to)}</td>
+        <td class="cofair-table__td cofair-table__td--num ${dir}">${sign}${e.delta.toFixed(4)} (${sign}${pct}%)</td>
       </tr>
     `;
   }).join("");
@@ -342,14 +466,32 @@ function renderChanges() {
 
 // ---- tabs ------------------------------------------------------------------
 
+/** Mirrors @cofair/ui's Tabs: roving tabindex plus arrow-key navigation. */
 function setupTabs() {
-  document.querySelectorAll(".tab").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
-      document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
-      btn.classList.add("active");
-      document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
-      if (btn.dataset.tab === "trends") renderTrendChart();
+  const tabs = [...document.querySelectorAll('[role="tab"]')];
+
+  const activate = (tab) => {
+    for (const t of tabs) {
+      const selected = t === tab;
+      t.classList.toggle("cofair-tabs__tab--active", selected);
+      t.setAttribute("aria-selected", String(selected));
+      t.tabIndex = selected ? 0 : -1;
+      const panel = document.getElementById(t.getAttribute("aria-controls"));
+      if (panel) panel.hidden = !selected;
+    }
+    if (tab.dataset.tab === "trends") renderTrendChart();
+  };
+
+  tabs.forEach((tab, i) => {
+    tab.addEventListener("click", () => activate(tab));
+    tab.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      e.preventDefault();
+      const next = e.key === "ArrowRight"
+        ? (i + 1) % tabs.length
+        : (i - 1 + tabs.length) % tabs.length;
+      tabs[next].focus();
+      activate(tabs[next]);
     });
   });
 }
@@ -370,7 +512,7 @@ async function main() {
     await loadData();
   } catch (e) {
     document.getElementById("rangeSummary").textContent =
-      "Failed to load pricing_history/*.json. Did you run scripts/build_dashboard_data.py --rebuild?";
+      "Failed to load data/*.json. Did you run scripts/build_dashboard_data.py --rebuild?";
     console.error(e);
     return;
   }

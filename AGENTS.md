@@ -12,6 +12,7 @@ The **upstream list-price scraper**. Produces `pricing_history/YYYY-MM-DD.json` 
 - **The snapshot JSON is a contract (R8).** `pricing[]` rows carry `pricing_id`, `provider_id`, `model_id`, `input_price`, `output_price` (per 1M tokens) and `meta.schema_version`. The exchange freezes these onto immutable attribution line items — **do not change the snapshot shape without a `schema_version` bump** and a heads-up to the exchange (P1).
 - **Stay upstream.** COFAIR pricing logic lives in `cofair-exchange/src/pricing/colonial.ts` (it only *consumes* snapshots). Don't fork valuation logic here, and don't add COFAIR business rules (fees, billing) to this repo.
 - Keep the daily scrape healthy; snapshots committed and dated.
+- **`dashboard/` is a COFAIR UI surface and R13 binds it** (PD-23/D50). It is a zero-build static page, so instead of importing `@cofair/ui` it consumes the vendored `dashboard/vendor/cofair-ui.css` and uses the design system's own `cofair-*` BEM classes. Never hand-edit `dashboard/vendor/**` — run `python3 scripts/sync_design_system.py` (add `--check` to detect drift). No hard-coded colors, spacing, type, or radii in `dashboard/`: every value references a `--cofair-*` token, and chart series use `--cofair-dataviz-1…6`. No new shared components without founder approval — map onto existing primitives.
 
 ## Session checks
 Start: read the task + R-rules. End: write back to `../cofair/docs/pm/TASKS.md` if this affected a COFAIR task; commit clearly.

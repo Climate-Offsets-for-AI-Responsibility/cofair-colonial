@@ -1,216 +1,229 @@
-:root {
-  --bg: #0f1115;
-  --panel: #181b22;
-  --panel-2: #1f242d;
-  --border: #2a2f3a;
-  --text: #e6e9ef;
-  --muted: #9aa3b2;
-  --accent: #6ea8fe;
-  --anthropic: #d97706;
-  --openai: #10b981;
-  --google: #6366f1;
-}
+/* Page-level layout for the pricing dashboard.
+ *
+ * Components come from the vendored design system (`vendor/cofair-ui.css`) via
+ * its `cofair-*` classes. This file only does page composition, and every value
+ * references a `--cofair-*` token — no raw colors, sizes, or spacing (hub R13).
+ *
+ * `.page-header`, `.stat-*`, and `.empty-state` mirror the token declarations of
+ * @cofair/ui's PageHeader / Card / EmptyState. Those three patterns are styled
+ * inline in React rather than with BEM classes, so a non-React page has to
+ * restate them.
+ */
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  font-size: 14px;
+  font-family: var(--cofair-font-sans);
+  font-size: var(--cofair-font-size-md);
   line-height: 1.5;
+  color: var(--cofair-color-text);
+  background: var(--cofair-color-bg);
 }
 
-header {
-  padding: 24px 32px 8px;
-  border-bottom: 1px solid var(--border);
+a { color: var(--cofair-color-primary); }
+
+/* ── Page header (mirrors @cofair/ui PageHeader) ───────────────────────── */
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cofair-space-5);
+  padding: var(--cofair-space-5) var(--cofair-space-8);
+  border-bottom: var(--cofair-border-width-thin) solid var(--cofair-color-border-subtle);
 }
 
-header h1 {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 600;
+.page-header__brand {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding-top: var(--cofair-space-1);
 }
 
-.sub {
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-size: 13px;
+.page-header__brand img { display: block; }
+
+.page {
+  padding: var(--cofair-space-6) var(--cofair-space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cofair-space-6);
 }
 
-.stats {
+/* ── Stat cards ────────────────────────────────────────────────────────── */
+
+.stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
-  padding: 16px 32px;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--cofair-space-3);
 }
 
-.stat {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px 14px;
+.stat__body {
+  padding: var(--cofair-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cofair-space-1);
 }
 
-.stat .label {
-  color: var(--muted);
-  font-size: 11px;
+.stat__label {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-.stat .value {
-  font-size: 22px;
-  font-weight: 600;
-  margin-top: 2px;
+.stat__value {
+  font-family: var(--cofair-font-mono);
+  font-size: var(--cofair-font-size-2xl);
+  font-weight: 500;
+  color: var(--cofair-color-text);
 }
 
-nav.tabs {
-  display: flex;
-  gap: 4px;
-  padding: 0 32px;
-  border-bottom: 1px solid var(--border);
-}
-
-.tab {
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  padding: 10px 14px;
-  font-size: 13px;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-}
-
-.tab:hover { color: var(--text); }
-.tab.active {
-  color: var(--text);
-  border-bottom-color: var(--accent);
-}
-
-.tab-panel { display: none; padding: 20px 32px; }
-.tab-panel.active { display: block; }
+/* ── Controls ──────────────────────────────────────────────────────────── */
 
 .controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 16px;
   align-items: flex-start;
+  gap: var(--cofair-space-4);
+  margin-bottom: var(--cofair-space-5);
 }
 
-fieldset {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 12px 8px;
-  background: var(--panel);
+.control-group {
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 11rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cofair-space-2);
 }
 
-fieldset legend {
-  color: var(--muted);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 0 4px;
-}
+.control-group--wide { min-width: 24rem; }
 
-fieldset label {
-  display: inline-flex;
+.control-group > .cofair-label { padding: 0; }
+
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cofair-space-3);
   align-items: center;
-  gap: 4px;
-  margin-right: 8px;
-  font-size: 13px;
+  min-height: var(--cofair-input-height);
 }
 
-select {
-  background: var(--panel-2);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 13px;
-}
+/* ── Provider filter chips ─────────────────────────────────────────────── */
 
-.chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cofair-space-2);
+  align-items: center;
+  min-height: var(--cofair-input-height);
+}
 
 .chip {
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 3px 10px;
+  gap: var(--cofair-space-2);
+  border: var(--cofair-border-width-thin) solid transparent;
+  border-radius: var(--cofair-radius-pill);
   cursor: pointer;
-  user-select: none;
-  font-size: 12px;
-  background: var(--panel-2);
-  display: inline-flex;
+  font-family: var(--cofair-font-sans);
+}
+
+.chip:focus-visible {
+  outline: var(--cofair-border-width-medium) solid var(--cofair-color-primary);
+  outline-offset: var(--cofair-space-px);
+}
+
+/* Deselected reads as an outline, so state never rests on color alone. */
+.chip[aria-pressed="false"] {
+  background: transparent;
+  border-color: var(--cofair-color-border);
+  color: var(--cofair-color-text-muted);
+}
+
+.chip[aria-pressed="false"] .chip__swatch { opacity: 0.35; }
+
+.chip__swatch {
+  width: var(--cofair-space-2);
+  height: var(--cofair-space-2);
+  border-radius: var(--cofair-radius-pill);
+  flex-shrink: 0;
+  background: var(--cofair-color-text-muted);
+}
+
+/* Series colors are the design system's categorical data-viz scale. */
+.chip[data-series="1"] .chip__swatch { background: var(--cofair-dataviz-1); }
+.chip[data-series="2"] .chip__swatch { background: var(--cofair-dataviz-2); }
+.chip[data-series="3"] .chip__swatch { background: var(--cofair-dataviz-3); }
+.chip[data-series="4"] .chip__swatch { background: var(--cofair-dataviz-4); }
+.chip[data-series="5"] .chip__swatch { background: var(--cofair-dataviz-5); }
+.chip[data-series="6"] .chip__swatch { background: var(--cofair-dataviz-6); }
+
+/* ── Chart ─────────────────────────────────────────────────────────────── */
+
+.chart-card {
+  padding: var(--cofair-space-4);
+  height: 35rem;
+}
+
+.hint { margin: var(--cofair-space-2) 0 0; }
+
+/* ── Tabs ──────────────────────────────────────────────────────────────── */
+
+.cofair-tabs__panel[hidden] { display: none; }
+
+.cofair-tabs__tab:focus-visible {
+  outline: var(--cofair-border-width-medium) solid var(--cofair-color-primary);
+  outline-offset: calc(-1 * var(--cofair-border-width-medium));
+}
+
+/* ── Table extras ──────────────────────────────────────────────────────── */
+
+.cofair-table__td, .cofair-table__th { white-space: nowrap; }
+
+.delta--up { color: var(--cofair-color-danger); }
+.delta--down { color: var(--cofair-color-success); }
+
+/* ── Empty state (mirrors @cofair/ui EmptyState) ───────────────────────── */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: var(--cofair-space-2);
+  padding: var(--cofair-space-6);
+  min-height: var(--cofair-empty-min-height);
+  text-align: center;
+  color: var(--cofair-color-text-muted);
 }
 
-.chip.on { background: var(--accent); border-color: var(--accent); color: #0b1020; }
-.chip .swatch {
-  width: 8px; height: 8px; border-radius: 50%;
+.empty-state__title {
+  margin: 0;
+  font-family: var(--cofair-heading-font);
+  font-size: var(--cofair-font-size-lg);
+  color: var(--cofair-color-text);
 }
 
-.chart-wrap {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
-  height: 560px;
+.empty-state__body {
+  margin: 0;
+  max-width: var(--cofair-content-max-width-narrow);
 }
 
-.hint {
-  color: var(--muted);
-  font-size: 12px;
-  margin: 8px 4px 0;
+/* ── Footer ────────────────────────────────────────────────────────────── */
+
+.page-footer {
+  margin-top: var(--cofair-space-8);
+  padding: var(--cofair-space-6) var(--cofair-space-8);
+  border-top: var(--cofair-border-width-thin) solid var(--cofair-color-border-subtle);
 }
 
-table.archive-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
+.page-footer__link { color: var(--cofair-color-primary); }
+
+@media (max-width: 40rem) {
+  .page-header,
+  .page,
+  .page-footer {
+    padding-left: var(--cofair-space-4);
+    padding-right: var(--cofair-space-4);
+  }
+
+  .chart-card { height: 28rem; }
 }
-
-.archive-table thead {
-  background: var(--panel-2);
-}
-
-.archive-table th, .archive-table td {
-  padding: 8px 12px;
-  text-align: left;
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-}
-
-.archive-table tbody tr:last-child td { border-bottom: none; }
-.archive-table tbody tr:hover { background: var(--panel-2); }
-
-.archive-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
-
-.tag {
-  display: inline-block;
-  font-size: 11px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: var(--panel-2);
-  color: var(--muted);
-}
-
-.tag.provider-anthropic { background: rgba(217,119,6,0.15); color: var(--anthropic); }
-.tag.provider-openai { background: rgba(16,185,129,0.15); color: var(--openai); }
-.tag.provider-google { background: rgba(99,102,241,0.15); color: var(--google); }
-
-footer {
-  padding: 24px 32px;
-  color: var(--muted);
-  font-size: 12px;
-  border-top: 1px solid var(--border);
-  margin-top: 32px;
-}
-
-footer a { color: var(--accent); }

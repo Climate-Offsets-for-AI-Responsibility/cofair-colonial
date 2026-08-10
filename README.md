@@ -80,6 +80,26 @@ Exchange matches `occurred_at` → snapshot date → `(provider_id, model_id)` �
 
 ---
 
+## Dashboard
+
+`dashboard/` is a zero-build static page (Netlify publishes it directly) charting the snapshot history. It reads the artifacts in `dashboard/data/`, which `scripts/build_dashboard_data.py` generates:
+
+```bash
+python3 scripts/build_dashboard_data.py --rebuild   # from all of pricing_history/
+python3 -m http.server 8787 --directory dashboard   # then open http://127.0.0.1:8787
+```
+
+The page is built on the **COFAIR design system**. Because it has no bundler, it consumes `@cofair/ui`'s compiled stylesheet and uses the same `cofair-*` classes. Those copies live in `dashboard/vendor/` (stylesheet, IBM Plex subset, brand marks, Chart.js) and are **generated — never edit them**:
+
+```bash
+python3 scripts/sync_design_system.py           # refresh from ../cofair-design-system
+python3 scripts/sync_design_system.py --check   # exit 1 if a copy is stale
+```
+
+Requires `cofair-design-system` as a sibling checkout with `npm install && npm run build` run in it, plus `npm install` here for Chart.js. Fonts and Chart.js are vendored rather than pulled from a CDN so the page makes no third-party requests. Styling rules for this directory are in [`AGENTS.md`](AGENTS.md).
+
+---
+
 ## Scheduled updates
 
 `.github/workflows/daily-scrape.yml` — daily scrape, Neon ingest, commit `pricing.json` + `pricing_history/` when changed.
