@@ -82,6 +82,8 @@ Exchange matches `occurred_at` → snapshot date → `(provider_id, model_id)` �
 
 ## Dashboard
 
+**Public URL:** [cofair.org/pricing/](https://cofair.org/pricing/) — proxied from the marketing site onto this repo's Netlify publish (`cofair-colonial.netlify.app`). Relative asset paths require the trailing slash; `/pricing` 301s to `/pricing/`.
+
 `dashboard/` is a zero-build static page (Netlify publishes it directly) charting the snapshot history. It reads the artifacts in `dashboard/data/`, which `scripts/build_dashboard_data.py` generates:
 
 ```bash
