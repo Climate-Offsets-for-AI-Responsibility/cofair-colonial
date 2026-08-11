@@ -5,7 +5,18 @@
 // every color the chart draws comes from a `--cofair-*` token — nothing visual
 // is hard-coded here (hub R13).
 
+import {
+  contextsNeedDisambiguation,
+  effectiveModality,
+  formatLegendLabel,
+  isFutureSchedulePlaceholder,
+  sortDatasetsForDate,
+} from "./labels.js";
+
+const Chart = window.Chart;
+
 const SERIES_COUNT = 6; // --cofair-dataviz-1 … -6
+const MODALITY_ORDER = ["text", "multimodal", "audio", "image"];
 
 // Badge variants matched to the data-viz steps so a provider's badge and its
 // chart lines read as the same color.
@@ -24,8 +35,12 @@ const state = {
   index: null,
   providers: new Set(),
   selectedProviders: new Set(),
+  modalities: new Set(),
+  selectedModalities: new Set(["text"]),
   providerSeries: new Map(), // provider_id → 0-based data-viz step
   chart: null,
+  hoverDate: null,
+  hoverPricingId: null,
 };
 
 // ---- tokens ----------------------------------------------------------------
@@ -140,7 +155,10 @@ async function loadData() {
   state.series = series;
   state.models = models;
   state.index = index;
-  for (const r of series) state.providers.add(r.provider_id);
+  for (const r of series) {
+    state.providers.add(r.provider_id);
+    state.modalities.add(effectiveModality(r.modality));
+  }
   state.selectedProviders = new Set(state.providers);
   [...state.providers].sort().forEach((pid, i) => state.providerSeries.set(pid, i));
 }
@@ -198,6 +216,29 @@ function renderProviderChips() {
   }
 }
 
+function renderModalityChips() {
+  const el = document.getElementById("modalityFilter");
+  el.innerHTML = "";
+  for (const mod of MODALITY_ORDER) {
+    if (!state.modalities.has(mod)) continue;
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip cofair-badge";
+    chip.dataset.modality = mod;
+    const on = state.selectedModalities.has(mod);
+    chip.setAttribute("aria-pressed", String(on));
+    chip.textContent = mod.charAt(0).toUpperCase() + mod.slice(1);
+    chip.addEventListener("click", () => {
+      const selected = state.selectedModalities.has(mod);
+      if (selected) state.selectedModalities.delete(mod);
+      else state.selectedModalities.add(mod);
+      chip.setAttribute("aria-pressed", String(!selected));
+      renderTrendChart();
+    });
+    el.appendChild(chip);
+  }
+}
+
 // ---- weekly bucketing ------------------------------------------------------
 
 function isoWeekKey(dateStr) {
@@ -236,6 +277,122 @@ function pricingIdsThatChanged(rows, field) {
   return out;
 }
 
+function pointDate(point) {
+  if (!point) return null;
+  if (typeof point.x === "string") return point.x.slice(0, 10);
+  const d = new Date(point.x);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+}
+
+function clearChartHover() {
+  if (!state.hoverDate && !state.hoverPricingId) return;
+  state.hoverDate = null;
+  state.hoverPricingId = null;
+  if (state.chart) {
+    renderLegend(state.chart);
+    state.chart.draw();
+  }
+}
+
+const dateMarkerPlugin = {
+  id: "dateMarker",
+  afterDraw(chart) {
+    if (!state.hoverDate) return;
+    const xScale = chart.scales.x;
+    if (!xScale) return;
+    const x = xScale.getPixelForValue(state.hoverDate + "T00:00:00Z");
+    const { top, bottom, left, right } = chart.chartArea;
+    if (x < left || x > right) return;
+    const palette = theme();
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x, top);
+    ctx.lineTo(x, bottom);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = palette.muted;
+    ctx.setLineDash([4, 3]);
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
+function renderLegend(chart) {
+  const header = document.getElementById("trendLegendHeader");
+  const list = document.getElementById("trendLegendList");
+  const datasets = chart.data.datasets;
+  const ordered = state.hoverDate
+    ? sortDatasetsForDate(datasets, state.hoverDate)
+    : [...datasets].sort((a, b) => (b.data.at(-1)?.y ?? 0) - (a.data.at(-1)?.y ?? 0));
+
+  if (state.hoverDate) {
+    header.hidden = false;
+    header.textContent = state.hoverDate;
+  } else {
+    header.hidden = true;
+    header.textContent = "";
+  }
+
+  list.replaceChildren();
+  for (const ds of ordered) {
+    const li = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "chart-legend__item";
+    if (ds.hidden) btn.classList.add("chart-legend__item--hidden");
+    if (state.hoverPricingId && ds.pricingId === state.hoverPricingId) {
+      btn.classList.add("chart-legend__item--active");
+    }
+    const swatch = document.createElement("span");
+    swatch.className = "chart-legend__swatch";
+    swatch.style.background = ds.borderColor;
+    const label = document.createElement("span");
+    label.textContent = ds.legendLabel;
+    btn.append(swatch, label);
+    btn.addEventListener("click", () => {
+      ds.hidden = !ds.hidden;
+      chart.update();
+      renderLegend(chart);
+    });
+    li.appendChild(btn);
+    list.appendChild(li);
+  }
+}
+
+function onChartHover(evt, _elements, chart) {
+  if (!evt || evt.type === "mouseout" || evt.x == null) {
+    clearChartHover();
+    return;
+  }
+  const { left, right, top, bottom } = chart.chartArea;
+  if (evt.x < left || evt.x > right || evt.y < top || evt.y > bottom) {
+    clearChartHover();
+    return;
+  }
+
+  const alongX = chart.getElementsAtEventForMode(
+    evt, "nearest", { intersect: false, axis: "x" }, false,
+  );
+  const onNode = chart.getElementsAtEventForMode(
+    evt, "nearest", { intersect: true }, false,
+  );
+
+  let date = null;
+  if (alongX[0]) {
+    const ds = chart.data.datasets[alongX[0].datasetIndex];
+    date = pointDate(ds.data[alongX[0].index]);
+  }
+  const pricingId = onNode[0]
+    ? chart.data.datasets[onNode[0].datasetIndex].pricingId
+    : null;
+
+  if (date === state.hoverDate && pricingId === state.hoverPricingId) return;
+  state.hoverDate = date;
+  state.hoverPricingId = pricingId;
+  renderLegend(chart);
+  chart.draw();
+}
+
 function renderTrendChart() {
   const field = document.getElementById("priceField").value;
   const bucket = document.getElementById("bucket").value;
@@ -244,7 +401,14 @@ function renderTrendChart() {
   const changedOnly = document.getElementById("changedOnly").checked;
   const palette = theme();
 
-  let rows = state.series.filter(r => state.selectedProviders.has(r.provider_id));
+  state.hoverDate = null;
+  state.hoverPricingId = null;
+
+  let rows = state.series.filter(r =>
+    state.selectedProviders.has(r.provider_id)
+    && state.selectedModalities.has(effectiveModality(r.modality))
+    && !isFutureSchedulePlaceholder(r),
+  );
   if (activeOnly) {
     const activeIds = new Set(state.models.filter(m => m.currently_active).map(m => m.pricing_id));
     rows = rows.filter(r => activeIds.has(r.pricing_id));
@@ -256,7 +420,6 @@ function renderTrendChart() {
 
   rows = bucketed(rows, bucket);
 
-  // group into datasets per pricing_id
   const byPid = new Map();
   for (const r of rows) {
     const v = r[field];
@@ -265,18 +428,24 @@ function renderTrendChart() {
     byPid.get(r.pricing_id).points.push({ x: r.date, y: v });
   }
 
+  const heads = [...byPid.values()].map(({ row }) => row);
+  const needContext = contextsNeedDisambiguation(heads);
+
   const datasets = [];
   for (const [pid, { row, points }] of byPid) {
     points.sort((a, b) => a.x.localeCompare(b.x));
     const color = seriesColor(pid, row.provider_id, palette);
+    const showContext = needContext.has(`${row.provider_id}|${row.model_id}`);
     datasets.push({
-      label: `${row.display_name} (${row.provider_id})`,
+      label: formatLegendLabel(row, { showContext }),
+      legendLabel: formatLegendLabel(row, { showContext }),
       data: points,
       borderColor: color,
       backgroundColor: color,
       borderWidth: 1.5,
       pointRadius: points.length === 1 ? 3 : 1.5,
       pointHoverRadius: 5,
+      pointHitRadius: 8,
       tension: 0,
       spanGaps: true,
       providerId: row.provider_id,
@@ -284,7 +453,6 @@ function renderTrendChart() {
     });
   }
 
-  // sort datasets by last price desc so legend lists priciest first
   datasets.sort((a, b) => (b.data.at(-1)?.y ?? 0) - (a.data.at(-1)?.y ?? 0));
 
   const ctx = document.getElementById("trendChart");
@@ -292,38 +460,20 @@ function renderTrendChart() {
   state.chart = new Chart(ctx, {
     type: "line",
     data: { datasets },
+    plugins: [dateMarkerPlugin],
     options: {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: "nearest", axis: "x", intersect: false },
+      onHover: onChartHover,
       plugins: {
-        legend: {
-          position: "right",
-          labels: {
-            color: palette.text,
-            font: { family: palette.sans, size: palette.sizeXs },
-            boxWidth: 10,
-            boxHeight: 10,
-            usePointStyle: true,
-          },
-        },
-        tooltip: {
-          backgroundColor: palette.surface,
-          titleColor: palette.text,
-          bodyColor: palette.text,
-          borderColor: palette.border,
-          borderWidth: 1,
-          titleFont: { family: palette.sans },
-          bodyFont: { family: palette.mono },
-          callbacks: {
-            label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(4)} / 1M tok`,
-          },
-        },
+        legend: { display: false },
+        tooltip: { enabled: false },
       },
       scales: {
         x: {
           type: "time",
-          time: { unit: bucket === "weekly" ? "week" : "day", tooltipFormat: "yyyy-MM-dd" },
+          time: { unit: bucket === "weekly" ? "week" : "day" },
           ticks: { color: palette.muted, font: { family: palette.mono, size: palette.sizeXs } },
           grid: { color: palette.grid },
         },
@@ -345,6 +495,8 @@ function renderTrendChart() {
       },
     },
   });
+
+  renderLegend(state.chart);
 }
 
 // ---- archive ---------------------------------------------------------------
@@ -518,9 +670,11 @@ async function main() {
   }
   renderHeader();
   renderProviderChips();
+  renderModalityChips();
   populateArchiveProviderSelect();
   setupTabs();
   bindControls();
+  document.getElementById("trendChart").addEventListener("mouseleave", clearChartHover);
   renderTrendChart();
   renderArchive();
   renderChanges();

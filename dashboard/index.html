@@ -32,7 +32,7 @@
   <link rel="stylesheet" href="styles.css" />
   <script src="vendor/chart.umd.min.js" defer></script>
   <script src="vendor/chartjs-adapter-date-fns.bundle.min.js" defer></script>
-  <script src="app.js" defer></script>
+  <script type="module" src="app.js"></script>
 </head>
 <body>
   <header class="page-header">
@@ -67,6 +67,11 @@
           <fieldset class="control-group">
             <legend class="cofair-label">Providers</legend>
             <div class="chip-row" id="providerFilter"></div>
+          </fieldset>
+
+          <fieldset class="control-group">
+            <legend class="cofair-label">Modality</legend>
+            <div class="chip-row" id="modalityFilter"></div>
           </fieldset>
 
           <div class="cofair-field control-group">
@@ -110,10 +115,17 @@
         </div>
 
         <div class="cofair-card chart-card">
-          <canvas id="trendChart"></canvas>
+          <div class="chart-card__plot">
+            <canvas id="trendChart"></canvas>
+          </div>
+          <aside class="chart-legend" aria-label="Models">
+            <h2 class="chart-legend__header cofair-text cofair-text--xs" id="trendLegendHeader" hidden></h2>
+            <ul class="chart-legend__list" id="trendLegendList"></ul>
+          </aside>
         </div>
         <p class="cofair-text cofair-text--xs cofair-text--muted hint">
-          Click a legend entry to hide or show a model. Hover any line for the model and provider.
+          Hover a date to reorder the legend by price that day. Hover a node to highlight its legend row.
+          Click a legend entry to hide or show a model.
           The y-axis defaults to log because prices span roughly six orders of magnitude.
         </p>
       </div>
