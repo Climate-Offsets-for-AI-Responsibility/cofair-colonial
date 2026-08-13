@@ -18,6 +18,12 @@ load_dotenv()
 CLAUDE_URL = "https://platform.claude.com/docs/en/about-claude/pricing"
 VERTEX_URL = "https://cloud.google.com/vertex-ai/generative-ai/pricing"
 OPENAI_URL = "https://developers.openai.com/api/docs/pricing"
+XAI_URL = "https://docs.x.ai/developers/pricing"
+AWS_BEDROCK_PRICING_REGION = os.getenv("AWS_BEDROCK_PRICING_REGION", "us-east-1")
+AWS_BEDROCK_FOUNDATION_MODELS_URL = (
+    "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/"
+    f"AmazonBedrockFoundationModels/current/{AWS_BEDROCK_PRICING_REGION}/index.json"
+)
 REQUEST_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -51,12 +57,16 @@ MIN_PROVIDER_TIERS = {
     "anthropic": 10,
     "openai": 25,
     "google": 50,
+    "aws": 20,
+    "xai": 10,
 }
 MIN_PROVIDER_RATIO = 0.45
 MIN_COMPONENT_ROWS = {
     "anthropic": 30,
     "openai": 90,
     "google": 120,
+    "aws": 60,
+    "xai": 30,
 }
 
 
@@ -87,6 +97,24 @@ def http_get(url, retries=3):
     raise RuntimeError(f"Failed after {retries} attempts: {last_error}") from last_error
 
 
+def http_get_json(url, retries=3):
+    last_error = None
+
+    for attempt in range(retries):
+        try:
+            print(f"FETCHING JSON via requests: {url}")
+            response = requests.get(url, headers=REQUEST_HEADERS, timeout=60)
+            response.raise_for_status()
+            return response.json()
+        except Exception as exc:
+            last_error = exc
+            if attempt == retries - 1:
+                break
+            time.sleep(5)
+
+    raise RuntimeError(f"Failed after {retries} attempts: {last_error}") from last_error
+
+
 def norm(value):
     return " ".join((value or "").strip().split())
 
@@ -103,6 +131,11 @@ def slugify(value):
 def money(value):
     if not value:
         return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).replace(",", "")
+    if re.fullmatch(r"-?[0-9]+(?:\.[0-9]+)?", text):
+        return float(text)
     match = re.search(r"\$([0-9]+(?:\.[0-9]+)?)", value.replace(",", ""))
     return float(match.group(1)) if match else None
 
@@ -355,6 +388,264 @@ def aggregate_tier_rows(component_rows):
         )
     )
     return rows
+
+
+def _aws_model_name(service_name):
+    return re.sub(r"\s*\(Amazon Bedrock Edition\)\s*$", "", norm(service_name), flags=re.IGNORECASE)
+
+
+def _aws_component_and_variant(usagetype):
+    u = (usagetype or "").lower()
+    if "cachewrite1hinputtokencount" in u:
+        return "cache_write", "1h"
+    if "cachewriteinputtokencount" in u:
+        return "cache_write", "5m"
+    if "cachereadinputtokencount" in u:
+        return "cache_read", None
+    if "inputtokencount" in u:
+        return "input", None
+    if "outputtokencount" in u:
+        return "output", None
+    return None, None
+
+
+def _aws_service_tier(*values):
+    combined = " ".join(norm(v).lower() for v in values if v)
+    if "reserved" in combined:
+        return "reserved"
+    if "priority" in combined:
+        return "priority"
+    if "flex" in combined:
+        return "flex"
+    if "batch" in combined:
+        return "batch"
+    return "standard"
+
+
+def _aws_scope_variant(*values):
+    combined = " ".join(norm(v).lower() for v in values if v)
+    if "global" in combined:
+        return "global"
+    if "regional cris" in combined or "_geo" in combined:
+        return "regional-cris"
+    if "regional" in combined:
+        return "regional"
+    return None
+
+
+def parse_aws_bedrock(pricing_doc):
+    products = pricing_doc.get("products", {})
+    on_demand = pricing_doc.get("terms", {}).get("OnDemand", {})
+    rows_out = []
+
+    for sku, product in products.items():
+        attrs = product.get("attributes", {})
+        service_name = _aws_model_name(attrs.get("servicename"))
+        usagetype = norm(attrs.get("usagetype"))
+        if not service_name or not usagetype:
+            continue
+
+        component, cache_variant = _aws_component_and_variant(usagetype)
+        if component is None:
+            continue
+
+        term_group = on_demand.get(sku, {})
+        for offer in term_group.values():
+            for dimension in offer.get("priceDimensions", {}).values():
+                unit = norm(dimension.get("unit"))
+                if unit.lower() != "1m tokens":
+                    continue
+
+                price = money(dimension.get("pricePerUnit", {}).get("USD"))
+                if price is None:
+                    continue
+
+                description = norm(dimension.get("description"))
+                service_tier = _aws_service_tier(usagetype, description)
+                if service_tier == "reserved":
+                    continue
+
+                if component == "cache_write":
+                    billing_variant = cache_variant
+                else:
+                    billing_variant = _aws_scope_variant(usagetype, description)
+
+                rows_out.append(
+                    make_row(
+                        model_id=slugify(service_name),
+                        display_name=service_name,
+                        provider_id="aws",
+                        component=component,
+                        price=price,
+                        unit="per_1M_tokens",
+                        service_tier=service_tier,
+                        category="bedrock",
+                        modality=infer_modality(service_name),
+                        billing_variant=billing_variant,
+                    )
+                )
+
+    return rows_out
+
+
+def _xai_prompt_threshold_variant(model_label):
+    m = re.search(r"\((<|≥)\s*([0-9]+k?)\s*prompt tokens\)", model_label, flags=re.IGNORECASE)
+    if not m:
+        return None
+    side = "lt" if m.group(1) == "<" else "gte"
+    threshold = m.group(2).lower()
+    return f"{side}-{threshold}-prompt"
+
+
+def _xai_base_model_name(model_label):
+    return re.sub(
+        r"\s*\((<|≥)\s*[0-9]+k?\s*prompt tokens\)\s*",
+        "",
+        model_label,
+        flags=re.IGNORECASE,
+    ).strip()
+
+
+def parse_xai(html):
+    soup = BeautifulSoup(html, "html.parser")
+    rows_out = []
+
+    def append_text_row(*, model_name, context_window, input_price, cached_price, output_price, billing_variant):
+        is_active = "deprecated" not in model_name.lower()
+        if input_price is not None:
+            rows_out.append(
+                make_row(
+                    model_id=slugify(model_name),
+                    display_name=model_name,
+                    provider_id="xai",
+                    component="input",
+                    price=input_price,
+                    unit="per_1M_tokens",
+                    service_tier="standard",
+                    context_window=context_window,
+                    modality="text",
+                    category="text_api",
+                    billing_variant=billing_variant,
+                    is_active=is_active,
+                )
+            )
+        if cached_price is not None:
+            rows_out.append(
+                make_row(
+                    model_id=slugify(model_name),
+                    display_name=model_name,
+                    provider_id="xai",
+                    component="cached_input",
+                    price=cached_price,
+                    unit="per_1M_tokens",
+                    service_tier="standard",
+                    context_window=context_window,
+                    modality="text",
+                    category="text_api",
+                    billing_variant=billing_variant,
+                    is_active=is_active,
+                )
+            )
+        if output_price is not None:
+            rows_out.append(
+                make_row(
+                    model_id=slugify(model_name),
+                    display_name=model_name,
+                    provider_id="xai",
+                    component="output",
+                    price=output_price,
+                    unit="per_1M_tokens",
+                    service_tier="standard",
+                    context_window=context_window,
+                    modality="text",
+                    category="text_api",
+                    billing_variant=billing_variant,
+                    is_active=is_active,
+                )
+            )
+
+    for table in soup.find_all("table"):
+        mat = table_matrix(table)
+        if len(mat) < 2:
+            continue
+
+        # Current xAI docs structure:
+        # ["Model", "Context", "Short context", "Long context"]
+        # ["Input", "Cached", "Output", "Input", "Cached", "Output"]
+        if (
+            len(mat) >= 3
+            and len(mat[0]) >= 4
+            and mat[0][0].lower() == "model"
+            and mat[0][1].lower() == "context"
+            and "short context" in mat[0][2].lower()
+            and "long context" in mat[0][3].lower()
+            and len(mat[1]) >= 6
+        ):
+            for row in mat[2:]:
+                if len(row) < 8:
+                    continue
+                model_label = norm(row[0])
+                if not model_label or "grok" not in model_label.lower():
+                    continue
+
+                base_name = re.sub(
+                    r"\s+Long context.*$",
+                    "",
+                    model_label,
+                    flags=re.IGNORECASE,
+                ).strip()
+                context_window = norm(row[1]) or None
+
+                append_text_row(
+                    model_name=base_name,
+                    context_window=context_window,
+                    input_price=money(row[2]),
+                    cached_price=money(row[3]),
+                    output_price=money(row[4]),
+                    billing_variant="lt-200k-prompt",
+                )
+                append_text_row(
+                    model_name=base_name,
+                    context_window=context_window,
+                    input_price=money(row[5]),
+                    cached_price=money(row[6]),
+                    output_price=money(row[7]),
+                    billing_variant="gte-200k-prompt",
+                )
+            continue
+
+        # Fallback parser for single-row header table shapes.
+        headers = [h.lower() for h in mat[0]]
+        col_model = next((i for i, h in enumerate(headers) if h == "model"), None)
+        col_context = next((i for i, h in enumerate(headers) if h == "context"), None)
+        col_input = next((i for i, h in enumerate(headers) if "input / 1m tokens" in h), None)
+        col_cached = next((i for i, h in enumerate(headers) if "cached input / 1m tokens" in h), None)
+        col_output = next((i for i, h in enumerate(headers) if "output / 1m tokens" in h), None)
+
+        if col_model is None or col_input is None or col_output is None:
+            continue
+
+        for row in mat[1:]:
+            if len(row) <= col_model:
+                continue
+
+            model_label = norm(row[col_model])
+            if not model_label or "grok" not in model_label.lower():
+                continue
+
+            base_name = _xai_base_model_name(model_label)
+            billing_variant = _xai_prompt_threshold_variant(model_label)
+            context_window = row[col_context] if col_context is not None and len(row) > col_context else None
+            append_text_row(
+                model_name=base_name,
+                context_window=context_window,
+                input_price=money(row[col_input]) if len(row) > col_input else None,
+                cached_price=money(row[col_cached]) if col_cached is not None and len(row) > col_cached else None,
+                output_price=money(row[col_output]) if len(row) > col_output else None,
+                billing_variant=billing_variant,
+            )
+
+    return rows_out
 
 
 def parse_claude(html):
@@ -1493,6 +1784,16 @@ def build_pricing_doc(rows):
                 "name": "Google",
                 "pricing_source": VERTEX_URL,
             },
+            {
+                "provider_id": "aws",
+                "name": "AWS Bedrock",
+                "pricing_source": AWS_BEDROCK_FOUNDATION_MODELS_URL,
+            },
+            {
+                "provider_id": "xai",
+                "name": "xAI",
+                "pricing_source": XAI_URL,
+            },
         ],
         "pricing": rows,
     }
@@ -1557,19 +1858,19 @@ def evaluate_sanity(rows, old_rows, old_schema_version):
     }
 
 
-def parse_with_retry(provider_id, url, parser):
-    html = http_get(url)
-    rows = parser(html)
+def parse_with_retry(provider_id, url, parser, fetch_fn=http_get):
+    payload = fetch_fn(url)
+    rows = parser(payload)
     attempts = [len(rows)]
     floor = MIN_COMPONENT_ROWS.get(provider_id, 0)
 
     if floor and len(rows) < floor:
-        retry_html = http_get(url)
-        retry_rows = parser(retry_html)
+        retry_payload = fetch_fn(url)
+        retry_rows = parser(retry_payload)
         attempts.append(len(retry_rows))
         if len(retry_rows) >= len(rows):
             rows = retry_rows
-            html = retry_html
+            payload = retry_payload
 
     diagnostics = {
         "component_counts": attempts,
@@ -1577,7 +1878,7 @@ def parse_with_retry(provider_id, url, parser):
         "component_floor": floor,
         "retry_used": len(attempts) > 1,
     }
-    return rows, diagnostics, html
+    return rows, diagnostics, payload
 
 
 def remediate_with_previous_rows(rows, old_rows, old_schema_version):
@@ -1619,14 +1920,21 @@ def main():
 
     try:
         provider_specs = [
-            ("anthropic", CLAUDE_URL, parse_claude),
-            ("google", VERTEX_URL, parse_vertex),
-            ("openai", OPENAI_URL, parse_openai),
+            ("anthropic", CLAUDE_URL, parse_claude, http_get),
+            ("google", VERTEX_URL, parse_vertex, http_get),
+            ("openai", OPENAI_URL, parse_openai, http_get),
+            ("aws", AWS_BEDROCK_FOUNDATION_MODELS_URL, parse_aws_bedrock, http_get_json),
+            ("xai", XAI_URL, parse_xai, http_get),
         ]
 
         component_rows = []
-        for provider_id, url, parser in provider_specs:
-            rows, diagnostics, _html = parse_with_retry(provider_id, url, parser)
+        for provider_id, url, parser, fetch_fn in provider_specs:
+            rows, diagnostics, _payload = parse_with_retry(
+                provider_id,
+                url,
+                parser,
+                fetch_fn=fetch_fn,
+            )
             parse_diagnostics[provider_id] = diagnostics
             component_rows.extend(rows)
 

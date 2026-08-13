@@ -23,6 +23,18 @@ body {
 
 a { color: var(--cofair-color-primary); }
 
+/* Requested provider tinting: AWS (light blue), xAI (grey). */
+:root,
+[data-theme="light"] {
+  --cofair-dataviz-4: #9ec5e5;
+  --cofair-dataviz-6: #8c939d;
+}
+
+[data-theme="dark"] {
+  --cofair-dataviz-4: #77a9d8;
+  --cofair-dataviz-6: #b3bac4;
+}
+
 /* ── Page header (mirrors @cofair/ui PageHeader) ───────────────────────── */
 
 .page-header {
@@ -254,6 +266,16 @@ a { color: var(--cofair-color-primary); }
 /* ── Table extras ──────────────────────────────────────────────────────── */
 
 .cofair-table__td, .cofair-table__th { white-space: nowrap; }
+.cofair-table__th--num { text-align: right; }
+
+.archive-col-name {
+  width: 20rem;
+  max-width: 20rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.archive-col-first-price[hidden] { display: none; }
 
 .delta--up { color: var(--cofair-color-danger); }
 .delta--down { color: var(--cofair-color-success); }

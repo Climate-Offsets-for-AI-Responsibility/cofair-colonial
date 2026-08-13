@@ -23,7 +23,7 @@
     })();
   </script>
   <title>AI model pricing — historical trends · COFAIR</title>
-  <meta name="description" content="Daily list-price snapshots for Anthropic, OpenAI, and Google Vertex models — the upstream valuation source for COFAIR attribution." />
+  <meta name="description" content="Daily list-price snapshots for major AI model platforms — the upstream valuation source for COFAIR attribution." />
   <link rel="canonical" href="https://cofair.org/pricing/" />
   <meta property="og:url" content="https://cofair.org/pricing/" />
   <link rel="icon" href="vendor/cofair-color-logo.svg" />
@@ -41,7 +41,6 @@
     </a>
     <div>
       <h1 class="cofair-heading cofair-heading--2">AI model pricing</h1>
-      <p class="cofair-text cofair-text--small cofair-text--muted" id="rangeSummary">Loading…</p>
     </div>
   </header>
 
@@ -121,28 +120,20 @@
             <ul class="chart-legend__list" id="trendLegendList"></ul>
           </aside>
         </div>
-        <p class="cofair-text cofair-text--xs cofair-text--muted hint">
-          Hover a date to reorder the legend by price that day. Hover a node to highlight its legend row.
-          Click a legend entry to hide or show a model.
-          The y-axis defaults to log because prices span roughly six orders of magnitude.
-        </p>
       </div>
 
       <div class="cofair-tabs__panel" role="tabpanel" id="panel-archive"
            aria-labelledby="tab-archive" data-panel="archive" hidden>
         <div class="controls">
+          <fieldset class="control-group">
+            <legend class="cofair-label">Providers</legend>
+            <div class="chip-row" id="archiveProviderFilter"></div>
+          </fieldset>
           <div class="cofair-field control-group control-group--wide">
             <label class="cofair-label" for="archiveFilter">Show</label>
             <select class="cofair-select" id="archiveFilter">
-              <option value="deprecated" selected>Models flagged deprecated or inactive in the current snapshot</option>
-              <option value="disappeared">Models that disappeared from the feed</option>
-              <option value="all">All non-active history</option>
-            </select>
-          </div>
-          <div class="cofair-field control-group">
-            <label class="cofair-label" for="archiveProvider">Provider</label>
-            <select class="cofair-select" id="archiveProvider">
-              <option value="">All</option>
+              <option value="deprecated">Models flagged deprecated/retired</option>
+              <option value="all" selected>All non-active history</option>
             </select>
           </div>
         </div>
@@ -152,15 +143,15 @@
             <table class="cofair-table cofair-table--striped">
               <thead class="cofair-table__head">
                 <tr class="cofair-table__row">
-                  <th class="cofair-table__th" scope="col">Provider</th>
-                  <th class="cofair-table__th" scope="col">Model</th>
-                  <th class="cofair-table__th" scope="col">Display name</th>
+                  <th class="cofair-table__th archive-col-name" scope="col">Display name</th>
                   <th class="cofair-table__th" scope="col">First seen</th>
                   <th class="cofair-table__th" scope="col">Last active</th>
-                  <th class="cofair-table__th" scope="col">Deprecated on</th>
+                  <th class="cofair-table__th" scope="col">Flagged on</th>
                   <th class="cofair-table__th" scope="col">Last seen</th>
-                  <th class="cofair-table__th" scope="col">Last input</th>
-                  <th class="cofair-table__th" scope="col">Last output</th>
+                  <th class="cofair-table__th cofair-table__th--num" scope="col">Last input</th>
+                  <th class="cofair-table__th cofair-table__th--num archive-col-first-price" scope="col" hidden>First input</th>
+                  <th class="cofair-table__th cofair-table__th--num" scope="col">Last output</th>
+                  <th class="cofair-table__th cofair-table__th--num archive-col-first-price" scope="col" hidden>First output</th>
                 </tr>
               </thead>
               <tbody class="cofair-table__body" id="archiveBody"></tbody>
@@ -171,21 +162,23 @@
 
       <div class="cofair-tabs__panel" role="tabpanel" id="panel-changes"
            aria-labelledby="tab-changes" data-panel="changes" hidden>
-        <p class="cofair-text cofair-text--xs cofair-text--muted hint">
-          Every detected price change for input, output, or cached input across the snapshot window.
-        </p>
+        <div class="controls">
+          <fieldset class="control-group">
+            <legend class="cofair-label">Providers</legend>
+            <div class="chip-row" id="changesProviderFilter"></div>
+          </fieldset>
+        </div>
         <div class="cofair-card">
           <div class="cofair-table__scroll">
             <table class="cofair-table cofair-table--striped">
               <thead class="cofair-table__head">
                 <tr class="cofair-table__row">
                   <th class="cofair-table__th" scope="col">Date</th>
-                  <th class="cofair-table__th" scope="col">Provider</th>
                   <th class="cofair-table__th" scope="col">Model</th>
                   <th class="cofair-table__th" scope="col">Field</th>
-                  <th class="cofair-table__th" scope="col">From</th>
-                  <th class="cofair-table__th" scope="col">To</th>
-                  <th class="cofair-table__th" scope="col">Change</th>
+                  <th class="cofair-table__th cofair-table__th--num" scope="col">From</th>
+                  <th class="cofair-table__th cofair-table__th--num" scope="col">To</th>
+                  <th class="cofair-table__th cofair-table__th--num" scope="col">Change</th>
                 </tr>
               </thead>
               <tbody class="cofair-table__body" id="changesBody"></tbody>
@@ -196,12 +189,5 @@
     </div>
   </main>
 
-  <footer class="page-footer">
-    <p class="cofair-text cofair-text--xs cofair-text--muted">
-      Daily list-price snapshots from
-      <a class="page-footer__link" href="https://github.com/Climate-Offsets-for-AI-Responsibility/cofair-colonial">cofair-colonial</a>.
-      Upstream valuation source for COFAIR attribution.
-    </p>
-  </footer>
 </body>
 </html>

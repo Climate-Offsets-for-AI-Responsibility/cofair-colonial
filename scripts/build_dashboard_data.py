@@ -127,6 +127,10 @@ def _name_marks_deprecation(name: str) -> bool:
     return any(h in n for h in DEPRECATED_HINTS)
 
 
+def _row_marks_deprecation(row: dict) -> bool:
+    return (not row.get("is_active", True)) or _name_marks_deprecation(row.get("display_name"))
+
+
 def build_models(series: list[dict], schema_by_date: dict[str, str]) -> list[dict]:
     """Per pricing_id lifecycle summary for the archive view.
 
@@ -155,16 +159,11 @@ def build_models(series: list[dict], schema_by_date: dict[str, str]) -> list[dic
         first = rows[0]
         last = rows[-1]
         active_dates = [r["date"] for r in rows if r["is_active"]]
-        inactive_dates = [r["date"] for r in rows if not r["is_active"]]
+        flagged_dates = [r["date"] for r in rows if _row_marks_deprecation(r)]
 
         last_active = max(active_dates) if active_dates else None
-        # first date where the model appears flagged inactive after last_active
-        deprecated_on = None
-        if last_active:
-            later_inactive = [d for d in inactive_dates if d > last_active]
-            deprecated_on = min(later_inactive) if later_inactive else None
-        elif inactive_dates:
-            deprecated_on = min(inactive_dates)
+        # first date where the row is explicitly flagged as inactive/deprecated/retired
+        deprecated_on = min(flagged_dates) if flagged_dates else None
 
         currently_present = (last["date"] == latest_date)
         currently_active = currently_present and last["is_active"]

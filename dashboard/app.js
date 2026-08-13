@@ -29,14 +29,26 @@ const SERIES_BADGE = [
   "",
 ];
 
+// Keep stable provider tinting across refreshes regardless of provider sort.
+const PREFERRED_PROVIDER_SERIES = new Map([
+  ["anthropic", 0],
+  ["openai", 1],
+  ["google", 2],
+  ["aws", 3],  // light blue (overridden token)
+  ["xai", 5],  // grey (overridden token)
+]);
+
 const state = {
   series: [],          // raw rows
   models: [],          // lifecycle
   index: null,
   providers: new Set(),
   selectedProviders: new Set(),
+  archiveSelectedProviders: new Set(),
+  changesSelectedProviders: new Set(),
   modalities: new Set(),
   selectedModalities: new Set(),
+  firstPricesByPricingId: new Map(),
   providerSeries: new Map(), // provider_id → 0-based data-viz step
   chart: null,
   hoverDate: null,
@@ -124,12 +136,85 @@ function esc(value) {
   );
 }
 
-function fmtDate(d) { return d || "—"; }
+const DATE_FMT = new Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
+const DATE_FMT_UTC = new Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
+const DATETIME_FMT = new Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+function parseDateValue(value) {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  const str = String(value);
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(str)
+    ? new Date(`${str}T00:00:00Z`)
+    : new Date(str);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function fmtDate(value) {
+  if (!value) return "—";
+  const str = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    const parsedUtc = new Date(`${str}T00:00:00Z`);
+    return Number.isNaN(parsedUtc.getTime()) ? str : DATE_FMT_UTC.format(parsedUtc);
+  }
+  const parsed = parseDateValue(value);
+  return parsed ? DATE_FMT.format(parsed) : str;
+}
+
+function fmtDateTime(value) {
+  const parsed = parseDateValue(value);
+  return parsed ? DATETIME_FMT.format(parsed) : (value || "—");
+}
 
 function providerBadge(providerId) {
   const step = state.providerSeries.get(providerId) ?? 0;
   const variant = SERIES_BADGE[step % SERIES_BADGE.length];
   return `<span class="cofair-badge ${variant}">${esc(providerId)}</span>`;
+}
+
+function assignProviderSeries() {
+  state.providerSeries = new Map();
+  const used = new Set();
+
+  for (const [providerId, step] of PREFERRED_PROVIDER_SERIES.entries()) {
+    if (!state.providers.has(providerId)) continue;
+    const normalized = step % SERIES_COUNT;
+    state.providerSeries.set(providerId, normalized);
+    used.add(normalized);
+  }
+
+  let next = 0;
+  for (const providerId of [...state.providers].sort()) {
+    if (state.providerSeries.has(providerId)) continue;
+
+    let step = next % SERIES_COUNT;
+    if (used.size < SERIES_COUNT) {
+      while (used.has(step)) {
+        next += 1;
+        step = next % SERIES_COUNT;
+      }
+      used.add(step);
+    }
+
+    state.providerSeries.set(providerId, step);
+    next += 1;
+  }
 }
 
 function emptyRow(colspan, title, body) {
@@ -160,16 +245,35 @@ async function loadData() {
     state.modalities.add(effectiveModality(r.modality));
   }
   state.selectedProviders = new Set(state.providers);
+  state.archiveSelectedProviders = new Set(state.providers);
+  state.changesSelectedProviders = new Set(state.providers);
   state.selectedModalities = new Set(state.modalities);
-  [...state.providers].sort().forEach((pid, i) => state.providerSeries.set(pid, i));
+  assignProviderSeries();
+
+  const byPricingId = new Map();
+  const sorted = [...series].sort((a, b) => a.date.localeCompare(b.date));
+  for (const row of sorted) {
+    if (!byPricingId.has(row.pricing_id)) {
+      byPricingId.set(row.pricing_id, {
+        firstInput: null,
+        firstOutput: null,
+      });
+    }
+    const acc = byPricingId.get(row.pricing_id);
+    if (acc.firstInput == null && row.input_price != null) acc.firstInput = row.input_price;
+    if (acc.firstOutput == null && row.output_price != null) acc.firstOutput = row.output_price;
+  }
+  state.firstPricesByPricingId = byPricingId;
 }
 
 // ---- header / stats --------------------------------------------------------
 
 function renderHeader() {
   const i = state.index;
-  document.getElementById("rangeSummary").textContent =
-    `${i.snapshot_count} daily snapshots · ${fmtDate(i.first_date)} → ${fmtDate(i.last_date)} · regenerated ${i.generated_at}`;
+  const rangeSummary = document.getElementById("rangeSummary");
+  if (!rangeSummary) return;
+  rangeSummary.textContent =
+    `${i.snapshot_count} daily snapshots · ${fmtDate(i.first_date)} → ${fmtDate(i.last_date)} · regenerated ${fmtDateTime(i.generated_at)}`;
 }
 
 // ---- provider filter chips -------------------------------------------------
@@ -192,6 +296,54 @@ function renderProviderChips() {
       else state.selectedProviders.add(pid);
       chip.setAttribute("aria-pressed", String(!on));
       renderTrendChart();
+    });
+    el.appendChild(chip);
+  }
+}
+
+function renderArchiveProviderChips() {
+  const el = document.getElementById("archiveProviderFilter");
+  el.innerHTML = "";
+  for (const pid of [...state.providers].sort()) {
+    const step = state.providerSeries.get(pid) ?? 0;
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = `chip cofair-badge ${SERIES_BADGE[step % SERIES_BADGE.length]}`;
+    chip.dataset.provider = pid;
+    chip.dataset.series = String((step % SERIES_COUNT) + 1);
+    const on = state.archiveSelectedProviders.has(pid);
+    chip.setAttribute("aria-pressed", String(on));
+    chip.innerHTML = `<span class="chip__swatch"></span>${esc(pid)}`;
+    chip.addEventListener("click", () => {
+      const selected = state.archiveSelectedProviders.has(pid);
+      if (selected) state.archiveSelectedProviders.delete(pid);
+      else state.archiveSelectedProviders.add(pid);
+      chip.setAttribute("aria-pressed", String(!selected));
+      renderArchive();
+    });
+    el.appendChild(chip);
+  }
+}
+
+function renderChangesProviderChips() {
+  const el = document.getElementById("changesProviderFilter");
+  el.innerHTML = "";
+  for (const pid of [...state.providers].sort()) {
+    const step = state.providerSeries.get(pid) ?? 0;
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = `chip cofair-badge ${SERIES_BADGE[step % SERIES_BADGE.length]}`;
+    chip.dataset.provider = pid;
+    chip.dataset.series = String((step % SERIES_COUNT) + 1);
+    const on = state.changesSelectedProviders.has(pid);
+    chip.setAttribute("aria-pressed", String(on));
+    chip.innerHTML = `<span class="chip__swatch"></span>${esc(pid)}`;
+    chip.addEventListener("click", () => {
+      const selected = state.changesSelectedProviders.has(pid);
+      if (selected) state.changesSelectedProviders.delete(pid);
+      else state.changesSelectedProviders.add(pid);
+      chip.setAttribute("aria-pressed", String(!selected));
+      renderChanges();
     });
     el.appendChild(chip);
   }
@@ -308,7 +460,7 @@ function renderLegend(chart) {
 
   if (state.hoverDate) {
     header.hidden = false;
-    header.textContent = state.hoverDate;
+    header.textContent = fmtDate(state.hoverDate);
   } else {
     header.hidden = true;
     header.textContent = "";
@@ -484,17 +636,21 @@ function renderTrendChart() {
 
 function renderArchive() {
   const filter = document.getElementById("archiveFilter").value;
-  const providerSel = document.getElementById("archiveProvider").value;
   let rows = state.models.slice();
+  const showFirstPrices = filter === "deprecated";
 
   if (filter === "deprecated") {
-    rows = rows.filter(m => m.currently_present && !m.currently_active);
-  } else if (filter === "disappeared") {
-    rows = rows.filter(m => !m.currently_present);
+    rows = rows.filter(m =>
+      m.deprecated_on || m.name_marks_deprecation || (m.currently_present && !m.currently_active),
+    );
   } else {
     rows = rows.filter(m => m.deprecated_on || !m.currently_present || m.name_marks_deprecation);
   }
-  if (providerSel) rows = rows.filter(m => m.provider_id === providerSel);
+  rows = rows.filter(m => state.archiveSelectedProviders.has(m.provider_id));
+
+  for (const cell of document.querySelectorAll(".archive-col-first-price")) {
+    cell.hidden = !showFirstPrices;
+  }
 
   rows.sort((a, b) => {
     const aKey = a.deprecated_on || a.disappeared_after || "";
@@ -505,27 +661,25 @@ function renderArchive() {
   const tbody = document.getElementById("archiveBody");
   tbody.innerHTML = rows.map(m => `
     <tr class="cofair-table__row">
-      <td class="cofair-table__td">${providerBadge(m.provider_id)}</td>
-      <td class="cofair-table__td">${esc(m.model_id)}</td>
-      <td class="cofair-table__td">${esc(m.display_name)}</td>
+      <td class="cofair-table__td archive-col-name">${esc(m.display_name)}</td>
       <td class="cofair-table__td">${esc(fmtDate(m.first_seen))}</td>
       <td class="cofair-table__td">${esc(fmtDate(m.last_active))}</td>
       <td class="cofair-table__td">${esc(fmtDate(m.deprecated_on))}</td>
-      <td class="cofair-table__td">${esc(fmtDate(m.last_seen))}</td>
+      <td class="cofair-table__td">${esc(fmtDate(m.currently_present ? null : m.last_seen))}</td>
       <td class="cofair-table__td cofair-table__td--num">${m.latest_input != null ? `$${esc(m.latest_input)}` : "—"}</td>
+      <td class="cofair-table__td cofair-table__td--num archive-col-first-price"${showFirstPrices ? "" : " hidden"}>
+        ${state.firstPricesByPricingId.get(m.pricing_id)?.firstInput != null
+          ? `$${esc(state.firstPricesByPricingId.get(m.pricing_id).firstInput)}`
+          : "—"}
+      </td>
       <td class="cofair-table__td cofair-table__td--num">${m.latest_output != null ? `$${esc(m.latest_output)}` : "—"}</td>
+      <td class="cofair-table__td cofair-table__td--num archive-col-first-price"${showFirstPrices ? "" : " hidden"}>
+        ${state.firstPricesByPricingId.get(m.pricing_id)?.firstOutput != null
+          ? `$${esc(state.firstPricesByPricingId.get(m.pricing_id).firstOutput)}`
+          : "—"}
+      </td>
     </tr>
-  `).join("") || emptyRow(9, "No matching models", "Try a different filter or provider.");
-}
-
-function populateArchiveProviderSelect() {
-  const sel = document.getElementById("archiveProvider");
-  for (const pid of [...state.providers].sort()) {
-    const opt = document.createElement("option");
-    opt.value = pid;
-    opt.textContent = pid;
-    sel.appendChild(opt);
-  }
+  `).join("") || emptyRow(showFirstPrices ? 9 : 7, "No matching models", "Try a different filter or provider.");
 }
 
 // ---- price changes ---------------------------------------------------------
@@ -569,11 +723,11 @@ function detectChanges() {
 }
 
 function renderChanges() {
-  const events = detectChanges();
+  const events = detectChanges().filter(e => state.changesSelectedProviders.has(e.provider_id));
   const tbody = document.getElementById("changesBody");
   if (!events.length) {
     tbody.innerHTML = emptyRow(
-      7,
+      6,
       "No price changes detected",
       "List prices have been stable across the whole snapshot window.",
     );
@@ -585,9 +739,8 @@ function renderChanges() {
     const dir = e.delta > 0 ? "delta--up" : "delta--down";
     return `
       <tr class="cofair-table__row">
-        <td class="cofair-table__td">${esc(e.date)}</td>
-        <td class="cofair-table__td">${providerBadge(e.provider_id)}</td>
-        <td class="cofair-table__td">${esc(e.display_name)} <span class="cofair-badge">${esc(e.model_id)}</span></td>
+        <td class="cofair-table__td">${esc(fmtDate(e.date))}</td>
+        <td class="cofair-table__td">${esc(e.display_name)}</td>
         <td class="cofair-table__td">${esc(e.field.replace(/_/g, " "))}</td>
         <td class="cofair-table__td cofair-table__td--num">$${esc(e.from)}</td>
         <td class="cofair-table__td cofair-table__td--num">$${esc(e.to)}</td>
@@ -633,7 +786,7 @@ function bindControls() {
   ["priceField", "bucket", "yScale", "activeOnly", "changedOnly"].forEach(id => {
     document.getElementById(id).addEventListener("change", renderTrendChart);
   });
-  ["archiveFilter", "archiveProvider"].forEach(id => {
+  ["archiveFilter"].forEach(id => {
     document.getElementById(id).addEventListener("change", renderArchive);
   });
 }
@@ -644,15 +797,19 @@ async function main() {
   try {
     await loadData();
   } catch (e) {
-    document.getElementById("rangeSummary").textContent =
-      "Failed to load data/*.json. Did you run scripts/build_dashboard_data.py --rebuild?";
+    const rangeSummary = document.getElementById("rangeSummary");
+    if (rangeSummary) {
+      rangeSummary.textContent =
+        "Failed to load data/*.json. Did you run scripts/build_dashboard_data.py --rebuild?";
+    }
     console.error(e);
     return;
   }
   renderHeader();
   renderProviderChips();
   renderModalityChips();
-  populateArchiveProviderSelect();
+  renderArchiveProviderChips();
+  renderChangesProviderChips();
   setupTabs();
   bindControls();
   document.getElementById("trendChart").addEventListener("mouseleave", clearChartHover);

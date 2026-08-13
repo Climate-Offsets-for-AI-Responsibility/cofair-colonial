@@ -1,6 +1,6 @@
 # cofair-colonial
 
-**List-price pipeline for the COFAIR platform.** Scrapes Anthropic, OpenAI, and Google Vertex list prices, commits dated snapshots under `pricing_history/`, and optionally loads them into Postgres/Neon for analytics.
+**List-price pipeline for the COFAIR platform.** Scrapes Anthropic, OpenAI, Google Vertex, AWS Bedrock, and xAI list prices, commits dated snapshots under `pricing_history/`, and optionally loads them into Postgres/Neon for analytics.
 
 | Consumer | How it uses this repo |
 |----------|------------------------|

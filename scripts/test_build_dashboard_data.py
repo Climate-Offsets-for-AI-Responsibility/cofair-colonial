@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_dashboard_data import include_dashboard_date, normalize_snapshot
+from build_dashboard_data import build_models, include_dashboard_date, normalize_snapshot
 
 
 class NormalizeSnapshotTest(unittest.TestCase):
@@ -87,6 +87,47 @@ class NormalizeSnapshotTest(unittest.TestCase):
     def test_dashboard_start_date_cutoff(self) -> None:
         self.assertFalse(include_dashboard_date("2026-06-16"))
         self.assertTrue(include_dashboard_date("2026-06-17"))
+
+
+class BuildModelsTest(unittest.TestCase):
+    def test_sets_deprecated_on_when_display_name_becomes_retired(self) -> None:
+        series = [
+            {
+                "date": "2026-07-24",
+                "pricing_id": "anthropic-claude-opus-4.1-standardapi",
+                "provider_id": "anthropic",
+                "model_id": "claude-opus-4.1",
+                "display_name": "Claude Opus 4.1",
+                "category": "standard_api",
+                "input_price": 15.0,
+                "output_price": 75.0,
+                "cached_input_price": 1.5,
+                "currency": "USD",
+                "is_active": True,
+            },
+            {
+                "date": "2026-07-30",
+                "pricing_id": "anthropic-claude-opus-4.1-standardapi",
+                "provider_id": "anthropic",
+                "model_id": "claude-opus-4.1",
+                "display_name": "Claude Opus 4.1 ( retired )",
+                "category": "standard_api",
+                "input_price": 15.0,
+                "output_price": 75.0,
+                "cached_input_price": 1.5,
+                "currency": "USD",
+                "is_active": True,
+            },
+        ]
+        schema_by_date = {
+            "2026-07-24": "2.1.0",
+            "2026-07-30": "2.1.0",
+        }
+
+        models = build_models(series, schema_by_date)
+        self.assertEqual(len(models), 1)
+        self.assertEqual(models[0]["deprecated_on"], "2026-07-30")
+        self.assertTrue(models[0]["currently_active"])
 
 
 if __name__ == "__main__":
