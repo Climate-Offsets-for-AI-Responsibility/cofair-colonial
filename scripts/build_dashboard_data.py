@@ -16,8 +16,10 @@ Artifacts:
 
 Filter rules: we only keep rows priced per_1M_tokens with service_tier in
 {null, "standard"} so the chart compares apples to apples across providers.
-Image/video/transcription rows are skipped (different units). The 2.x
-`pricing_id` is used as the line key; for 1.x we synthesize one.
+Image/video/transcription rows are skipped (different units). Google Vertex
+often splits modalities into separate pricing_ids — text output can be
+`output_unit=per_1M_tokens` with a null `input_unit`; those must be kept.
+The 2.x `pricing_id` is used as the line key; for 1.x we synthesize one.
 """
 from __future__ import annotations
 
@@ -36,11 +38,21 @@ SERIES_FILE = DASHBOARD_DATA_DIR / "series.json"
 MODELS_FILE = DASHBOARD_DATA_DIR / "models.json"
 INDEX_FILE = DASHBOARD_DATA_DIR / "index.json"
 
+TOKEN_UNIT = "per_1M_tokens"
+
 
 # ---- normalization ---------------------------------------------------------
 
 def _synth_pricing_id_v1(row: dict) -> str:
     return f"{row['provider_id']}-{row['model_id']}-{row.get('type','chat')}"
+
+
+def _is_token_priced_v2(row: dict) -> bool:
+    """True when any token price field uses per_1M_tokens (input and/or output)."""
+    return any(
+        row.get(key) == TOKEN_UNIT
+        for key in ("input_unit", "output_unit", "cached_input_unit", "cache_read_unit")
+    )
 
 
 def normalize_snapshot(snapshot: dict, date: str) -> list[dict]:
@@ -53,7 +65,7 @@ def normalize_snapshot(snapshot: dict, date: str) -> list[dict]:
             # 1.x: only keep chat rows priced per_1M_tokens
             if r.get("type") != "chat":
                 continue
-            if r.get("unit") != "per_1M_tokens":
+            if r.get("unit") != TOKEN_UNIT:
                 continue
             rows.append({
                 "date": date,
@@ -72,8 +84,8 @@ def normalize_snapshot(snapshot: dict, date: str) -> list[dict]:
                 "is_active": r.get("is_active", True),
             })
         else:
-            # 2.x
-            if r.get("input_unit") != "per_1M_tokens":
+            # 2.x — keep input-only, output-only, or dual token rows
+            if not _is_token_priced_v2(r):
                 continue
             tier = r.get("service_tier")
             if tier not in (None, "standard"):

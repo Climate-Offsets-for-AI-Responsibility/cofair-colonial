@@ -459,38 +459,98 @@ def parse_claude(html):
     return rows_out
 
 
+def infer_service_tier_from_headers(headers):
+    """Read Standard/Priority/Flex from column titles (tab labels are unreliable)."""
+    joined = " ".join(headers).lower()
+    if "flex/batch" in joined or "with flex" in joined:
+        return "flexbatch"
+    if "priority" in joined:
+        return "priority"
+    # "Price … with Batch API" is a Standard table that also exposes batch cells
+    if "batch api" in joined or "200k" in joined or "1m" in joined or "token" in joined:
+        return "standard"
+    return None
+
+
+def _vertex_context_window(header):
+    header_l = header.lower()
+    # Order matters: check <= before bare < / >
+    if "<= 200k" in header_l or "<=200k" in header_l or "=< 200k" in header_l:
+        return "<=200k"
+    if "> 200k" in header_l or ">200k" in header_l:
+        return ">200k"
+    return None
+
+
 def parse_vertex_model_tables(table, service_tier, category):
+    """Parse Gemini model/type token tables.
+
+    Current Vertex markup puts Model + Type (+ optional Region) on one row and
+    fill-down blanks for continuations. Older markup used a model-only banner
+    row, then Type labels in column 0 — both shapes are accepted.
+    """
     mat = table_matrix(table)
     if len(mat) < 2:
         return []
 
     headers = [header.lower() for header in mat[0]]
-    if not headers or headers[0] != "model" or len(headers) < 3 or headers[1] != "type":
+    # Require Type as column 2 — excludes "Model / Feature / Type" modality tables.
+    if not headers or headers[0] != "model" or headers[1] != "type":
         return []
+
+    header_tier = infer_service_tier_from_headers(headers)
+    if header_tier:
+        service_tier = header_tier
+
+    type_idx = headers.index("type")
+    region_idx = headers.index("region") if "region" in headers else None
+    price_start = max(type_idx + 1, (region_idx + 1) if region_idx is not None else 0)
 
     rows_out = []
     current_model = None
+    current_label = None
 
     for row in mat[1:]:
         if not row:
             continue
 
-        if "gemini" in row[0].lower() and (len(row) == 1 or len(row) > 4):
+        # Banner row (legacy): model name alone
+        if row[0] and "gemini" in row[0].lower() and len(row) == 1:
             current_model = norm(row[0])
+            current_label = None
             continue
+
+        if row[0] and "gemini" in row[0].lower():
+            current_model = norm(row[0])
 
         if not current_model:
             continue
 
-        label = norm(row[0])
+        if region_idx is not None and region_idx < len(row):
+            region = norm(row[region_idx]).lower()
+            if region and "non-global" in region:
+                continue
+
+        label = ""
+        if type_idx < len(row) and row[type_idx] and money(row[type_idx]) is None:
+            label = norm(row[type_idx])
+            current_label = label
+        elif row[0] and "gemini" not in row[0].lower() and money(row[0]) is None:
+            # Legacy: type/price label lived in column 0
+            label = norm(row[0])
+            current_label = label
+        else:
+            label = current_label or ""
+
         if not label:
             continue
 
-        model_id = slugify(current_model)
-        component = "price"
-        modality = infer_modality(label)
-
         label_l = label.lower()
+        # Skip modality-based reference rows — token tables only.
+        if any(marker in label_l for marker in ("$/m char", "$/image", "$/sec", "per image", "per second")):
+            continue
+
+        modality = infer_modality(label)
         if "cached input" in label_l:
             component = "cached_input"
         elif "input" in label_l:
@@ -502,24 +562,30 @@ def parse_vertex_model_tables(table, service_tier, category):
         else:
             component = slugify(label_l) or "price"
 
-        for header_idx, header in enumerate(headers[2:], start=2):
-            row_idx = header_idx - 1
-            if row_idx >= len(row):
+        model_id = slugify(current_model)
+        # Current markup: row width matches headers. Legacy data rows omit the
+        # Model column, so price cells are shifted one left vs headers.
+        shifted = len(row) == len(headers) - 1
+
+        for header_idx in range(price_start, len(headers)):
+            row_idx = header_idx - 1 if shifted else header_idx
+            if row_idx < 0 or row_idx >= len(row):
                 continue
 
+            header = headers[header_idx]
             price = money(row[row_idx])
             if price is None:
                 continue
 
-            context_window = None
-            if "<= 200k" in header or "<=200k" in header:
-                context_window = "<=200k"
-            elif "> 200k" in header or ">200k" in header:
-                context_window = ">200k"
-
-            component_name = component
-            if "cached input" in header:
-                component_name = "cached_input"
+            context_window = _vertex_context_window(header)
+            component_name = "cached_input" if "cached input" in header else component
+            cell_tier = service_tier
+            if "batch api" in header:
+                cell_tier = "batch"
+            elif "priority" in header:
+                cell_tier = "priority"
+            elif "flex/batch" in header or "with flex" in header:
+                cell_tier = "flexbatch"
 
             rows_out.append(
                 make_row(
@@ -529,7 +595,7 @@ def parse_vertex_model_tables(table, service_tier, category):
                     component=component_name,
                     price=price,
                     unit="per_1M_tokens",
-                    service_tier=service_tier,
+                    service_tier=cell_tier,
                     context_window=context_window,
                     modality=modality,
                     category=category,
@@ -723,20 +789,43 @@ def parse_vertex(html):
     rows_out = []
 
     for table in soup.find_all("table"):
-        service_tier = exact_previous_text(table, VERTEX_SERVICE_TIERS)
-        model_group = exact_previous_text(table, VERTEX_MODEL_GROUPS.keys())
+        heading = previous_heading_text(table)
+        # Modality-based ($/char, $/image, $/sec) tables are reference-only.
+        if heading == "Modality-based pricing":
+            continue
 
-        if service_tier and model_group:
+        mat = table_matrix(table)
+        headers = [h.lower() for h in mat[0]] if mat else []
+        header_tier = infer_service_tier_from_headers(headers) if headers else None
+
+        model_group = exact_previous_text(table, VERTEX_MODEL_GROUPS.keys())
+        if not model_group and heading in VERTEX_MODEL_GROUPS:
+            model_group = heading
+
+        # Prefer header-encoded tier; tab labels currently resolve to Flex/Batch
+        # even for the Standard pane.
+        service_tier = header_tier
+        if not service_tier:
+            tier_text = exact_previous_text(table, VERTEX_SERVICE_TIERS)
+            service_tier = slugify(tier_text) if tier_text else None
+
+        looks_like_gemini_table = (
+            bool(headers)
+            and headers[0] == "model"
+            and headers[1] == "type"
+            and bool(model_group)
+        )
+
+        if looks_like_gemini_table:
             rows_out.extend(
                 parse_vertex_model_tables(
                     table=table,
-                    service_tier=slugify(service_tier),
+                    service_tier=service_tier or "standard",
                     category=VERTEX_MODEL_GROUPS[model_group],
                 )
             )
             continue
 
-        heading = previous_heading_text(table)
         if heading == "Token-based pricing":
             rows_out.extend(parse_vertex_gemini_2_token_table(table))
             continue
