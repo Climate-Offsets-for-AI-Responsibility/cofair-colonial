@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_dashboard_data import normalize_snapshot
+from build_dashboard_data import include_dashboard_date, normalize_snapshot
 
 
 class NormalizeSnapshotTest(unittest.TestCase):
@@ -83,6 +83,10 @@ class NormalizeSnapshotTest(unittest.TestCase):
         self.assertEqual(rows[0]["pricing_id"], "google-gemini-2.5-flash-standard-200k-text-gemini25")
         self.assertEqual(rows[0]["output_price"], 2.5)
         self.assertIsNone(rows[0]["input_price"])
+
+    def test_dashboard_start_date_cutoff(self) -> None:
+        self.assertFalse(include_dashboard_date("2026-06-16"))
+        self.assertTrue(include_dashboard_date("2026-06-17"))
 
 
 if __name__ == "__main__":

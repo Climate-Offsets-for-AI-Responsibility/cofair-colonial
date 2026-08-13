@@ -19,6 +19,9 @@ Filter rules: we only keep rows priced per_1M_tokens with service_tier in
 Image/video/transcription rows are skipped (different units). Google Vertex
 often splits modalities into separate pricing_ids — text output can be
 `output_unit=per_1M_tokens` with a null `input_unit`; those must be kept.
+The historical pre-2026-06-17 snapshots are not granular enough to trust for
+chart trend analysis (added in a one-time archive import), so dashboard
+artifacts intentionally begin at 2026-06-17.
 The 2.x `pricing_id` is used as the line key; for 1.x we synthesize one.
 """
 from __future__ import annotations
@@ -39,6 +42,7 @@ MODELS_FILE = DASHBOARD_DATA_DIR / "models.json"
 INDEX_FILE = DASHBOARD_DATA_DIR / "index.json"
 
 TOKEN_UNIT = "per_1M_tokens"
+DASHBOARD_START_DATE = "2026-06-17"
 
 
 # ---- normalization ---------------------------------------------------------
@@ -107,6 +111,10 @@ def normalize_snapshot(snapshot: dict, date: str) -> list[dict]:
                 "is_active": r.get("is_active", True),
             })
     return rows
+
+
+def include_dashboard_date(date: str) -> bool:
+    return date >= DASHBOARD_START_DATE
 
 
 # ---- aggregation -----------------------------------------------------------
@@ -219,6 +227,8 @@ def cmd_rebuild() -> int:
 
     for path in snapshot_files:
         date = path.stem  # YYYY-MM-DD
+        if not include_dashboard_date(date):
+            continue
         try:
             snap = json.loads(path.read_text())
         except json.JSONDecodeError as e:
@@ -249,6 +259,9 @@ def cmd_append(date: str | None) -> int:
     DASHBOARD_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     date = date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if not include_dashboard_date(date):
+        print(f"skip {date}: before dashboard start date {DASHBOARD_START_DATE}")
+        return 0
 
     snap = json.loads(LIVE_FILE.read_text())
     new_rows = normalize_snapshot(snap, date)
@@ -257,6 +270,7 @@ def cmd_append(date: str | None) -> int:
         series = json.loads(SERIES_FILE.read_text())
     else:
         series = []
+    series = [r for r in series if include_dashboard_date(r["date"])]
 
     # replace any existing rows for `date` (idempotent re-runs)
     series = [r for r in series if r["date"] != date]
@@ -265,7 +279,11 @@ def cmd_append(date: str | None) -> int:
 
     if INDEX_FILE.exists():
         prior_index = json.loads(INDEX_FILE.read_text())
-        schema_by_date = prior_index.get("schema_versions", {})
+        schema_by_date = {
+            d: schema
+            for d, schema in prior_index.get("schema_versions", {}).items()
+            if include_dashboard_date(d)
+        }
     else:
         schema_by_date = {}
     schema_by_date[date] = snap.get("meta", {}).get("schema_version", "")

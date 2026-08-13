@@ -36,7 +36,7 @@ const state = {
   providers: new Set(),
   selectedProviders: new Set(),
   modalities: new Set(),
-  selectedModalities: new Set(["text"]),
+  selectedModalities: new Set(),
   providerSeries: new Map(), // provider_id → 0-based data-viz step
   chart: null,
   hoverDate: null,
@@ -160,6 +160,7 @@ async function loadData() {
     state.modalities.add(effectiveModality(r.modality));
   }
   state.selectedProviders = new Set(state.providers);
+  state.selectedModalities = new Set(state.modalities);
   [...state.providers].sort().forEach((pid, i) => state.providerSeries.set(pid, i));
 }
 
@@ -169,26 +170,6 @@ function renderHeader() {
   const i = state.index;
   document.getElementById("rangeSummary").textContent =
     `${i.snapshot_count} daily snapshots · ${fmtDate(i.first_date)} → ${fmtDate(i.last_date)} · regenerated ${i.generated_at}`;
-
-  const activeModels = state.models.filter(m => m.currently_active).length;
-  const inactiveModels = state.models.filter(m => m.currently_present && !m.currently_active).length;
-  const deprecatedInWindow = state.models.filter(m => m.deprecated_on).length;
-
-  const stats = [
-    { label: "Providers", value: state.providers.size },
-    { label: "Active models", value: activeModels },
-    { label: "Inactive (current)", value: inactiveModels },
-    { label: "Deprecated in window", value: deprecatedInWindow },
-    { label: "Snapshots", value: i.snapshot_count },
-  ];
-  document.getElementById("stats").innerHTML = stats.map(s =>
-    `<div class="cofair-card stat">
-       <div class="cofair-card__body stat__body">
-         <div class="cofair-text cofair-text--xs cofair-text--muted stat__label">${esc(s.label)}</div>
-         <div class="stat__value">${esc(s.value)}</div>
-       </div>
-     </div>`
-  ).join("");
 }
 
 // ---- provider filter chips -------------------------------------------------

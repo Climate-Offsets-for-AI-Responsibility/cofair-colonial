@@ -66,6 +66,17 @@ Manual scrape only:
 python3 scrape_pricing.py
 ```
 
+### Scrape resilience process
+
+When provider pages redesign (moved tables, renamed columns, new tab markup), `scrape_pricing.py` now does a staged recovery before failing:
+
+1. **Provider-level retry:** each provider parser reruns once when component rows are below a provider floor.
+2. **Sanity evaluation:** total + per-provider thresholds are checked against both absolute floors and the prior snapshot ratio.
+3. **Fallback remediation:** if a provider collapses, the run attempts to carry forward that provider from the last good `pricing.json` instead of dropping it.
+4. **Diagnostics artifact:** `run_report.json` now includes provider component counts, sanity issues, and whether remediation was applied.
+
+If sanity still fails after remediation, the run exits non-zero so CI still alerts.
+
 ---
 
 ## `pricing_history/` (exchange contract)
@@ -90,6 +101,8 @@ Exchange matches `occurred_at` → snapshot date → `(provider_id, model_id)` �
 python3 scripts/build_dashboard_data.py --rebuild   # from all of pricing_history/
 python3 -m http.server 8787 --directory dashboard   # then open http://127.0.0.1:8787
 ```
+
+Dashboard artifacts intentionally start at `2026-06-17` (`DASHBOARD_START_DATE`) because the earlier archive import does not have reliable snapshot granularity.
 
 The page is built on the **COFAIR design system**. Because it has no bundler, it consumes `@cofair/ui`'s compiled stylesheet and uses the same `cofair-*` classes. Those copies live in `dashboard/vendor/` (stylesheet, IBM Plex subset, brand marks, Chart.js) and are **generated — never edit them**:
 

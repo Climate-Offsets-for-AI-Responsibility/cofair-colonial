@@ -4,6 +4,7 @@ import re
 import sys
 import time
 import uuid
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -43,6 +44,19 @@ VERTEX_MODEL_GROUPS = {
     "Gemini 3": "gemini_3",
     "Gemini 2.5": "gemini_2_5",
     "Gemini 2.0": "gemini_2_0",
+}
+
+MIN_TOTAL_TIERS = 100
+MIN_PROVIDER_TIERS = {
+    "anthropic": 10,
+    "openai": 25,
+    "google": 50,
+}
+MIN_PROVIDER_RATIO = 0.45
+MIN_COMPONENT_ROWS = {
+    "anthropic": 30,
+    "openai": 90,
+    "google": 120,
 }
 
 
@@ -1484,16 +1498,138 @@ def build_pricing_doc(rows):
     }
 
 
+def _pricing_sort_key(row):
+    return (
+        row["provider_id"],
+        row["display_name"].lower(),
+        row["component"],
+        row.get("service_tier") or "",
+        row.get("context_window") or "",
+        row.get("modality") or "",
+        row.get("billing_variant") or "",
+        row["unit"],
+    )
+
+
+def provider_counts(rows):
+    return dict(Counter(row["provider_id"] for row in rows))
+
+
+def evaluate_sanity(rows, old_rows, old_schema_version):
+    counts = Counter(row["provider_id"] for row in rows)
+    old_counts = Counter(row["provider_id"] for row in old_rows)
+    issues = []
+
+    if len(rows) < MIN_TOTAL_TIERS:
+        issues.append(
+            f"total rows {len(rows)} below minimum floor {MIN_TOTAL_TIERS}"
+        )
+
+    if (
+        old_rows
+        and old_schema_version == "2.1.0"
+        and len(rows) < (len(old_rows) * 0.5)
+    ):
+        issues.append(
+            f"total rows {len(rows)} dropped below 50% of previous snapshot ({len(old_rows)})"
+        )
+
+    for provider, floor in MIN_PROVIDER_TIERS.items():
+        current = counts.get(provider, 0)
+        if current < floor:
+            issues.append(f"{provider} rows {current} below provider floor {floor}")
+
+        previous = old_counts.get(provider, 0)
+        if (
+            previous
+            and old_schema_version == "2.1.0"
+            and current < max(1, int(previous * MIN_PROVIDER_RATIO))
+        ):
+            issues.append(
+                f"{provider} rows {current} below {int(MIN_PROVIDER_RATIO * 100)}% "
+                f"of previous snapshot ({previous})"
+            )
+
+    return {
+        "issues": issues,
+        "counts": dict(counts),
+        "old_counts": dict(old_counts),
+    }
+
+
+def parse_with_retry(provider_id, url, parser):
+    html = http_get(url)
+    rows = parser(html)
+    attempts = [len(rows)]
+    floor = MIN_COMPONENT_ROWS.get(provider_id, 0)
+
+    if floor and len(rows) < floor:
+        retry_html = http_get(url)
+        retry_rows = parser(retry_html)
+        attempts.append(len(retry_rows))
+        if len(retry_rows) >= len(rows):
+            rows = retry_rows
+            html = retry_html
+
+    diagnostics = {
+        "component_counts": attempts,
+        "final_component_rows": len(rows),
+        "component_floor": floor,
+        "retry_used": len(attempts) > 1,
+    }
+    return rows, diagnostics, html
+
+
+def remediate_with_previous_rows(rows, old_rows, old_schema_version):
+    if not old_rows or old_schema_version != "2.1.0":
+        return rows, {"applied": False, "providers": []}
+
+    current = Counter(row["provider_id"] for row in rows)
+    previous = Counter(row["provider_id"] for row in old_rows)
+    fallback_providers = []
+
+    for provider, prev_count in previous.items():
+        expected = max(MIN_PROVIDER_TIERS.get(provider, 0), int(prev_count * MIN_PROVIDER_RATIO))
+        if current.get(provider, 0) < expected:
+            fallback_providers.append(provider)
+
+    if not fallback_providers:
+        return rows, {"applied": False, "providers": []}
+
+    merged = [row for row in rows if row["provider_id"] not in fallback_providers]
+    merged.extend(row for row in old_rows if row["provider_id"] in fallback_providers)
+    merged.sort(key=_pricing_sort_key)
+
+    remediation = {
+        "applied": True,
+        "providers": sorted(fallback_providers),
+        "message": "Fell back to previous snapshot rows for low-count providers.",
+        "counts_before": dict(current),
+        "counts_after": provider_counts(merged),
+    }
+    return merged, remediation
+
+
 def main():
     run_id = str(uuid.uuid4())
     started_at = now_iso_z()
+    parse_diagnostics = {}
+    sanity = {}
+    remediation = {"applied": False, "providers": []}
 
     try:
-        claude_html = http_get(CLAUDE_URL)
-        vertex_html = http_get(VERTEX_URL)
-        openai_html = http_get(OPENAI_URL)
+        provider_specs = [
+            ("anthropic", CLAUDE_URL, parse_claude),
+            ("google", VERTEX_URL, parse_vertex),
+            ("openai", OPENAI_URL, parse_openai),
+        ]
 
-        component_rows = parse_claude(claude_html) + parse_vertex(vertex_html) + parse_openai(openai_html)
+        component_rows = []
+        for provider_id, url, parser in provider_specs:
+            rows, diagnostics, _html = parse_with_retry(provider_id, url, parser)
+            parse_diagnostics[provider_id] = diagnostics
+            component_rows.extend(rows)
+
         deduped_components = dedupe_component_rows(component_rows)
         clean = aggregate_tier_rows(deduped_components)
 
@@ -1506,20 +1642,17 @@ def main():
                 old_schema_version = old_doc.get("meta", {}).get("schema_version")
             except json.JSONDecodeError:
                 old_rows = []
+                old_schema_version = None
 
-        if len(clean) < 100:
-            raise RuntimeError(
-                f"Sanity check failed: scraped only {len(clean)} pricing tiers, which is below the minimum expected floor."
-            )
+        sanity = evaluate_sanity(clean, old_rows, old_schema_version)
+        if sanity["issues"]:
+            clean, remediation = remediate_with_previous_rows(clean, old_rows, old_schema_version)
+            if remediation.get("applied"):
+                sanity = evaluate_sanity(clean, old_rows, old_schema_version)
 
-        if (
-            old_rows
-            and old_schema_version == "2.1.0"
-            and len(clean) < (len(old_rows) * 0.5)
-        ):
-            raise RuntimeError(
-                f"Sanity check failed: scraped only {len(clean)} pricing tiers, expected roughly {len(old_rows)}."
-            )
+        if sanity["issues"]:
+            bullet_list = "\n".join(f"- {issue}" for issue in sanity["issues"])
+            raise RuntimeError(f"Sanity check failed:\n{bullet_list}")
 
         pricing_doc = build_pricing_doc(clean)
         PRICING_JSON_PATH.write_text(json.dumps(pricing_doc, indent=2))
@@ -1529,6 +1662,12 @@ def main():
             f"Rows Saved: {len(clean)}\n"
             f"Time: {now_iso_z()}"
         )
+        if remediation.get("applied"):
+            send_slack(
+                "⚠️ Pricing scrape self-heal fallback applied\n"
+                f"Providers: {', '.join(remediation['providers'])}\n"
+                "Using previous snapshot rows for affected providers; parser update recommended."
+            )
 
         changes = detect_changes(old_rows, clean)
         if changes:
@@ -1563,6 +1702,9 @@ def main():
                     "finished_at": now_iso_z(),
                     "status": "success",
                     "error": None,
+                    "provider_component_counts": parse_diagnostics,
+                    "sanity": sanity,
+                    "remediation": remediation,
                 },
                 indent=2,
             )
@@ -1586,6 +1728,9 @@ def main():
                     "finished_at": now_iso_z(),
                     "status": "failed",
                     "error": error,
+                    "provider_component_counts": parse_diagnostics,
+                    "sanity": sanity,
+                    "remediation": remediation,
                 },
                 indent=2,
             )
