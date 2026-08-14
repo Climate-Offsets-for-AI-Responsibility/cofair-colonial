@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-14T21:24:48Z",
+  "generated_at": "2026-08-14T22:26:38Z",
   "corpus_version": "1.0.0",
   "row_count": 42,
   "rows": [
@@ -10,15 +10,15 @@
       "task_id": "A",
       "model_id": "claude-opus-5",
       "api_model": "claude-opus-5",
-      "tokens_in": null,
+      "tokens_in": 59,
       "input_chars": 157,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 375.796,
       "label": "Bounded Q&A",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:24:57Z"
     },
     {
       "date": "2026-08-14",
@@ -27,15 +27,15 @@
       "task_id": "B",
       "model_id": "claude-opus-5",
       "api_model": "claude-opus-5",
-      "tokens_in": null,
+      "tokens_in": 256,
       "input_chars": 843,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 303.677,
       "label": "Summarize frozen essay",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:24:57Z"
     },
     {
       "date": "2026-08-14",
@@ -44,15 +44,15 @@
       "task_id": "C",
       "model_id": "claude-opus-5",
       "api_model": "claude-opus-5",
-      "tokens_in": null,
+      "tokens_in": 92,
       "input_chars": 217,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 423.963,
       "label": "Code from frozen spec",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:24:58Z"
     },
     {
       "date": "2026-08-14",
@@ -65,11 +65,11 @@
       "input_chars": 157,
       "tokens_in_per_1k_chars": null,
       "label": "Bounded Q&A",
-      "run_status": "dry_run",
-      "error": null,
+      "run_status": "error",
+      "error": "404 Client Error: Not Found for url: https://api.anthropic.com/v1/messages :: {\"type\":\"error\",\"error\":{\"type\":\"not_found_error\",\"message\":\"model: claude-haiku-4.5\"},\"request_id\":\"req_011Ce3Rcpi5arPNqHW37YqpL\"}",
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:24:58Z"
     },
     {
       "date": "2026-08-14",
@@ -82,11 +82,11 @@
       "input_chars": 843,
       "tokens_in_per_1k_chars": null,
       "label": "Summarize frozen essay",
-      "run_status": "dry_run",
-      "error": null,
+      "run_status": "error",
+      "error": "404 Client Error: Not Found for url: https://api.anthropic.com/v1/messages :: {\"type\":\"error\",\"error\":{\"type\":\"not_found_error\",\"message\":\"model: claude-haiku-4.5\"},\"request_id\":\"req_011Ce3RcqSEiiM48wqg9Xit6\"}",
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:24:58Z"
     },
     {
       "date": "2026-08-14",
@@ -99,11 +99,11 @@
       "input_chars": 217,
       "tokens_in_per_1k_chars": null,
       "label": "Code from frozen spec",
-      "run_status": "dry_run",
-      "error": null,
+      "run_status": "error",
+      "error": "404 Client Error: Not Found for url: https://api.anthropic.com/v1/messages :: {\"type\":\"error\",\"error\":{\"type\":\"not_found_error\",\"message\":\"model: claude-haiku-4.5\"},\"request_id\":\"req_011Ce3Rcr99niVwxvMNGK3DH\"}",
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:24:59Z"
     },
     {
       "date": "2026-08-14",
@@ -111,16 +111,16 @@
       "tier": "flagship",
       "task_id": "A",
       "model_id": "nova-premier",
-      "api_model": "nova-premier",
+      "api_model": "us.amazon.nova-premier-v1:0",
       "tokens_in": null,
       "input_chars": 157,
       "tokens_in_per_1k_chars": null,
       "label": "Bounded Q&A",
-      "run_status": "dry_run",
-      "error": null,
+      "run_status": "error",
+      "error": "404 Client Error: Not Found for url: https://bedrock-runtime.us-east-1.amazonaws.com/model/us.amazon.nova-premier-v1:0/converse :: {\"message\":\"Access denied. This Model is marked by provider as Legacy and you have not been actively using the model in the last 30 days. Please upgrade to an active model on Amazon Bedrock\"}",
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:26:21Z"
     },
     {
       "date": "2026-08-14",
@@ -128,16 +128,16 @@
       "tier": "flagship",
       "task_id": "B",
       "model_id": "nova-premier",
-      "api_model": "nova-premier",
+      "api_model": "us.amazon.nova-premier-v1:0",
       "tokens_in": null,
       "input_chars": 843,
       "tokens_in_per_1k_chars": null,
       "label": "Summarize frozen essay",
-      "run_status": "dry_run",
-      "error": null,
+      "run_status": "error",
+      "error": "404 Client Error: Not Found for url: https://bedrock-runtime.us-east-1.amazonaws.com/model/us.amazon.nova-premier-v1:0/converse :: {\"message\":\"Access denied. This Model is marked by provider as Legacy and you have not been actively using the model in the last 30 days. Please upgrade to an active model on Amazon Bedrock\"}",
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:26:22Z"
     },
     {
       "date": "2026-08-14",
@@ -145,16 +145,16 @@
       "tier": "flagship",
       "task_id": "C",
       "model_id": "nova-premier",
-      "api_model": "nova-premier",
+      "api_model": "us.amazon.nova-premier-v1:0",
       "tokens_in": null,
       "input_chars": 217,
       "tokens_in_per_1k_chars": null,
       "label": "Code from frozen spec",
-      "run_status": "dry_run",
-      "error": null,
+      "run_status": "error",
+      "error": "404 Client Error: Not Found for url: https://bedrock-runtime.us-east-1.amazonaws.com/model/us.amazon.nova-premier-v1:0/converse :: {\"message\":\"Access denied. This Model is marked by provider as Legacy and you have not been actively using the model in the last 30 days. Please upgrade to an active model on Amazon Bedrock\"}",
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:26:22Z"
     },
     {
       "date": "2026-08-14",
@@ -162,16 +162,16 @@
       "tier": "workhorse",
       "task_id": "A",
       "model_id": "nova-micro",
-      "api_model": "nova-micro",
-      "tokens_in": null,
+      "api_model": "amazon.nova-micro-v1:0",
+      "tokens_in": 29,
       "input_chars": 157,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 184.713,
       "label": "Bounded Q&A",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:26:22Z"
     },
     {
       "date": "2026-08-14",
@@ -179,16 +179,16 @@
       "tier": "workhorse",
       "task_id": "B",
       "model_id": "nova-micro",
-      "api_model": "nova-micro",
-      "tokens_in": null,
+      "api_model": "amazon.nova-micro-v1:0",
+      "tokens_in": 154,
       "input_chars": 843,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 182.681,
       "label": "Summarize frozen essay",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:26:23Z"
     },
     {
       "date": "2026-08-14",
@@ -196,16 +196,16 @@
       "tier": "workhorse",
       "task_id": "C",
       "model_id": "nova-micro",
-      "api_model": "nova-micro",
-      "tokens_in": null,
+      "api_model": "amazon.nova-micro-v1:0",
+      "tokens_in": 73,
       "input_chars": 217,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 336.406,
       "label": "Code from frozen spec",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:26:24Z"
     },
     {
       "date": "2026-08-14",
@@ -214,15 +214,15 @@
       "task_id": "A",
       "model_id": "deepseek-v4-pro",
       "api_model": "deepseek-v4-pro",
-      "tokens_in": null,
+      "tokens_in": 113,
       "input_chars": 157,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 719.745,
       "label": "Bounded Q&A",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:26:25Z"
     },
     {
       "date": "2026-08-14",
@@ -231,15 +231,15 @@
       "task_id": "B",
       "model_id": "deepseek-v4-pro",
       "api_model": "deepseek-v4-pro",
-      "tokens_in": null,
+      "tokens_in": 234,
       "input_chars": 843,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 277.58,
       "label": "Summarize frozen essay",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:26:26Z"
     },
     {
       "date": "2026-08-14",
@@ -248,15 +248,15 @@
       "task_id": "C",
       "model_id": "deepseek-v4-pro",
       "api_model": "deepseek-v4-pro",
-      "tokens_in": null,
+      "tokens_in": 145,
       "input_chars": 217,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 668.203,
       "label": "Code from frozen spec",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:26:27Z"
     },
     {
       "date": "2026-08-14",
@@ -265,15 +265,15 @@
       "task_id": "A",
       "model_id": "deepseek-v4-flash",
       "api_model": "deepseek-v4-flash",
-      "tokens_in": null,
+      "tokens_in": 113,
       "input_chars": 157,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 719.745,
       "label": "Bounded Q&A",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:26:28Z"
     },
     {
       "date": "2026-08-14",
@@ -282,15 +282,15 @@
       "task_id": "B",
       "model_id": "deepseek-v4-flash",
       "api_model": "deepseek-v4-flash",
-      "tokens_in": null,
+      "tokens_in": 234,
       "input_chars": 843,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 277.58,
       "label": "Summarize frozen essay",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:26:30Z"
     },
     {
       "date": "2026-08-14",
@@ -299,15 +299,15 @@
       "task_id": "C",
       "model_id": "deepseek-v4-flash",
       "api_model": "deepseek-v4-flash",
-      "tokens_in": null,
+      "tokens_in": 145,
       "input_chars": 217,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 668.203,
       "label": "Code from frozen spec",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:26:31Z"
     },
     {
       "date": "2026-08-14",
@@ -324,7 +324,7 @@
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:45Z"
+      "run_at": "2026-08-14T22:25:04Z"
     },
     {
       "date": "2026-08-14",
@@ -341,7 +341,7 @@
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:45Z"
+      "run_at": "2026-08-14T22:25:04Z"
     },
     {
       "date": "2026-08-14",
@@ -358,7 +358,7 @@
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:46Z"
+      "run_at": "2026-08-14T22:25:05Z"
     },
     {
       "date": "2026-08-14",
@@ -375,7 +375,7 @@
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:47Z"
+      "run_at": "2026-08-14T22:25:05Z"
     },
     {
       "date": "2026-08-14",
@@ -392,7 +392,7 @@
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:47Z"
+      "run_at": "2026-08-14T22:25:06Z"
     },
     {
       "date": "2026-08-14",
@@ -409,7 +409,7 @@
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:48Z"
+      "run_at": "2026-08-14T22:25:06Z"
     },
     {
       "date": "2026-08-14",
@@ -422,11 +422,11 @@
       "input_chars": 157,
       "tokens_in_per_1k_chars": null,
       "label": "Bounded Q&A",
-      "run_status": "dry_run",
-      "error": null,
+      "run_status": "error",
+      "error": "400 Client Error: Bad Request for url: https://api.openai.com/v1/chat/completions :: {\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}",
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:25:00Z"
     },
     {
       "date": "2026-08-14",
@@ -439,11 +439,11 @@
       "input_chars": 843,
       "tokens_in_per_1k_chars": null,
       "label": "Summarize frozen essay",
-      "run_status": "dry_run",
-      "error": null,
+      "run_status": "error",
+      "error": "400 Client Error: Bad Request for url: https://api.openai.com/v1/chat/completions :: {\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}",
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:25:01Z"
     },
     {
       "date": "2026-08-14",
@@ -456,11 +456,11 @@
       "input_chars": 217,
       "tokens_in_per_1k_chars": null,
       "label": "Code from frozen spec",
-      "run_status": "dry_run",
-      "error": null,
+      "run_status": "error",
+      "error": "400 Client Error: Bad Request for url: https://api.openai.com/v1/chat/completions :: {\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}",
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:25:01Z"
     },
     {
       "date": "2026-08-14",
@@ -473,11 +473,11 @@
       "input_chars": 157,
       "tokens_in_per_1k_chars": null,
       "label": "Bounded Q&A",
-      "run_status": "dry_run",
-      "error": null,
+      "run_status": "error",
+      "error": "400 Client Error: Bad Request for url: https://api.openai.com/v1/chat/completions :: {\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}",
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:25:01Z"
     },
     {
       "date": "2026-08-14",
@@ -490,11 +490,11 @@
       "input_chars": 843,
       "tokens_in_per_1k_chars": null,
       "label": "Summarize frozen essay",
-      "run_status": "dry_run",
-      "error": null,
+      "run_status": "error",
+      "error": "400 Client Error: Bad Request for url: https://api.openai.com/v1/chat/completions :: {\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}",
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:25:02Z"
     },
     {
       "date": "2026-08-14",
@@ -507,11 +507,11 @@
       "input_chars": 217,
       "tokens_in_per_1k_chars": null,
       "label": "Code from frozen spec",
-      "run_status": "dry_run",
-      "error": null,
+      "run_status": "error",
+      "error": "400 Client Error: Bad Request for url: https://api.openai.com/v1/chat/completions :: {\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}",
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:25:03Z"
     },
     {
       "date": "2026-08-14",
@@ -520,15 +520,15 @@
       "task_id": "A",
       "model_id": "qwen3.7-max",
       "api_model": "qwen-max",
-      "tokens_in": null,
+      "tokens_in": 37,
       "input_chars": 157,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 235.669,
       "label": "Bounded Q&A",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:26:32Z"
     },
     {
       "date": "2026-08-14",
@@ -537,15 +537,15 @@
       "task_id": "B",
       "model_id": "qwen3.7-max",
       "api_model": "qwen-max",
-      "tokens_in": null,
+      "tokens_in": 159,
       "input_chars": 843,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 188.612,
       "label": "Summarize frozen essay",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:26:33Z"
     },
     {
       "date": "2026-08-14",
@@ -554,15 +554,15 @@
       "task_id": "C",
       "model_id": "qwen3.7-max",
       "api_model": "qwen-max",
-      "tokens_in": null,
+      "tokens_in": 77,
       "input_chars": 217,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 354.839,
       "label": "Code from frozen spec",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:26:35Z"
     },
     {
       "date": "2026-08-14",
@@ -571,15 +571,15 @@
       "task_id": "A",
       "model_id": "qwen-flash",
       "api_model": "qwen-turbo",
-      "tokens_in": null,
+      "tokens_in": 41,
       "input_chars": 157,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 261.146,
       "label": "Bounded Q&A",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:26:36Z"
     },
     {
       "date": "2026-08-14",
@@ -588,15 +588,15 @@
       "task_id": "B",
       "model_id": "qwen-flash",
       "api_model": "qwen-turbo",
-      "tokens_in": null,
+      "tokens_in": 163,
       "input_chars": 843,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 193.357,
       "label": "Summarize frozen essay",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:26:37Z"
     },
     {
       "date": "2026-08-14",
@@ -605,15 +605,15 @@
       "task_id": "C",
       "model_id": "qwen-flash",
       "api_model": "qwen-turbo",
-      "tokens_in": null,
+      "tokens_in": 81,
       "input_chars": 217,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 373.272,
       "label": "Code from frozen spec",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:26:38Z"
     },
     {
       "date": "2026-08-14",
@@ -622,15 +622,15 @@
       "task_id": "A",
       "model_id": "grok-4.6",
       "api_model": "grok-4.6",
-      "tokens_in": null,
+      "tokens_in": 237,
       "input_chars": 157,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 1509.554,
       "label": "Bounded Q&A",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:25:18Z"
     },
     {
       "date": "2026-08-14",
@@ -639,15 +639,15 @@
       "task_id": "B",
       "model_id": "grok-4.6",
       "api_model": "grok-4.6",
-      "tokens_in": null,
+      "tokens_in": 357,
       "input_chars": 843,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 423.488,
       "label": "Summarize frozen essay",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:25:25Z"
     },
     {
       "date": "2026-08-14",
@@ -656,15 +656,15 @@
       "task_id": "C",
       "model_id": "grok-4.6",
       "api_model": "grok-4.6",
-      "tokens_in": null,
+      "tokens_in": 270,
       "input_chars": 217,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 1244.24,
       "label": "Code from frozen spec",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:25:40Z"
     },
     {
       "date": "2026-08-14",
@@ -673,15 +673,15 @@
       "task_id": "A",
       "model_id": "grok-build-0.1",
       "api_model": "grok-build-0.1",
-      "tokens_in": null,
+      "tokens_in": 215,
       "input_chars": 157,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 1369.427,
       "label": "Bounded Q&A",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:25:48Z"
     },
     {
       "date": "2026-08-14",
@@ -690,15 +690,15 @@
       "task_id": "B",
       "model_id": "grok-build-0.1",
       "api_model": "grok-build-0.1",
-      "tokens_in": null,
+      "tokens_in": 333,
       "input_chars": 843,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 395.018,
       "label": "Summarize frozen essay",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:25:52Z"
     },
     {
       "date": "2026-08-14",
@@ -707,15 +707,15 @@
       "task_id": "C",
       "model_id": "grok-build-0.1",
       "api_model": "grok-build-0.1",
-      "tokens_in": null,
+      "tokens_in": 248,
       "input_chars": 217,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 1142.857,
       "label": "Code from frozen spec",
-      "run_status": "dry_run",
+      "run_status": "ok",
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-14T21:24:38Z"
+      "run_at": "2026-08-14T22:26:21Z"
     }
   ]
 }
