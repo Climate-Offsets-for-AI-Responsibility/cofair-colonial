@@ -137,7 +137,12 @@ Exchange matches `occurred_at` → snapshot date → `(provider_id, model_id)` �
 
 ## Dashboard
 
-**Public URLs:** [cofair.org/pricing/](https://cofair.org/pricing/) and [cofair.org/tokens/](https://cofair.org/tokens/) — both proxied from the marketing site onto this repo's Netlify publish (`cofair-colonial.netlify.app`). Relative asset paths require the trailing slash; `/pricing` and `/tokens` 301 to their slash forms.
+**Public URLs:** [cofair.org/pricing/](https://cofair.org/pricing/) and [cofair.org/tokens/](https://cofair.org/tokens/) — both proxied from the marketing site onto this repo's Netlify publish (`cofair-colonial.netlify.app`). The no-slash forms are answered directly with the page (they do **not** 301), so each page injects `<base href="/…/">` to keep its relative asset paths resolving.
+
+Two things about that proxy are easy to get wrong, both recorded as D63 in the hub:
+
+- **The proxy forwards one path prefix at a time.** `/tokens/` sits a level deeper than the root page and reaches shared assets with `../`, which resolves *above* the forwarded prefix and lands on the marketing site. `cofair-marketing/public/_redirects` therefore also forwards `/vendor/*`, `/styles.css` and `/data/equivalence.json`. Add a rule there before pointing a new page at a shared asset — this failure returns 200 and renders unstyled, and it is invisible when you test against `cofair-colonial.netlify.app` directly.
+- **Deploys are continuous from `main`** (a GitHub push webhook triggers a Netlify build; publish dir `dashboard`, per `netlify.toml`). This was not always true — deploys used to be manual CLI runs, and a session's work sat unpublished. To publish out of band: `npx netlify-cli deploy --prod --no-build` from the repo root. Never pass the repo root as `--dir`; `pricing_history/` makes it 2.3 GB and the upload 413s. Do not put `[skip ci]` in an automated commit message: Netlify honours it too, so the data commits would land on `main` without ever reaching the published dashboard.
 
 `dashboard/` is a zero-build static page (Netlify publishes it directly) charting the snapshot history. It reads the artifacts in `dashboard/data/`, which `scripts/build_dashboard_data.py` generates:
 
