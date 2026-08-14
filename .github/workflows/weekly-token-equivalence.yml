@@ -73,10 +73,13 @@ jobs:
         run: |
           python scripts/build_dashboard_data.py --rebuild
 
+      # No "[skip ci]" — see the note in daily-tokenizer-ledger.yml: Netlify
+      # honours the marker, and this repo is repo-linked, so it would publish
+      # stale data (I16). Nothing here runs on `push`.
       - name: Commit weekly equivalence artifacts
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add dashboard/data/
-          git commit -m "Auto-update weekly token equivalence [skip ci]" || echo "No changes to commit"
+          git commit -m "Auto-update weekly token equivalence" || echo "No changes to commit"
           git push

@@ -37,10 +37,14 @@ jobs:
       - name: Rebuild dashboard datasets
         run: |
           python scripts/build_dashboard_data.py --rebuild
+      # No "[skip ci]" in the message: Netlify honours it too, and this repo is
+      # now repo-linked, so the marker would leave the published dashboard
+      # serving stale data forever (I16). Nothing here runs on `push`, so there
+      # is no loop to guard against.
       - name: Commit ledger artifacts
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add dashboard/data/
-          git commit -m "Auto-update daily tokenizer ledger [skip ci]" || echo "No changes to commit"
+          git commit -m "Auto-update daily tokenizer ledger" || echo "No changes to commit"
           git push
