@@ -7,7 +7,14 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_dashboard_data import build_models, include_dashboard_date, normalize_snapshot
+from build_dashboard_data import (
+    build_equivalence,
+    build_models,
+    build_token_runs,
+    include_dashboard_date,
+    normalize_snapshot,
+)
+from task_corpus import TASK_PROMPTS
 
 
 class NormalizeSnapshotTest(unittest.TestCase):
@@ -128,6 +135,172 @@ class BuildModelsTest(unittest.TestCase):
         self.assertEqual(len(models), 1)
         self.assertEqual(models[0]["deprecated_on"], "2026-07-30")
         self.assertTrue(models[0]["currently_active"])
+
+
+class BuildEquivalenceTest(unittest.TestCase):
+    def test_builds_weekly_aligned_budget(self) -> None:
+        models = [
+            {
+                "provider_id": "anthropic",
+                "model_id": "claude-opus-5",
+                "display_name": "Claude Opus 5",
+                "latest_input": 5.0,
+                "latest_output": 25.0,
+                "currency": "USD",
+                "currently_active": True,
+            },
+            {
+                "provider_id": "anthropic",
+                "model_id": "claude-haiku-4.5",
+                "display_name": "Claude Haiku 4.5",
+                "latest_input": 1.0,
+                "latest_output": 5.0,
+                "currency": "USD",
+                "currently_active": True,
+            },
+            {
+                "provider_id": "deepseek",
+                "model_id": "deepseek-v4-pro",
+                "display_name": "DeepSeek V4 Pro",
+                "latest_input": 0.435,
+                "latest_output": 0.87,
+                "currency": "USD",
+                "currently_active": True,
+            },
+            {
+                "provider_id": "deepseek",
+                "model_id": "deepseek-v4-flash",
+                "display_name": "DeepSeek V4 Flash",
+                "latest_input": 0.14,
+                "latest_output": 0.28,
+                "currency": "USD",
+                "currently_active": True,
+            },
+        ]
+        index = {
+            "generated_at": "2026-08-13T00:00:00Z",
+            "first_date": "2026-06-17",
+            "last_date": "2026-08-13",
+            "snapshot_count": 17,
+        }
+
+        eq = build_equivalence(models, index, live_model_map={})
+        self.assertEqual(eq["tokenizer_ledger"]["cadence"], "daily_ABC_weekly_D")
+        self.assertEqual(eq["wrapper_runs"]["cadence"], "weekly")
+        self.assertEqual(eq["tasks"][0]["task_id"], "A")
+        self.assertIn("suiteLong", eq["task_packs"])
+        self.assertEqual(len(eq["chat_transcript"]), 20)
+        self.assertIn("provider_auth", eq)
+        self.assertIn("anthropic", eq["provider_auth"]["requirements"])
+        self.assertIn("GEMINI_API_KEY", eq["provider_auth"]["requirements"]["google"]["env"])
+        # Amazon is a tracked provider on the equivalence surface.
+        self.assertIn("aws", eq["provider_auth"]["requirements"])
+
+        # Only flagship + workhorse; the middle "default" tier was dropped.
+        self.assertEqual(eq["tiers"], ["flagship", "workhorse"])
+        two_tiers = eq["selected_models_by_mode"]["two"]
+        self.assertEqual(len(two_tiers), 4)
+        self.assertTrue(all(row["tier"] in ("flagship", "workhorse") for row in two_tiers))
+        self.assertNotIn("default", {row["tier"] for row in eq["selected_models"]})
+
+        self.assertEqual(eq["runs_per_year"], 52)
+        self.assertGreater(eq["budget"]["two"]["suiteLong"]["annual_usd"], 0)
+
+        # Tasks expose the invariant denominator the index normalizes on.
+        self.assertGreater(eq["tasks"][0]["input_chars"], 0)
+        self.assertIn("prompt", eq["tasks"][0])
+
+
+class BuildTokenRunsTest(unittest.TestCase):
+    def test_normalizes_density_and_flags_censored_output(self) -> None:
+        rows = [
+            {
+                "run_week": "2026-08-10",
+                "provider_id": "google",
+                "tier": "flagship",
+                "task_id": "A",
+                "model_id": "gemini-3.1-pro",
+                "api_model": "gemini-pro-latest",
+                "tokens_in": 200,
+                "tokens_out": 400,
+                "input_chars": 1000,
+                "output_cap": 400,
+                "run_status": "ok",
+                "usd_value_same_day": 0.01,
+            },
+            # Not ok → excluded.
+            {
+                "run_week": "2026-08-10",
+                "provider_id": "anthropic",
+                "tier": "flagship",
+                "task_id": "A",
+                "tokens_in": None,
+                "tokens_out": None,
+                "run_status": "error",
+            },
+            # Dry run → excluded.
+            {
+                "run_week": "2026-08-10",
+                "provider_id": "xai",
+                "tier": "flagship",
+                "task_id": "A",
+                "tokens_in": None,
+                "tokens_out": None,
+                "run_status": "dry_run",
+            },
+        ]
+
+        out = build_token_runs(rows)
+
+        self.assertEqual(len(out), 1)
+        row = out[0]
+        self.assertEqual(row["provider_id"], "google")
+        self.assertEqual(row["tokens_total"], 600)
+        # 200 tokens over 1000 chars → 200 tokens per 1K chars.
+        self.assertAlmostEqual(row["tokens_in_per_1k_chars"], 200.0)
+        # Output reached the cap, so verbosity is unobserved.
+        self.assertTrue(row["output_censored"])
+        self.assertEqual(row["replicate_count"], 1)
+
+    def test_medians_workhorse_replicates(self) -> None:
+        rows = [
+            {
+                "run_week": "2026-08-10",
+                "provider_id": "deepseek",
+                "tier": "workhorse",
+                "task_id": "A",
+                "replicate": r,
+                "tokens_in": tokens_in,
+                "tokens_out": 10,
+                "input_chars": 1000,
+                "output_cap": 400,
+                "run_status": "ok",
+                "usd_value_same_day": 0.01,
+            }
+            for r, tokens_in in ((1, 100), (2, 200), (3, 300))
+        ]
+        out = build_token_runs(rows)
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["tokens_in"], 200)  # median
+        self.assertEqual(out[0]["replicate_count"], 3)
+
+    def test_uses_corpus_chars_when_row_omits_them(self) -> None:
+        rows = [
+            {
+                "run_week": "2026-08-10",
+                "provider_id": "deepseek",
+                "tier": "workhorse",
+                "task_id": "A",
+                "tokens_in": 40,
+                "tokens_out": 10,
+                "output_cap": 400,
+                "run_status": "ok",
+            }
+        ]
+        out = build_token_runs(rows)
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["input_chars"], len(TASK_PROMPTS["A"]))
+        self.assertFalse(out[0]["output_censored"])
 
 
 if __name__ == "__main__":

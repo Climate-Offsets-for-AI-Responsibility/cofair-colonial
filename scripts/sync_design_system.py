@@ -51,6 +51,7 @@ FONTS = [
 # Brand marks, straight from the design system's asset folder.
 LOGOS = [
     "cofair-bw-lockup-horizontal.svg",
+    "cofair-bw-mark-square.svg",
     "cofair-color-logo.svg",
 ]
 

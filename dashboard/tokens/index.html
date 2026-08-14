@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script>
+    (function () {
+      var path = location.pathname;
+      if (path === "/tokens" || path === "/tokens/") {
+        var base = document.createElement("base");
+        base.href = "/tokens/";
+        document.head.prepend(base);
+        if (path === "/tokens") {
+          history.replaceState(null, "", "/tokens/" + location.search + location.hash);
+        }
+      }
+    })();
+  </script>
+  <title>Token Equivalence Index · COFAIR</title>
+  <meta name="description" content="Weekly token-consumption drift for a frozen task corpus across AI providers." />
+  <link rel="canonical" href="https://cofair.org/tokens/" />
+  <meta property="og:url" content="https://cofair.org/tokens/" />
+  <link rel="icon" href="../vendor/cofair-color-logo.svg" />
+  <link rel="stylesheet" href="../vendor/fonts.css" />
+  <link rel="stylesheet" href="../vendor/cofair-ui.css" />
+  <link rel="stylesheet" href="../styles.css" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="../vendor/chart.umd.min.js" defer></script>
+  <script src="../vendor/chartjs-adapter-date-fns.bundle.min.js" defer></script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="page-header">
+    <a class="page-header__brand" href="https://cofair.org" aria-label="COFAIR">
+      <img src="../vendor/cofair-bw-mark-square.svg" alt="COFAIR" width="40" height="40" />
+    </a>
+    <div class="page-header__title">
+      <h1 class="cofair-heading cofair-heading--2">Token Equivalence Index</h1>
+    </div>
+    <a class="page-header__cta cofair-btn cofair-btn--primary cofair-btn--sm"
+       href="https://cofair.org/start/">
+      Sign up for COFAIR today
+      <svg class="page-header__cta-arrow" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+        <path d="M5.5 10.5 10.5 5.5M5.75 5.5h4.75v4.75"
+              fill="none" stroke="currentColor" stroke-width="1.5"
+              stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </a>
+  </header>
+
+  <main class="page">
+    <div class="controls">
+      <div class="cofair-field control-group">
+        <label class="cofair-label" for="pack">Task pack</label>
+        <select class="cofair-select" id="pack">
+          <option value="suiteLong" selected>A+B+C+D (full suite)</option>
+          <option value="suite">A+B+C</option>
+          <option value="qa">A · Bounded Q&amp;A</option>
+          <option value="summarize">B · Summarize</option>
+          <option value="code">C · Code</option>
+          <option value="long">D · Long context</option>
+        </select>
+      </div>
+      <div class="cofair-field control-group">
+        <label class="cofair-label" for="metric">Measure</label>
+        <select class="cofair-select" id="metric">
+          <option value="tokens_in_per_1k_chars" selected>Tokenizer density (meter, tokens / 1K chars)</option>
+          <option value="ledger_density">Tokenizer density (ledger, tokens / 1K chars)</option>
+          <option value="wrapper_turn10">Wrapper overhead (turn-10 prompt tokens)</option>
+          <option value="tokens_total">Total tokens consumed (meter)</option>
+          <option value="tokens_in">Input tokens (meter)</option>
+          <option value="tokens_out">Output tokens (meter)</option>
+          <option value="usd">Cost per run (USD)</option>
+        </select>
+      </div>
+      <fieldset class="control-group control-group--wide">
+        <legend class="cofair-label">Providers</legend>
+        <div class="chip-row" id="providerFilter"></div>
+      </fieldset>
+    </div>
+
+    <p class="hint cofair-text cofair-text--small" id="metricNote"></p>
+
+    <div class="cofair-card chart-card">
+      <div class="chart-card__plot">
+        <canvas id="tokenChart" aria-label="Token consumption over time"></canvas>
+      </div>
+      <aside class="chart-legend" aria-label="Provider tiers">
+        <h2 class="chart-legend__header cofair-text cofair-text--xs">Provider · tier</h2>
+        <ul class="chart-legend__list" id="chartLegend"></ul>
+      </aside>
+    </div>
+
+    <section>
+      <h2 class="cofair-heading cofair-heading--4 section-heading">Frozen task corpus</h2>
+      <div class="cofair-card">
+        <div class="cofair-table__scroll">
+          <table class="cofair-table cofair-table--striped">
+            <thead class="cofair-table__head">
+              <tr class="cofair-table__row">
+                <th class="cofair-table__th" scope="col">Task</th>
+                <th class="cofair-table__th cofair-table__th--num" scope="col">Input chars</th>
+                <th class="cofair-table__th cofair-table__th--num" scope="col">Words</th>
+                <th class="cofair-table__th cofair-table__th--num" scope="col">Output cap</th>
+                <th class="cofair-table__th" scope="col">What it probes</th>
+              </tr>
+            </thead>
+            <tbody class="cofair-table__body" id="taskBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+  <aside
+    class="drawer"
+    id="taskDrawer"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="drawerTitle"
+    hidden
+  >
+    <header class="drawer__header">
+      <div>
+        <p class="drawer__eyebrow cofair-text cofair-text--xs" id="drawerEyebrow"></p>
+        <h2 class="cofair-heading cofair-heading--4" id="drawerTitle"></h2>
+      </div>
+      <button type="button" class="cofair-button cofair-button--ghost" id="drawerClose" aria-label="Close task details">Close</button>
+    </header>
+    <div class="drawer__body" id="drawerBody"></div>
+  </aside>
+</body>
+</html>

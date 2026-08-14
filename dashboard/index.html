@@ -22,7 +22,7 @@
       }
     })();
   </script>
-  <title>AI model pricing — historical trends · COFAIR</title>
+  <title>Model Price Index — historical trends · COFAIR</title>
   <meta name="description" content="Daily list-price snapshots for major AI model platforms — the upstream valuation source for COFAIR attribution." />
   <link rel="canonical" href="https://cofair.org/pricing/" />
   <meta property="og:url" content="https://cofair.org/pricing/" />
@@ -37,11 +37,20 @@
 <body>
   <header class="page-header">
     <a class="page-header__brand" href="https://cofair.org" aria-label="COFAIR">
-      <img src="vendor/cofair-bw-lockup-horizontal.svg" alt="COFAIR" height="24" />
+      <img src="vendor/cofair-bw-mark-square.svg" alt="COFAIR" width="40" height="40" />
     </a>
-    <div>
-      <h1 class="cofair-heading cofair-heading--2">AI model pricing</h1>
+    <div class="page-header__title">
+      <h1 class="cofair-heading cofair-heading--2">Model Price Index</h1>
     </div>
+    <a class="page-header__cta cofair-btn cofair-btn--primary cofair-btn--sm"
+       href="https://cofair.org/start/">
+      Sign up for COFAIR today
+      <svg class="page-header__cta-arrow" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+        <path d="M5.5 10.5 10.5 5.5M5.75 5.5h4.75v4.75"
+              fill="none" stroke="currentColor" stroke-width="1.5"
+              stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </a>
   </header>
 
   <main class="page">
@@ -51,11 +60,11 @@
                 id="tab-trends" aria-selected="true" aria-controls="panel-trends"
                 data-tab="trends" tabindex="0">Trends</button>
         <button type="button" role="tab" class="cofair-tabs__tab"
-                id="tab-archive" aria-selected="false" aria-controls="panel-archive"
-                data-tab="archive" tabindex="-1">Archive</button>
-        <button type="button" role="tab" class="cofair-tabs__tab"
                 id="tab-changes" aria-selected="false" aria-controls="panel-changes"
                 data-tab="changes" tabindex="-1">Price changes</button>
+        <button type="button" role="tab" class="cofair-tabs__tab"
+                id="tab-archive" aria-selected="false" aria-controls="panel-archive"
+                data-tab="archive" tabindex="-1">Archive</button>
       </div>
 
       <div class="cofair-tabs__panel" role="tabpanel" id="panel-trends"
@@ -74,8 +83,8 @@
           <div class="cofair-field control-group">
             <label class="cofair-label" for="priceField">Price field</label>
             <select class="cofair-select" id="priceField">
-              <option value="input_price" selected>Input</option>
-              <option value="output_price">Output</option>
+              <option value="input_price">Input</option>
+              <option value="output_price" selected>Output</option>
               <option value="cached_input_price">Cached input</option>
             </select>
           </div>
@@ -105,7 +114,7 @@
               </label>
               <label class="cofair-choice">
                 <input class="cofair-choice__control" type="checkbox" id="changedOnly" />
-                <span>Only changed prices</span>
+                <span id="changedOnlyLabel">Only changed output prices</span>
               </label>
             </div>
           </fieldset>
@@ -114,49 +123,16 @@
         <div class="cofair-card chart-card">
           <div class="chart-card__plot">
             <canvas id="trendChart"></canvas>
+            <div id="chartNodeTooltip" class="chart-node-tooltip" hidden role="tooltip">
+              <p class="chart-node-tooltip__provider cofair-text cofair-text--xs"></p>
+              <p class="chart-node-tooltip__model cofair-text cofair-text--small"></p>
+              <p class="chart-node-tooltip__meta cofair-text cofair-text--xs"></p>
+            </div>
           </div>
           <aside class="chart-legend" aria-label="Models">
             <h2 class="chart-legend__header cofair-text cofair-text--xs" id="trendLegendHeader" hidden></h2>
             <ul class="chart-legend__list" id="trendLegendList"></ul>
           </aside>
-        </div>
-      </div>
-
-      <div class="cofair-tabs__panel" role="tabpanel" id="panel-archive"
-           aria-labelledby="tab-archive" data-panel="archive" hidden>
-        <div class="controls">
-          <fieldset class="control-group">
-            <legend class="cofair-label">Providers</legend>
-            <div class="chip-row" id="archiveProviderFilter"></div>
-          </fieldset>
-          <div class="cofair-field control-group control-group--wide">
-            <label class="cofair-label" for="archiveFilter">Show</label>
-            <select class="cofair-select" id="archiveFilter">
-              <option value="deprecated">Models flagged deprecated/retired</option>
-              <option value="all" selected>All non-active history</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="cofair-card">
-          <div class="cofair-table__scroll">
-            <table class="cofair-table cofair-table--striped">
-              <thead class="cofair-table__head">
-                <tr class="cofair-table__row">
-                  <th class="cofair-table__th archive-col-name" scope="col">Display name</th>
-                  <th class="cofair-table__th" scope="col">First seen</th>
-                  <th class="cofair-table__th" scope="col">Last active</th>
-                  <th class="cofair-table__th" scope="col">Flagged on</th>
-                  <th class="cofair-table__th" scope="col">Last seen</th>
-                  <th class="cofair-table__th cofair-table__th--num" scope="col">Last input</th>
-                  <th class="cofair-table__th cofair-table__th--num archive-col-first-price" scope="col" hidden>First input</th>
-                  <th class="cofair-table__th cofair-table__th--num" scope="col">Last output</th>
-                  <th class="cofair-table__th cofair-table__th--num archive-col-first-price" scope="col" hidden>First output</th>
-                </tr>
-              </thead>
-              <tbody class="cofair-table__body" id="archiveBody"></tbody>
-            </table>
-          </div>
         </div>
       </div>
 
@@ -186,6 +162,44 @@
           </div>
         </div>
       </div>
+
+      <div class="cofair-tabs__panel" role="tabpanel" id="panel-archive"
+           aria-labelledby="tab-archive" data-panel="archive" hidden>
+        <div class="controls">
+          <fieldset class="control-group">
+            <legend class="cofair-label">Providers</legend>
+            <div class="chip-row" id="archiveProviderFilter"></div>
+          </fieldset>
+          <div class="cofair-field control-group control-group--wide">
+            <label class="cofair-label" for="archiveFilter">Show</label>
+            <select class="cofair-select" id="archiveFilter">
+              <option value="deprecated">Models flagged deprecated/retired</option>
+              <option value="all" selected>All non-active history</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="cofair-card">
+          <div class="cofair-table__scroll">
+            <table class="cofair-table cofair-table--striped">
+              <thead class="cofair-table__head">
+                <tr class="cofair-table__row">
+                  <th class="cofair-table__th archive-col-name" scope="col">Display name</th>
+                  <th class="cofair-table__th" scope="col">First seen</th>
+                  <th class="cofair-table__th archive-col-flagged-on" scope="col">Flagged on</th>
+                  <th class="cofair-table__th" scope="col">Last seen</th>
+                  <th class="cofair-table__th cofair-table__th--num" scope="col"
+                      title="Days from the first snapshot that listed the model to the day it was flagged deprecated, or to its last snapshot if it simply vanished. ≥ marks models already listed when collection began, whose real lifetime starts before our window.">Days active</th>
+                  <th class="cofair-table__th cofair-table__th--num" scope="col">Last input</th>
+                  <th class="cofair-table__th cofair-table__th--num" scope="col">Last output</th>
+                </tr>
+              </thead>
+              <tbody class="cofair-table__body" id="archiveBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div>
   </main>
 

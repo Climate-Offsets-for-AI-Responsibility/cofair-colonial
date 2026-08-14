@@ -19,10 +19,16 @@ CLAUDE_URL = "https://platform.claude.com/docs/en/about-claude/pricing"
 VERTEX_URL = "https://cloud.google.com/vertex-ai/generative-ai/pricing"
 OPENAI_URL = "https://developers.openai.com/api/docs/pricing"
 XAI_URL = "https://docs.x.ai/developers/pricing"
+DEEPSEEK_URL = "https://api-docs.deepseek.com/quick_start/pricing"
+QWEN_URL = "https://www.alibabacloud.com/help/en/model-studio/model-pricing"
 AWS_BEDROCK_PRICING_REGION = os.getenv("AWS_BEDROCK_PRICING_REGION", "us-east-1")
-AWS_BEDROCK_FOUNDATION_MODELS_URL = (
+# Native Bedrock catalog: Amazon's own Nova/Titan models. The sibling
+# `AmazonBedrockFoundationModels` catalog is exclusively resold third-party
+# models (Anthropic, Cohere, Meta, AI21, …) and is deliberately NOT used —
+# the Amazon index must contain only Amazon-built models.
+AMAZON_BEDROCK_URL = (
     "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/"
-    f"AmazonBedrockFoundationModels/current/{AWS_BEDROCK_PRICING_REGION}/index.json"
+    f"AmazonBedrock/current/{AWS_BEDROCK_PRICING_REGION}/index.json"
 )
 REQUEST_HEADERS = {
     "User-Agent": (
@@ -57,16 +63,20 @@ MIN_PROVIDER_TIERS = {
     "anthropic": 10,
     "openai": 25,
     "google": 50,
-    "aws": 20,
     "xai": 10,
+    "aws": 5,
+    "deepseek": 2,
+    "qwen": 3,
 }
 MIN_PROVIDER_RATIO = 0.45
 MIN_COMPONENT_ROWS = {
     "anthropic": 30,
     "openai": 90,
     "google": 120,
-    "aws": 60,
     "xai": 30,
+    "aws": 18,
+    "deepseek": 6,
+    "qwen": 6,
 }
 
 
@@ -390,98 +400,150 @@ def aggregate_tier_rows(component_rows):
     return rows
 
 
-def _aws_model_name(service_name):
-    return re.sub(r"\s*\(Amazon Bedrock Edition\)\s*$", "", norm(service_name), flags=re.IGNORECASE)
+# Amazon-owned Bedrock model families. The Bedrock catalog also resells
+# third-party models (Anthropic, Cohere, Meta, AI21, TwelveLabs, Stability,
+# Writer); those are NOT Amazon's own models and must never enter the Amazon
+# pricing index. Ownership is validated against these families only.
+AMAZON_MODEL_FAMILIES = ("nova", "titan")
+
+# Standard on-demand text-token components → canonical component names. Keyed on
+# the exact usagetype suffix so tiered variants (batch/flex/priority/custom
+# model/cross-region) are excluded and only the base standard rate is kept.
+_AMAZON_TOKEN_SUFFIXES = {
+    "-input-tokens": "input",
+    "-output-tokens": "output",
+    "-cache-read-input-token-count": "cached_input",
+    "-cache-write-input-token-count": "cache_write",
+}
+
+# usagetype fragments that mark a non-standard tier or a non-text modality. Any
+# of these disqualifies the row from the comparable per-1M-token index.
+_AMAZON_TOKEN_EXCLUSIONS = (
+    "batch",
+    "flex",
+    "priority",
+    "custom-model",
+    "cross-region",
+    "global",
+    "video",
+    "image",
+    "audio",
+    "speech",
+    "embeddings",
+    "canvas",
+    "sonic",
+    "reel",
+    "t2i",
+    "provisioned",
+)
 
 
-def _aws_component_and_variant(usagetype):
-    u = (usagetype or "").lower()
-    if "cachewrite1hinputtokencount" in u:
-        return "cache_write", "1h"
-    if "cachewriteinputtokencount" in u:
-        return "cache_write", "5m"
-    if "cachereadinputtokencount" in u:
-        return "cache_read", None
-    if "inputtokencount" in u:
-        return "input", None
-    if "outputtokencount" in u:
-        return "output", None
-    return None, None
+def is_amazon_owned_model(attributes):
+    """True only when the pricing row belongs to an Amazon-built model.
+
+    Bedrock resells many third-party models; ownership is asserted from the
+    `model` attribute or, for Titan text rows where `model` is unset, from the
+    `usagetype` slug. `servicename` alone (e.g. "... (Amazon Bedrock Edition)")
+    never confers Amazon ownership.
+    """
+    model = norm(attributes.get("model"))
+    if model and any(fam in model.lower() for fam in AMAZON_MODEL_FAMILIES):
+        return True
+    usagetype = (attributes.get("usagetype") or "").lower()
+    # Titan text rows carry no `model`; identify them by an Amazon family token
+    # in the usagetype, guarding against resold ids that merely contain "titan".
+    if re.search(r"use1-titan", usagetype):
+        return True
+    if re.search(r"use1-nova", usagetype):
+        return True
+    return False
 
 
-def _aws_service_tier(*values):
-    combined = " ".join(norm(v).lower() for v in values if v)
-    if "reserved" in combined:
-        return "reserved"
-    if "priority" in combined:
-        return "priority"
-    if "flex" in combined:
-        return "flex"
-    if "batch" in combined:
-        return "batch"
-    return "standard"
+def _clean_titan_name(raw):
+    """Turn a Titan usagetype slug into a readable name.
+
+    e.g. "TitanTextG1-Lite" → "Titan Text G1 Lite"; "TitanText-Premier" →
+    "Titan Text Premier".
+    """
+    spaced = re.sub(r"(?<=[a-z])(?=[A-Z0-9])", " ", raw)
+    spaced = spaced.replace("-", " ")
+    return norm(spaced)
 
 
-def _aws_scope_variant(*values):
-    combined = " ".join(norm(v).lower() for v in values if v)
-    if "global" in combined:
-        return "global"
-    if "regional cris" in combined or "_geo" in combined:
-        return "regional-cris"
-    if "regional" in combined:
-        return "regional"
+def _amazon_model_name(attributes):
+    model = norm(attributes.get("model"))
+    if model:
+        return model
+    usagetype = attributes.get("usagetype") or ""
+    match = re.match(r"USE1-([A-Za-z0-9.]+(?:-[A-Za-z0-9.]+)?)-(?:input|output|cache)", usagetype)
+    if match:
+        raw = match.group(1)
+        if raw.lower().startswith("titan"):
+            return _clean_titan_name(raw)
+        return raw
     return None
 
 
-def parse_aws_bedrock(pricing_doc):
+def _amazon_token_component(usagetype):
+    u = (usagetype or "").lower()
+    for suffix, component in _AMAZON_TOKEN_SUFFIXES.items():
+        if u.endswith(suffix):
+            return component
+    return None
+
+
+def parse_amazon_bedrock(pricing_doc):
+    """Parse Amazon's own Nova/Titan list prices from the native Bedrock catalog.
+
+    Reads the `AmazonBedrock` offer file (not `AmazonBedrockFoundationModels`,
+    which is entirely resold third-party models). Keeps only Amazon-owned models
+    (validated by `is_amazon_owned_model`), standard on-demand text-token
+    components, and converts the catalog's per-1K-token rate to per-1M-tokens.
+    """
     products = pricing_doc.get("products", {})
     on_demand = pricing_doc.get("terms", {}).get("OnDemand", {})
     rows_out = []
 
     for sku, product in products.items():
         attrs = product.get("attributes", {})
-        service_name = _aws_model_name(attrs.get("servicename"))
         usagetype = norm(attrs.get("usagetype"))
-        if not service_name or not usagetype:
+        if not usagetype:
+            continue
+        if not is_amazon_owned_model(attrs):
             continue
 
-        component, cache_variant = _aws_component_and_variant(usagetype)
+        component = _amazon_token_component(usagetype)
         if component is None:
+            continue
+        if any(bad in usagetype.lower() for bad in _AMAZON_TOKEN_EXCLUSIONS):
+            continue
+
+        model_name = _amazon_model_name(attrs)
+        if not model_name:
             continue
 
         term_group = on_demand.get(sku, {})
         for offer in term_group.values():
             for dimension in offer.get("priceDimensions", {}).values():
                 unit = norm(dimension.get("unit"))
-                if unit.lower() != "1m tokens":
+                if unit.lower() != "1k tokens":
                     continue
 
-                price = money(dimension.get("pricePerUnit", {}).get("USD"))
-                if price is None:
+                per_1k = money(dimension.get("pricePerUnit", {}).get("USD"))
+                if per_1k is None:
                     continue
-
-                description = norm(dimension.get("description"))
-                service_tier = _aws_service_tier(usagetype, description)
-                if service_tier == "reserved":
-                    continue
-
-                if component == "cache_write":
-                    billing_variant = cache_variant
-                else:
-                    billing_variant = _aws_scope_variant(usagetype, description)
 
                 rows_out.append(
                     make_row(
-                        model_id=slugify(service_name),
-                        display_name=service_name,
+                        model_id=slugify(model_name),
+                        display_name=model_name,
                         provider_id="aws",
                         component=component,
-                        price=price,
+                        price=round(per_1k * 1000, 6),
                         unit="per_1M_tokens",
-                        service_tier=service_tier,
+                        service_tier="standard",
                         category="bedrock",
-                        modality=infer_modality(service_name),
-                        billing_variant=billing_variant,
+                        modality="text",
                     )
                 )
 
@@ -643,6 +705,245 @@ def parse_xai(html):
                 cached_price=money(row[col_cached]) if col_cached is not None and len(row) > col_cached else None,
                 output_price=money(row[col_output]) if len(row) > col_output else None,
                 billing_variant=billing_variant,
+            )
+
+    return rows_out
+
+
+def is_deepseek_owned_model(model_name):
+    """True only for DeepSeek's own models (id/name starts with `deepseek-`).
+
+    DeepSeek's docs are OpenAI/Anthropic-API compatible, but those are wire
+    formats — not third-party models. Still, reject anything that isn't a
+    native DeepSeek model id so a future reseller table can't leak in
+    (same ownership stance as Amazon Nova/Titan).
+    """
+    name = norm(model_name).lower()
+    return name.startswith("deepseek-") or name.startswith("deepseek ")
+
+
+def parse_deepseek(html):
+    soup = BeautifulSoup(html, "html.parser")
+    rows_out = []
+
+    for table in soup.find_all("table"):
+        mat = table_matrix(table)
+        if len(mat) < 3:
+            continue
+        if not mat[0] or mat[0][0].upper() != "MODEL":
+            continue
+        if len(mat[0]) < 3:
+            continue
+        if not is_deepseek_owned_model(mat[0][1]):
+            continue
+
+        model_pairs = [
+            (slugify(mat[0][1]), norm(mat[0][1]), 0),
+            (slugify(mat[0][2]), norm(mat[0][2]), 1),
+        ]
+
+        context_values = [None, None]
+        cache_hit_values = [None, None]
+        cache_miss_values = [None, None]
+        output_values = [None, None]
+
+        for row in mat[1:]:
+            label = " ".join(part.lower() for part in row[:2]) if row else ""
+            if "context length" in label:
+                if len(row) > 1:
+                    context_values[0] = row[1]
+                if len(row) > 2:
+                    context_values[1] = row[2]
+            elif "cache hit" in label:
+                if len(row) > 2 and "pricing" in row[0].lower():
+                    cache_hit_values[0] = money(row[2])
+                    if len(row) > 3:
+                        cache_hit_values[1] = money(row[3])
+                else:
+                    if len(row) > 1:
+                        cache_hit_values[0] = money(row[1])
+                    if len(row) > 2:
+                        cache_hit_values[1] = money(row[2])
+            elif "cache miss" in label:
+                if len(row) > 1:
+                    cache_miss_values[0] = money(row[1])
+                if len(row) > 2:
+                    cache_miss_values[1] = money(row[2])
+            elif "output" in label:
+                if len(row) > 1:
+                    output_values[0] = money(row[1])
+                if len(row) > 2:
+                    output_values[1] = money(row[2])
+
+        for model_id, display_name, idx in model_pairs:
+            if not model_id or not display_name:
+                continue
+            if not is_deepseek_owned_model(display_name) and not is_deepseek_owned_model(model_id):
+                continue
+            is_active = "deprecated" not in display_name.lower()
+            context_window = context_values[idx]
+
+            if cache_miss_values[idx] is not None:
+                rows_out.append(
+                    make_row(
+                        model_id=model_id,
+                        display_name=display_name,
+                        provider_id="deepseek",
+                        component="input",
+                        price=cache_miss_values[idx],
+                        unit="per_1M_tokens",
+                        service_tier="standard",
+                        context_window=context_window,
+                        modality="text",
+                        category="text_api",
+                        is_active=is_active,
+                    )
+                )
+            if cache_hit_values[idx] is not None:
+                rows_out.append(
+                    make_row(
+                        model_id=model_id,
+                        display_name=display_name,
+                        provider_id="deepseek",
+                        component="cached_input",
+                        price=cache_hit_values[idx],
+                        unit="per_1M_tokens",
+                        service_tier="standard",
+                        context_window=context_window,
+                        modality="text",
+                        category="text_api",
+                        is_active=is_active,
+                    )
+                )
+            if output_values[idx] is not None:
+                rows_out.append(
+                    make_row(
+                        model_id=model_id,
+                        display_name=display_name,
+                        provider_id="deepseek",
+                        component="output",
+                        price=output_values[idx],
+                        unit="per_1M_tokens",
+                        service_tier="standard",
+                        context_window=context_window,
+                        modality="text",
+                        category="text_api",
+                        is_active=is_active,
+                    )
+                )
+        break
+
+    return rows_out
+
+
+def parse_qwen(html):
+    soup = BeautifulSoup(html, "html.parser")
+    rows_out = []
+    preferred_models = (
+        "qwen3.7-max",
+        "qwen3.7-plus",
+        "qwen-flash",
+    )
+
+    for table in soup.find_all("table"):
+        mat = table_matrix(table)
+        if len(mat) < 2:
+            continue
+
+        headers = [cell.lower() for cell in mat[0]]
+        if not headers or headers[0] != "model id":
+            continue
+        if not any("deployment scope" in header for header in headers):
+            continue
+        if not any("input price" in header for header in headers):
+            continue
+        if not any("output price" in header for header in headers):
+            continue
+
+        col_scope = next((i for i, h in enumerate(headers) if "deployment scope" in h), None)
+        col_input = next((i for i, h in enumerate(headers) if "input price" in h), None)
+        col_output = next((i for i, h in enumerate(headers) if "output price" in h), None)
+        col_mode = next((i for i, h in enumerate(headers) if h == "mode"), None)
+        col_range = next((i for i, h in enumerate(headers) if "input tokens per request" in h), None)
+
+        if col_scope is None or col_input is None or col_output is None:
+            continue
+
+        for row in mat[1:]:
+            if len(row) <= max(col_scope, col_input, col_output):
+                continue
+            model_label = norm(row[0])
+            if not model_label:
+                continue
+
+            model_slug = slugify(model_label)
+            if not any(model_slug.startswith(prefix) for prefix in preferred_models):
+                continue
+
+            scope = norm(row[col_scope]).lower()
+            if scope != "international":
+                continue
+
+            mode = norm(row[col_mode]).lower() if col_mode is not None and len(row) > col_mode else ""
+            if "batch" in mode:
+                continue
+
+            token_range = norm(row[col_range]).lower() if col_range is not None and len(row) > col_range else ""
+
+            input_price = money(row[col_input])
+            output_price = money(row[col_output])
+            if input_price is None or output_price is None:
+                continue
+
+            display_name = model_label.split(" Currently equivalent to ")[0].strip()
+            model_id = slugify(display_name)
+            if not model_id:
+                continue
+            if re.search(r"-20\d{2}-\d{2}-\d{2}$", model_id):
+                continue
+
+            if model_id.startswith("qwen3.7-max"):
+                if token_range and "1m" not in token_range:
+                    continue
+            elif model_id.startswith("qwen3.7-plus"):
+                if token_range and "256k" not in token_range:
+                    continue
+            elif model_id.startswith("qwen-flash"):
+                if token_range and "256k" not in token_range:
+                    continue
+
+            is_active = "deprecated" not in display_name.lower()
+            context_window = ">200k" if "3.7" in model_id else None
+
+            rows_out.append(
+                make_row(
+                    model_id=model_id,
+                    display_name=display_name,
+                    provider_id="qwen",
+                    component="input",
+                    price=input_price,
+                    unit="per_1M_tokens",
+                    service_tier="standard",
+                    context_window=context_window,
+                    modality="text",
+                    category="text_api",
+                    is_active=is_active,
+                )
+            )
+            rows_out.append(
+                make_row(
+                    model_id=model_id,
+                    display_name=display_name,
+                    provider_id="qwen",
+                    component="output",
+                    price=output_price,
+                    unit="per_1M_tokens",
+                    service_tier="standard",
+                    context_window=context_window,
+                    modality="text",
+                    category="text_api",
+                    is_active=is_active,
+                )
             )
 
     return rows_out
@@ -1785,14 +2086,24 @@ def build_pricing_doc(rows):
                 "pricing_source": VERTEX_URL,
             },
             {
-                "provider_id": "aws",
-                "name": "AWS Bedrock",
-                "pricing_source": AWS_BEDROCK_FOUNDATION_MODELS_URL,
-            },
-            {
                 "provider_id": "xai",
                 "name": "xAI",
                 "pricing_source": XAI_URL,
+            },
+            {
+                "provider_id": "aws",
+                "name": "Amazon",
+                "pricing_source": AMAZON_BEDROCK_URL,
+            },
+            {
+                "provider_id": "deepseek",
+                "name": "DeepSeek",
+                "pricing_source": DEEPSEEK_URL,
+            },
+            {
+                "provider_id": "qwen",
+                "name": "Qwen (Alibaba Model Studio)",
+                "pricing_source": QWEN_URL,
             },
         ],
         "pricing": rows,
@@ -1803,7 +2114,7 @@ def _pricing_sort_key(row):
     return (
         row["provider_id"],
         row["display_name"].lower(),
-        row["component"],
+        row.get("component") or "",
         row.get("service_tier") or "",
         row.get("context_window") or "",
         row.get("modality") or "",
@@ -1890,6 +2201,8 @@ def remediate_with_previous_rows(rows, old_rows, old_schema_version):
     fallback_providers = []
 
     for provider, prev_count in previous.items():
+        if provider not in MIN_PROVIDER_TIERS:
+            continue
         expected = max(MIN_PROVIDER_TIERS.get(provider, 0), int(prev_count * MIN_PROVIDER_RATIO))
         if current.get(provider, 0) < expected:
             fallback_providers.append(provider)
@@ -1923,8 +2236,10 @@ def main():
             ("anthropic", CLAUDE_URL, parse_claude, http_get),
             ("google", VERTEX_URL, parse_vertex, http_get),
             ("openai", OPENAI_URL, parse_openai, http_get),
-            ("aws", AWS_BEDROCK_FOUNDATION_MODELS_URL, parse_aws_bedrock, http_get_json),
             ("xai", XAI_URL, parse_xai, http_get),
+            ("aws", AMAZON_BEDROCK_URL, parse_amazon_bedrock, http_get_json),
+            ("deepseek", DEEPSEEK_URL, parse_deepseek, http_get),
+            ("qwen", QWEN_URL, parse_qwen, http_get),
         ]
 
         component_rows = []

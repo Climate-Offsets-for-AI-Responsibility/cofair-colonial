@@ -1,6 +1,6 @@
 # cofair-colonial
 
-**List-price pipeline for the COFAIR platform.** Scrapes Anthropic, OpenAI, Google Vertex, AWS Bedrock, and xAI list prices, commits dated snapshots under `pricing_history/`, and optionally loads them into Postgres/Neon for analytics.
+**List-price pipeline for the COFAIR platform.** Scrapes Anthropic, OpenAI, Google Vertex, xAI, DeepSeek, and Qwen list prices, commits dated snapshots under `pricing_history/`, and optionally loads them into Postgres/Neon for analytics.
 
 | Consumer | How it uses this repo |
 |----------|------------------------|
@@ -66,6 +66,50 @@ Manual scrape only:
 python3 scrape_pricing.py
 ```
 
+## Token equivalence live-run credentials
+
+Pricing index scraping is public-page based and does not require provider accounts.
+
+The token-equivalence dashboard runs a **recommended ~$40–45/yr** package:
+
+- Weekly **task meter** (A–D): flagship N=1, workhorse N=3 (median)
+- Daily **tokenizer ledger** (A+B+C count-only); weekly ledger count for D
+- Weekly **Test 4** wrapper overhead on a frozen 10-turn transcript (turns 1–10)
+
+Set these environment variables in `.env` (or `../cofair/.env/.env.cofair`).
+Prefer the `TRACKER_*` names in the shared hub env so they do not collide with
+exchange / M0 tracer keys; unprefixed names still work for CI and a local `.env`:
+
+- `TRACKER_ANTHROPIC_API_KEY` (or `ANTHROPIC_API_KEY`)
+- `TRACKER_OPENAI_API_KEY` (or `OPENAI_API_KEY`)
+- `TRACKER_GEMINI_API_KEY` (or `GEMINI_API_KEY` / `GOOGLE_API_KEY`)
+- `TRACKER_XAI_API_KEY` (or `XAI_API_KEY`)
+- `TRACKER_DEEPSEEK_API_KEY` (or `DEEPSEEK_API_KEY`)
+- `TRACKER_QWEN_API_KEY` (or `QWEN_API_KEY`)
+- `TRACKER_AMAZON_API_KEY` (Bedrock API key / ABSK…; or `AWS_BEARER_TOKEN_BEDROCK`)
+- optional `BEDROCK_REGION` (default `us-east-1`)
+
+`build_dashboard_data.py` and the runners auto-load `../cofair/.env/.env.cofair` when present.
+
+```bash
+# Weekly meter
+python3 scripts/run_equivalence_tasks.py --mode two --workhorse-replicates 3
+
+# Daily ledger (ABC) / weekly ledger (D)
+python3 scripts/run_tokenizer_ledger.py --tasks ABC --mode two
+python3 scripts/run_tokenizer_ledger.py --tasks D --mode two
+
+# Test 4 wrapper counts
+python3 scripts/run_wrapper_overhead.py --mode two --max-turn 10
+
+# Dry-run (no provider calls)
+python3 scripts/run_equivalence_tasks.py --mode two --dry-run
+python3 scripts/run_tokenizer_ledger.py --tasks ABC --dry-run
+python3 scripts/run_wrapper_overhead.py --dry-run
+```
+
+CI: `.github/workflows/daily-tokenizer-ledger.yml` and `.github/workflows/weekly-token-equivalence.yml`.
+
 ### Scrape resilience process
 
 When provider pages redesign (moved tables, renamed columns, new tab markup), `scrape_pricing.py` now does a staged recovery before failing:
@@ -93,7 +137,7 @@ Exchange matches `occurred_at` → snapshot date → `(provider_id, model_id)` �
 
 ## Dashboard
 
-**Public URL:** [cofair.org/pricing/](https://cofair.org/pricing/) — proxied from the marketing site onto this repo's Netlify publish (`cofair-colonial.netlify.app`). Relative asset paths require the trailing slash; `/pricing` 301s to `/pricing/`.
+**Public URLs:** [cofair.org/pricing/](https://cofair.org/pricing/) and [cofair.org/tokens/](https://cofair.org/tokens/) — both proxied from the marketing site onto this repo's Netlify publish (`cofair-colonial.netlify.app`). Relative asset paths require the trailing slash; `/pricing` and `/tokens` 301 to their slash forms.
 
 `dashboard/` is a zero-build static page (Netlify publishes it directly) charting the snapshot history. It reads the artifacts in `dashboard/data/`, which `scripts/build_dashboard_data.py` generates:
 
@@ -118,6 +162,8 @@ Requires `cofair-design-system` as a sibling checkout with `npm install && npm r
 ## Scheduled updates
 
 `.github/workflows/daily-scrape.yml` — daily scrape, Neon ingest, commit `pricing.json` + `pricing_history/` when changed.
+
+`.github/workflows/weekly-token-equivalence.yml` — weekly A/B/C/D live equivalence run, then rebuild + commit `dashboard/data/equivalence*.json`.
 
 Secrets: `SLACK_*`, `NETLIFY_DATABASE_URL_UNPOOLED`, `NEON_*` (see `.env.example`).
 

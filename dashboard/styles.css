@@ -23,25 +23,47 @@ body {
 
 a { color: var(--cofair-color-primary); }
 
-/* Requested provider tinting: AWS (light blue), xAI (grey). */
+/* Provider tint overrides (categorical series, not brand chrome).
+ * Steps: 1 openai=forest, 2 anthropic=burnt orange, 3 google=blue,
+ * 4 amazon=tan, 5 deepseek=magenta, 6 qwen=purple, 7 xai=neutral.
+ *
+ * Step 1 is the design system's own forest anchor, left untouched. Step 7 is
+ * achromatic on purpose: xAI is the seventh provider and D50(2) caps the hue
+ * scale at six, so it takes a grey rather than forcing a seventh hue. */
 :root,
 [data-theme="light"] {
-  --cofair-dataviz-4: #9ec5e5;
-  --cofair-dataviz-6: #8c939d;
+  --cofair-dataviz-2: #b0531a; /* anthropic · burnt orange */
+  --cofair-dataviz-3: #4a7ab8; /* google · blue */
+  --cofair-dataviz-4: #b8956c; /* amazon · tan */
+  --cofair-dataviz-5: #a92f77; /* deepseek · magenta */
+  --cofair-dataviz-6: #7a5aa8; /* qwen · purple */
+  --cofair-dataviz-7: #6e6e6e; /* xai · neutral */
 }
 
 [data-theme="dark"] {
-  --cofair-dataviz-4: #77a9d8;
-  --cofair-dataviz-6: #b3bac4;
+  --cofair-dataviz-2: #e08b4f;
+  --cofair-dataviz-3: #6b9ad4;
+  --cofair-dataviz-4: #d0b089;
+  --cofair-dataviz-5: #d972ae;
+  --cofair-dataviz-6: #9b7bc4;
+  --cofair-dataviz-7: #a6a6a6;
 }
 
 /* ── Page header (mirrors @cofair/ui PageHeader) ───────────────────────── */
 
+/* Sticky so the sign-up call to action stays reachable: the trends chart and the
+ * archive/changes tables are all long scrolls. Background must be opaque — page
+ * content passes underneath. */
 .page-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--cofair-z-panel);
   display: flex;
-  align-items: flex-start;
-  gap: var(--cofair-space-5);
-  padding: var(--cofair-space-5) var(--cofair-space-8);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cofair-space-3) var(--cofair-space-5);
+  padding: var(--cofair-space-4) var(--cofair-space-8);
+  background: var(--cofair-color-bg-elevated);
   border-bottom: var(--cofair-border-width-thin) solid var(--cofair-color-border-subtle);
 }
 
@@ -49,10 +71,34 @@ a { color: var(--cofair-color-primary); }
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  padding-top: var(--cofair-space-1);
 }
 
 .page-header__brand img { display: block; }
+
+/* A flex basis rather than `auto`: at `auto` a long subhead measures wide enough
+ * that the wrapping header pushes the call to action onto a second row on a
+ * desktop-width screen. The basis is small enough to share a row with the CTA,
+ * and narrow enough viewports still wrap. */
+.page-header__title {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.page-header__cta {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.page-header__cta:focus-visible {
+  outline: var(--cofair-border-width-medium) solid var(--cofair-color-primary);
+  outline-offset: var(--cofair-space-1);
+}
+
+.page-header__cta-arrow {
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+}
 
 .page {
   padding: var(--cofair-space-6) var(--cofair-space-8);
@@ -143,15 +189,6 @@ a { color: var(--cofair-color-primary); }
   outline-offset: var(--cofair-space-px);
 }
 
-/* Deselected reads as an outline, so state never rests on color alone. */
-.chip[aria-pressed="false"] {
-  background: transparent;
-  border-color: var(--cofair-color-border);
-  color: var(--cofair-color-text-muted);
-}
-
-.chip[aria-pressed="false"] .chip__swatch { opacity: 0.35; }
-
 .chip__swatch {
   width: var(--cofair-space-2);
   height: var(--cofair-space-2);
@@ -167,6 +204,60 @@ a { color: var(--cofair-color-primary); }
 .chip[data-series="4"] .chip__swatch { background: var(--cofair-dataviz-4); }
 .chip[data-series="5"] .chip__swatch { background: var(--cofair-dataviz-5); }
 .chip[data-series="6"] .chip__swatch { background: var(--cofair-dataviz-6); }
+.chip[data-series="7"] .chip__swatch { background: var(--cofair-dataviz-7); }
+
+/* Badge fills follow the same series tint as chart lines / swatches. */
+.cofair-badge[data-series="1"],
+.chip.cofair-badge[data-series="1"] {
+  background: color-mix(in srgb, var(--cofair-dataviz-1) 18%, transparent);
+  color: var(--cofair-dataviz-1);
+}
+.cofair-badge[data-series="2"],
+.chip.cofair-badge[data-series="2"] {
+  background: color-mix(in srgb, var(--cofair-dataviz-2) 18%, transparent);
+  color: var(--cofair-dataviz-2);
+}
+.cofair-badge[data-series="3"],
+.chip.cofair-badge[data-series="3"] {
+  background: color-mix(in srgb, var(--cofair-dataviz-3) 18%, transparent);
+  color: var(--cofair-dataviz-3);
+}
+.cofair-badge[data-series="4"],
+.chip.cofair-badge[data-series="4"] {
+  background: color-mix(in srgb, var(--cofair-dataviz-4) 18%, transparent);
+  color: var(--cofair-dataviz-4);
+}
+.cofair-badge[data-series="5"],
+.chip.cofair-badge[data-series="5"] {
+  background: color-mix(in srgb, var(--cofair-dataviz-5) 18%, transparent);
+  color: var(--cofair-dataviz-5);
+}
+.cofair-badge[data-series="6"],
+.chip.cofair-badge[data-series="6"] {
+  background: color-mix(in srgb, var(--cofair-dataviz-6) 18%, transparent);
+  color: var(--cofair-dataviz-6);
+}
+.cofair-badge[data-series="7"],
+.chip.cofair-badge[data-series="7"] {
+  background: color-mix(in srgb, var(--cofair-dataviz-7) 18%, transparent);
+  color: var(--cofair-dataviz-7);
+}
+
+/* Deselected reads as an outline, so state never rests on color alone: the tint
+   fill drops away and the label goes neutral and dim, so "off" is legible from
+   fill, hue and weight at once. Must stay after the [data-series] fills above —
+   those are more specific than a bare .chip[aria-pressed] and would otherwise
+   keep an off chip fully tinted. Opacity bottoms out around 0.87, where muted
+   text on the page background still clears AA 4.5:1 in both themes. */
+.chip.cofair-badge[aria-pressed="false"] {
+  background: transparent;
+  border-color: var(--cofair-color-border);
+  color: var(--cofair-color-text-muted);
+  opacity: 0.9;
+}
+
+/* Multiplied by the chip's own opacity, so the dot recedes further than its label. */
+.chip.cofair-badge[aria-pressed="false"] .chip__swatch { opacity: 0.35; }
 
 /* ── Chart ─────────────────────────────────────────────────────────────── */
 
@@ -183,6 +274,38 @@ a { color: var(--cofair-color-primary); }
   min-width: 0;
   position: relative;
   height: 100%;
+}
+
+.chart-node-tooltip {
+  position: absolute;
+  z-index: 2;
+  max-width: 14rem;
+  padding: var(--cofair-space-2) var(--cofair-space-3);
+  border: var(--cofair-border-width-thin) solid var(--cofair-color-border);
+  border-radius: var(--cofair-radius-md);
+  background: var(--cofair-color-bg-elevated);
+  box-shadow: var(--cofair-shadow-md);
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - var(--cofair-space-2)));
+}
+
+.chart-node-tooltip[hidden] { display: none; }
+
+.chart-node-tooltip__provider {
+  margin: 0;
+  color: var(--cofair-color-text-muted);
+}
+
+.chart-node-tooltip__model {
+  margin: var(--cofair-space-1) 0 0;
+  color: var(--cofair-color-text);
+  font-weight: var(--cofair-heading-weight);
+}
+
+.chart-node-tooltip__meta {
+  margin: var(--cofair-space-1) 0 0;
+  font-family: var(--cofair-font-mono);
+  color: var(--cofair-color-text-muted);
 }
 
 .chart-legend {
@@ -245,6 +368,14 @@ a { color: var(--cofair-color-primary); }
   text-decoration: line-through;
 }
 
+.chart-legend__item--solo {
+  font-weight: var(--cofair-heading-weight);
+}
+
+.chart-legend__item--dimmed {
+  color: var(--cofair-color-text-muted);
+}
+
 .chart-legend__swatch {
   width: var(--cofair-space-2);
   height: var(--cofair-space-2);
@@ -275,10 +406,10 @@ a { color: var(--cofair-color-primary); }
   overflow-wrap: anywhere;
 }
 
-.archive-col-first-price[hidden] { display: none; }
+.archive-col-flagged-on[hidden] { display: none; }
 
-.delta--up { color: var(--cofair-color-danger); }
-.delta--down { color: var(--cofair-color-success); }
+.delta--up { color: var(--cofair-color-success); }
+.delta--down { color: var(--cofair-color-danger); }
 
 /* ── Empty state (mirrors @cofair/ui EmptyState) ───────────────────────── */
 
