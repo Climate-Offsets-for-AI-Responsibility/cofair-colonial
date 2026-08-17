@@ -22,20 +22,42 @@ from incident import (  # noqa: E402
     write_incident,
 )
 from runbooks import execute_runbook  # noqa: E402
-from verify_pricing_run import verify_pricing_run  # noqa: E402
 
 ALLOWLIST_AUTOFIX = {"KeyError:unit"}
 
 
+def _load_run_report() -> dict:
+    report_path = ROOT / "run_report.json"
+    if not report_path.exists():
+        return {}
+    try:
+        return json.loads(report_path.read_text())
+    except json.JSONDecodeError:
+        return {}
+
+
 def cmd_notify_failure(args: argparse.Namespace) -> int:
-    run_id = args.run_id or str(uuid.uuid4())
+    report = _load_run_report()
+    run_id = args.run_id or report.get("run_id") or str(uuid.uuid4())
     started = args.started_at or now_iso_z()
-    error = args.error or "workflow step failed"
+    status = report.get("status", "failed")
+    error = args.error or report.get("error")
+    if not error and status == "degraded":
+        remediation = report.get("remediation") or {}
+        providers = remediation.get("providers") or []
+        error = (
+            "self-heal fallback applied for providers: "
+            + ", ".join(providers)
+            if providers
+            else "degraded run (self-heal fallback applied)"
+        )
+    if not error:
+        error = "workflow step failed"
     signature, category = classify_error(error)
 
     envelope = build_incident_envelope(
         pipeline=args.pipeline,
-        status="failed",
+        status=status if status in ("failed", "degraded", "escalated") else "failed",
         run_id=run_id,
         started_at=started,
         error_message=error,
@@ -60,6 +82,8 @@ def cmd_notify_failure(args: argparse.Namespace) -> int:
 
 
 def cmd_remediate(args: argparse.Namespace) -> int:
+    from verify_pricing_run import verify_pricing_run  # noqa: WPS433
+
     signature = args.signature
     run_id = args.run_id or str(uuid.uuid4())
     started = args.started_at or now_iso_z()
