@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-08-17T07:36:37Z",
+  "generated_at": "2026-08-17T20:56:25Z",
   "corpus_version": "1.0.0",
-  "row_count": 168,
+  "row_count": 182,
   "rows": [
     {
       "date": "2026-08-14",
@@ -2199,6 +2199,23 @@
     {
       "date": "2026-08-17",
       "provider_id": "anthropic",
+      "tier": "flagship",
+      "task_id": "D",
+      "model_id": "claude-opus-5",
+      "api_model": "claude-opus-5",
+      "tokens_in": 7251,
+      "input_chars": 25743,
+      "tokens_in_per_1k_chars": 281.669,
+      "label": "Long-context needle",
+      "run_status": "ok",
+      "error": null,
+      "corpus_version": "1.0.0",
+      "source": "tokenizer_ledger",
+      "run_at": "2026-08-17T20:55:45Z"
+    },
+    {
+      "date": "2026-08-17",
+      "provider_id": "anthropic",
       "tier": "workhorse",
       "task_id": "A",
       "model_id": "claude-haiku-4.5",
@@ -2246,6 +2263,23 @@
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
       "run_at": "2026-08-17T07:35:05Z"
+    },
+    {
+      "date": "2026-08-17",
+      "provider_id": "anthropic",
+      "tier": "workhorse",
+      "task_id": "D",
+      "model_id": "claude-haiku-4.5",
+      "api_model": "claude-haiku-4.5",
+      "tokens_in": null,
+      "input_chars": 25743,
+      "tokens_in_per_1k_chars": null,
+      "label": "Long-context needle",
+      "run_status": "error",
+      "error": "404 Client Error: Not Found for url: https://api.anthropic.com/v1/messages :: {\"type\":\"error\",\"error\":{\"type\":\"not_found_error\",\"message\":\"model: claude-haiku-4.5\"},\"request_id\":\"req_011Ce8zEwvR2VRBjCP9jkEBG\"}",
+      "corpus_version": "1.0.0",
+      "source": "tokenizer_ledger",
+      "run_at": "2026-08-17T20:55:45Z"
     },
     {
       "date": "2026-08-17",
@@ -2297,6 +2331,23 @@
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
       "run_at": "2026-08-17T07:36:24Z"
+    },
+    {
+      "date": "2026-08-17",
+      "provider_id": "aws",
+      "tier": "flagship",
+      "task_id": "D",
+      "model_id": "nova-premier",
+      "api_model": "us.amazon.nova-premier-v1:0",
+      "tokens_in": null,
+      "input_chars": 25743,
+      "tokens_in_per_1k_chars": null,
+      "label": "Long-context needle",
+      "run_status": "error",
+      "error": "404 Client Error: Not Found for url: https://bedrock-runtime.us-east-1.amazonaws.com/model/us.amazon.nova-premier-v1:0/converse :: {\"message\":\"Access denied. This Model is marked by provider as Legacy and you have not been actively using the model in the last 30 days. Please upgrade to an active model on Amazon Bedrock\"}",
+      "corpus_version": "1.0.0",
+      "source": "tokenizer_ledger",
+      "run_at": "2026-08-17T20:56:19Z"
     },
     {
       "date": "2026-08-17",
@@ -2348,6 +2399,23 @@
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
       "run_at": "2026-08-17T07:36:25Z"
+    },
+    {
+      "date": "2026-08-17",
+      "provider_id": "aws",
+      "tier": "workhorse",
+      "task_id": "D",
+      "model_id": "nova-micro",
+      "api_model": "amazon.nova-micro-v1:0",
+      "tokens_in": 4027,
+      "input_chars": 25743,
+      "tokens_in_per_1k_chars": 156.431,
+      "label": "Long-context needle",
+      "run_status": "ok",
+      "error": null,
+      "corpus_version": "1.0.0",
+      "source": "tokenizer_ledger",
+      "run_at": "2026-08-17T20:56:19Z"
     },
     {
       "date": "2026-08-17",
@@ -2403,6 +2471,23 @@
     {
       "date": "2026-08-17",
       "provider_id": "deepseek",
+      "tier": "flagship",
+      "task_id": "D",
+      "model_id": "deepseek-v4-pro",
+      "api_model": "deepseek-v4-pro",
+      "tokens_in": 4110,
+      "input_chars": 25743,
+      "tokens_in_per_1k_chars": 159.655,
+      "label": "Long-context needle",
+      "run_status": "ok",
+      "error": null,
+      "corpus_version": "1.0.0",
+      "source": "tokenizer_ledger",
+      "run_at": "2026-08-17T20:56:21Z"
+    },
+    {
+      "date": "2026-08-17",
+      "provider_id": "deepseek",
       "tier": "workhorse",
       "task_id": "A",
       "model_id": "deepseek-v4-flash",
@@ -2453,6 +2538,23 @@
     },
     {
       "date": "2026-08-17",
+      "provider_id": "deepseek",
+      "tier": "workhorse",
+      "task_id": "D",
+      "model_id": "deepseek-v4-flash",
+      "api_model": "deepseek-v4-flash",
+      "tokens_in": 4110,
+      "input_chars": 25743,
+      "tokens_in_per_1k_chars": 159.655,
+      "label": "Long-context needle",
+      "run_status": "ok",
+      "error": null,
+      "corpus_version": "1.0.0",
+      "source": "tokenizer_ledger",
+      "run_at": "2026-08-17T20:56:22Z"
+    },
+    {
+      "date": "2026-08-17",
       "provider_id": "google",
       "tier": "flagship",
       "task_id": "A",
@@ -2505,6 +2607,23 @@
     {
       "date": "2026-08-17",
       "provider_id": "google",
+      "tier": "flagship",
+      "task_id": "D",
+      "model_id": "gemini-3.1-pro",
+      "api_model": "gemini-flash-latest",
+      "tokens_in": 4031,
+      "input_chars": 25743,
+      "tokens_in_per_1k_chars": 156.586,
+      "label": "Long-context needle",
+      "run_status": "ok",
+      "error": null,
+      "corpus_version": "1.0.0",
+      "source": "tokenizer_ledger",
+      "run_at": "2026-08-17T20:55:46Z"
+    },
+    {
+      "date": "2026-08-17",
+      "provider_id": "google",
       "tier": "workhorse",
       "task_id": "A",
       "model_id": "gemini-3-flash",
@@ -2552,6 +2671,23 @@
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
       "run_at": "2026-08-17T07:35:11Z"
+    },
+    {
+      "date": "2026-08-17",
+      "provider_id": "google",
+      "tier": "workhorse",
+      "task_id": "D",
+      "model_id": "gemini-3-flash",
+      "api_model": "gemini-flash-latest",
+      "tokens_in": 4031,
+      "input_chars": 25743,
+      "tokens_in_per_1k_chars": 156.586,
+      "label": "Long-context needle",
+      "run_status": "ok",
+      "error": null,
+      "corpus_version": "1.0.0",
+      "source": "tokenizer_ledger",
+      "run_at": "2026-08-17T20:55:47Z"
     },
     {
       "date": "2026-08-17",
@@ -2607,6 +2743,23 @@
     {
       "date": "2026-08-17",
       "provider_id": "openai",
+      "tier": "flagship",
+      "task_id": "D",
+      "model_id": "chat-latest",
+      "api_model": "chat-latest",
+      "tokens_in": null,
+      "input_chars": 25743,
+      "tokens_in_per_1k_chars": null,
+      "label": "Long-context needle",
+      "run_status": "error",
+      "error": "400 Client Error: Bad Request for url: https://api.openai.com/v1/chat/completions :: {\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}",
+      "corpus_version": "1.0.0",
+      "source": "tokenizer_ledger",
+      "run_at": "2026-08-17T20:55:45Z"
+    },
+    {
+      "date": "2026-08-17",
+      "provider_id": "openai",
       "tier": "workhorse",
       "task_id": "A",
       "model_id": "gpt-5.6-luna",
@@ -2654,6 +2807,23 @@
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
       "run_at": "2026-08-17T07:35:09Z"
+    },
+    {
+      "date": "2026-08-17",
+      "provider_id": "openai",
+      "tier": "workhorse",
+      "task_id": "D",
+      "model_id": "gpt-5.6-luna",
+      "api_model": "gpt-5.6-luna",
+      "tokens_in": null,
+      "input_chars": 25743,
+      "tokens_in_per_1k_chars": null,
+      "label": "Long-context needle",
+      "run_status": "error",
+      "error": "400 Client Error: Bad Request for url: https://api.openai.com/v1/chat/completions :: {\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}",
+      "corpus_version": "1.0.0",
+      "source": "tokenizer_ledger",
+      "run_at": "2026-08-17T20:55:45Z"
     },
     {
       "date": "2026-08-17",
@@ -2709,6 +2879,23 @@
     {
       "date": "2026-08-17",
       "provider_id": "qwen",
+      "tier": "flagship",
+      "task_id": "D",
+      "model_id": "qwen3.7-max",
+      "api_model": "qwen-max",
+      "tokens_in": 4035,
+      "input_chars": 25743,
+      "tokens_in_per_1k_chars": 156.742,
+      "label": "Long-context needle",
+      "run_status": "ok",
+      "error": null,
+      "corpus_version": "1.0.0",
+      "source": "tokenizer_ledger",
+      "run_at": "2026-08-17T20:56:23Z"
+    },
+    {
+      "date": "2026-08-17",
+      "provider_id": "qwen",
       "tier": "workhorse",
       "task_id": "A",
       "model_id": "qwen-flash",
@@ -2756,6 +2943,23 @@
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
       "run_at": "2026-08-17T07:36:37Z"
+    },
+    {
+      "date": "2026-08-17",
+      "provider_id": "qwen",
+      "tier": "workhorse",
+      "task_id": "D",
+      "model_id": "qwen-flash",
+      "api_model": "qwen-turbo",
+      "tokens_in": 4039,
+      "input_chars": 25743,
+      "tokens_in_per_1k_chars": 156.897,
+      "label": "Long-context needle",
+      "run_status": "ok",
+      "error": null,
+      "corpus_version": "1.0.0",
+      "source": "tokenizer_ledger",
+      "run_at": "2026-08-17T20:56:25Z"
     },
     {
       "date": "2026-08-17",
@@ -2811,6 +3015,23 @@
     {
       "date": "2026-08-17",
       "provider_id": "xai",
+      "tier": "flagship",
+      "task_id": "D",
+      "model_id": "grok-4.6",
+      "api_model": "grok-4.6",
+      "tokens_in": 4233,
+      "input_chars": 25743,
+      "tokens_in_per_1k_chars": 164.433,
+      "label": "Long-context needle",
+      "run_status": "ok",
+      "error": null,
+      "corpus_version": "1.0.0",
+      "source": "tokenizer_ledger",
+      "run_at": "2026-08-17T20:56:00Z"
+    },
+    {
+      "date": "2026-08-17",
+      "provider_id": "xai",
       "tier": "workhorse",
       "task_id": "A",
       "model_id": "grok-build-0.1",
@@ -2858,6 +3079,23 @@
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
       "run_at": "2026-08-17T07:36:23Z"
+    },
+    {
+      "date": "2026-08-17",
+      "provider_id": "xai",
+      "tier": "workhorse",
+      "task_id": "D",
+      "model_id": "grok-build-0.1",
+      "api_model": "grok-build-0.1",
+      "tokens_in": 4213,
+      "input_chars": 25743,
+      "tokens_in_per_1k_chars": 163.656,
+      "label": "Long-context needle",
+      "run_status": "ok",
+      "error": null,
+      "corpus_version": "1.0.0",
+      "source": "tokenizer_ledger",
+      "run_at": "2026-08-17T20:56:18Z"
     }
   ]
 }
