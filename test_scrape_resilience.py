@@ -62,5 +62,18 @@ class ScrapeResilienceTest(unittest.TestCase):
         self.assertEqual(counts["google"], 60)
 
 
+    def test_remediation_sort_without_unit_field(self):
+        old_rows = [mk_row("google", i) for i in range(60)]
+        current_rows = [mk_row("google", i) for i in range(5)]
+        merged, remediation = m.remediate_with_previous_rows(current_rows, old_rows, "2.1.0")
+        self.assertTrue(remediation["applied"])
+        # Tier rows from mk_row include unit; strip to simulate aggregated tier shape.
+        for row in merged:
+            if row["provider_id"] == "google":
+                row.pop("unit", None)
+        merged.sort(key=m._tier_sort_key)
+        self.assertEqual(len(merged), 60)
+
+
 if __name__ == "__main__":
     unittest.main()

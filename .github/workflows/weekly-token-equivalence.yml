@@ -83,3 +83,28 @@ jobs:
           git add dashboard/data/
           git commit -m "Auto-update weekly token equivalence" || echo "No changes to commit"
           git push
+
+      - name: Emit ops incident (success)
+        if: success()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+          COFAIR_OPS_SOURCE: colonial-token-equivalence
+        run: |
+          python scripts/ops/emit_pipeline_incident.py \
+            --pipeline colonial-token-equivalence \
+            --status success \
+            --run-id "${GITHUB_RUN_ID}"
+
+      - name: Notify pipeline failure
+        if: failure()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+          COFAIR_OPS_SOURCE: colonial-token-equivalence
+        run: |
+          python scripts/ops/emit_pipeline_incident.py \
+            --pipeline colonial-token-equivalence \
+            --status failed \
+            --error "token equivalence workflow failed" \
+            --run-id "${GITHUB_RUN_ID}"

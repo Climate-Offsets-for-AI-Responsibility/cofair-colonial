@@ -8,6 +8,9 @@ on:
     - cron: "0 19 * * *" # run daily at 19:00 UTC
   workflow_dispatch: # manual run button
 
+env:
+  COFAIR_PIPELINE_WORKFLOW: daily-scrape.yml
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
@@ -28,19 +31,23 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run scraper
+        id: scrape
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+          COFAIR_OPS_SOURCE: colonial-daily-scrape
         run: |
           python scrape_pricing.py
 
       - name: Ingest pricing snapshot into Neon
+        id: ingest
         env:
           NETLIFY_DATABASE_URL_UNPOOLED: ${{ secrets.NETLIFY_DATABASE_URL_UNPOOLED }}
         run: |
           python scripts/ingest_pricing.py --neon
 
       - name: Refresh pricing views in Neon
+        id: dbt
         env:
           NEON_HOST: ${{ secrets.NEON_HOST }}
           NEON_USER: ${{ secrets.NEON_USER }}
@@ -57,11 +64,21 @@ jobs:
           path: run_report.json
           if-no-files-found: ignore
 
+      - name: Upload ops incident
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: colonial-daily-scrape-incident
+          path: ops/incidents/latest.json
+          if-no-files-found: ignore
+
       - name: Snapshot pricing.json for history (only if changed)
+        id: snapshot
         run: |
           python scripts/snapshot_if_changed.py
 
       - name: Update dashboard data
+        id: dashboard
         run: |
           python scripts/build_dashboard_data.py --append
 
@@ -69,9 +86,30 @@ jobs:
       # honours the marker, and this repo is repo-linked, so it would publish
       # stale data (I16). Nothing here runs on `push`.
       - name: Commit updated pricing.json and history
+        id: commit
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add pricing.json pricing_history/ dashboard/data/
+          git add pricing.json pricing_history/ dashboard/data/ ops/incidents/
           git commit -m "Auto-update pricing.json" || echo "No changes to commit"
           git push
+
+      - name: Verify pricing run
+        if: success()
+        run: |
+          python scripts/ops/verify_pricing_run.py
+
+      - name: Notify pipeline failure
+        if: failure()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+          COFAIR_OPS_SOURCE: colonial-daily-scrape
+        run: |
+          RUN_ID=$(python -c "import json; from pathlib import Path; p=Path('run_report.json'); print(json.loads(p.read_text()).get('run_id','unknown') if p.exists() else 'unknown')")
+          ERROR=$(python -c "import json; from pathlib import Path; p=Path('run_report.json'); print(json.loads(p.read_text()).get('error','workflow step failed') if p.exists() else 'workflow step failed')")
+          python scripts/ops/gha_ops.py notify-failure \
+            --pipeline colonial-daily-scrape \
+            --failed-step "see workflow run" \
+            --error "$ERROR" \
+            --run-id "$RUN_ID"

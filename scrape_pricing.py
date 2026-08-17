@@ -1913,6 +1913,9 @@ def parse_openai(html):
 
 
 def send_slack(text):
+    label = os.environ.get("COFAIR_OPS_SOURCE", "colonial-daily-scrape")
+    if not text.strip().startswith("[COFAIR ops |"):
+        text = f"[COFAIR ops | {label}]\n{text}"
     token = os.environ.get("SLACK_BOT_TOKEN")
     channel = os.environ.get("SLACK_CHANNEL", "#notifications")
 
@@ -1942,6 +1945,54 @@ def send_slack(text):
         return False
 
     return True
+
+
+def _workflow_run_url():
+    server = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
+    repo = os.environ.get("GITHUB_REPOSITORY")
+    run_id = os.environ.get("GITHUB_RUN_ID")
+    if repo and run_id:
+        return f"{server}/{repo}/actions/runs/{run_id}"
+    return None
+
+
+def format_ops_slack_message(headline, run_id, extra_lines=None, pipeline=None):
+    label = os.environ.get("COFAIR_OPS_SOURCE", pipeline or "colonial-daily-scrape")
+    lines = [f"[COFAIR ops | {label}] {headline}", f"run_id: {run_id}"]
+    url = _workflow_run_url()
+    if url:
+        lines.append(f"workflow: {url}")
+    sha = os.environ.get("GITHUB_SHA")
+    if sha:
+        lines.append(f"commit: {sha[:12]}")
+    if extra_lines:
+        lines.extend(extra_lines)
+    lines.append(f"Time: {now_iso_z()}")
+    return "\n".join(lines)
+
+
+def write_ops_incident(envelope):
+    incidents_dir = Path("ops/incidents")
+    incidents_dir.mkdir(parents=True, exist_ok=True)
+    latest = incidents_dir / "latest.json"
+    latest.write_text(json.dumps(envelope, indent=2))
+    if envelope.get("status") in ("failed", "degraded", "escalated"):
+        day = envelope["finished_at"][:10]
+        history_dir = incidents_dir / day
+        history_dir.mkdir(parents=True, exist_ok=True)
+        history_path = history_dir / f"{envelope['run_id']}.json"
+        history_path.write_text(json.dumps(envelope, indent=2))
+
+
+def classify_ops_error(message):
+    text = (message or "").strip()
+    key_match = re.search(r"KeyError:\s*['\"]?([^'\"]+)['\"]?", text)
+    if key_match:
+        return f"KeyError:{key_match.group(1)}", "parse"
+    if re.search(r"sanity check failed", text, re.I):
+        return "SanityCheckFailed", "parse"
+    first = re.sub(r"[^a-zA-Z0-9:_-]+", "_", text.split("\n")[0][:120]).strip("_")[:80]
+    return first or "UnknownError", "unknown"
 
 
 def detect_changes(old_rows, new_rows):
@@ -2056,7 +2107,7 @@ def dedupe_component_rows(rows):
             row.get("context_window") or "",
             row.get("modality") or "",
             row.get("billing_variant") or "",
-            row["unit"],
+            row.get("unit") or "",
         )
     )
     return clean
@@ -2110,6 +2161,18 @@ def build_pricing_doc(rows):
     }
 
 
+def _tier_sort_key(row):
+    """Sort key for aggregated tier rows (no component-level `unit` field)."""
+    return (
+        row["provider_id"],
+        row["display_name"].lower(),
+        row.get("service_tier") or "",
+        row.get("context_window") or "",
+        row.get("modality") or "",
+        row.get("billing_variant") or "",
+    )
+
+
 def _pricing_sort_key(row):
     return (
         row["provider_id"],
@@ -2119,7 +2182,7 @@ def _pricing_sort_key(row):
         row.get("context_window") or "",
         row.get("modality") or "",
         row.get("billing_variant") or "",
-        row["unit"],
+        row.get("unit") or "",
     )
 
 
@@ -2212,7 +2275,7 @@ def remediate_with_previous_rows(rows, old_rows, old_schema_version):
 
     merged = [row for row in rows if row["provider_id"] not in fallback_providers]
     merged.extend(row for row in old_rows if row["provider_id"] in fallback_providers)
-    merged.sort(key=_pricing_sort_key)
+    merged.sort(key=_tier_sort_key)
 
     remediation = {
         "applied": True,
@@ -2280,16 +2343,24 @@ def main():
         pricing_doc = build_pricing_doc(clean)
         PRICING_JSON_PATH.write_text(json.dumps(pricing_doc, indent=2))
 
+        run_status = "degraded" if remediation.get("applied") else "success"
         send_slack(
-            "Pricing scrape SUCCESS\n"
-            f"Rows Saved: {len(clean)}\n"
-            f"Time: {now_iso_z()}"
+            format_ops_slack_message(
+                f"Pricing scrape {run_status.upper()}",
+                run_id,
+                [f"Rows Saved: {len(clean)}"],
+            )
         )
         if remediation.get("applied"):
             send_slack(
-                "⚠️ Pricing scrape self-heal fallback applied\n"
-                f"Providers: {', '.join(remediation['providers'])}\n"
-                "Using previous snapshot rows for affected providers; parser update recommended."
+                format_ops_slack_message(
+                    "⚠️ Pricing scrape self-heal fallback applied (DEGRADED)",
+                    run_id,
+                    [
+                        f"Providers: {', '.join(remediation['providers'])}",
+                        "Using previous snapshot rows for affected providers; parser update recommended.",
+                    ],
+                )
             )
 
         changes = detect_changes(old_rows, clean)
@@ -2323,7 +2394,7 @@ def main():
                     "run_id": run_id,
                     "started_at": started_at,
                     "finished_at": now_iso_z(),
-                    "status": "success",
+                    "status": run_status,
                     "error": None,
                     "provider_component_counts": parse_diagnostics,
                     "sanity": sanity,
@@ -2332,16 +2403,44 @@ def main():
                 indent=2,
             )
         )
-        print(json.dumps({"event": "pricing_update_success", "run_id": run_id, "error": None}))
-        return 0
+        signature, category = classify_ops_error("")
+        success_incident = {
+            "schema_version": "1.0.0",
+            "incident_id": str(uuid.uuid4()),
+            "run_id": run_id,
+            "pipeline": "colonial-daily-scrape",
+            "repo": os.environ.get("GITHUB_REPOSITORY", "cofair-colonial"),
+            "workflow": os.environ.get("GITHUB_WORKFLOW", "Daily Pricing Scraper"),
+            "status": run_status,
+            "started_at": started_at,
+            "finished_at": now_iso_z(),
+            "commit_sha": os.environ.get("GITHUB_SHA"),
+            "workflow_run_id": os.environ.get("GITHUB_RUN_ID"),
+            "workflow_run_url": _workflow_run_url(),
+            "artifact_links": [_workflow_run_url() + "#artifacts"] if _workflow_run_url() else [],
+            "remediation": {
+                "attempted": remediation.get("applied", False),
+                "actions": remediation.get("providers", []),
+                "result": "success" if remediation.get("applied") else None,
+                "autonomy_tier": 0,
+            },
+            "verification": {"passed": run_status == "success", "checks": []},
+            "context": {"row_count": len(clean)},
+        }
+        write_ops_incident(success_incident)
+        print(json.dumps({"event": "pricing_update_success", "run_id": run_id, "error": None, "status": run_status}))
+        return 0 if run_status == "success" else 2
 
     except Exception as exc:
         error = str(exc)
         print(f"CRITICAL ERROR: {error}")
+        signature, category = classify_ops_error(error)
         send_slack(
-            "Pricing scrape FAILED\n"
-            f"Error: {error}\n"
-            f"Time: {now_iso_z()}"
+            format_ops_slack_message(
+                "Pricing scrape FAILED",
+                run_id,
+                [f"Error: {error}", f"signature: {signature} ({category})"],
+            )
         )
         RUN_REPORT_PATH.write_text(
             json.dumps(
@@ -2351,6 +2450,7 @@ def main():
                     "finished_at": now_iso_z(),
                     "status": "failed",
                     "error": error,
+                    "error_signature": signature,
                     "provider_component_counts": parse_diagnostics,
                     "sanity": sanity,
                     "remediation": remediation,
@@ -2358,7 +2458,35 @@ def main():
                 indent=2,
             )
         )
-        print(json.dumps({"event": "pricing_update_failed", "run_id": run_id, "error": error}))
+        write_ops_incident(
+            {
+                "schema_version": "1.0.0",
+                "incident_id": str(uuid.uuid4()),
+                "run_id": run_id,
+                "pipeline": "colonial-daily-scrape",
+                "repo": os.environ.get("GITHUB_REPOSITORY", "cofair-colonial"),
+                "workflow": os.environ.get("GITHUB_WORKFLOW", "Daily Pricing Scraper"),
+                "status": "failed",
+                "started_at": started_at,
+                "finished_at": now_iso_z(),
+                "error_message": error,
+                "error_signature": signature,
+                "error_category": category,
+                "commit_sha": os.environ.get("GITHUB_SHA"),
+                "workflow_run_id": os.environ.get("GITHUB_RUN_ID"),
+                "workflow_run_url": _workflow_run_url(),
+                "artifact_links": [_workflow_run_url() + "#artifacts"] if _workflow_run_url() else [],
+                "log_excerpt": error[:4000],
+                "remediation": {
+                    "attempted": False,
+                    "actions": [],
+                    "result": None,
+                    "autonomy_tier": 0,
+                },
+                "verification": {"passed": False, "checks": []},
+            }
+        )
+        print(json.dumps({"event": "pricing_update_failed", "run_id": run_id, "error": error, "signature": signature}))
         return 1
 
 if __name__ == "__main__":

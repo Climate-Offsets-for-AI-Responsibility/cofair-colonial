@@ -48,3 +48,28 @@ jobs:
           git add dashboard/data/
           git commit -m "Auto-update daily tokenizer ledger" || echo "No changes to commit"
           git push
+
+      - name: Emit ops incident (success)
+        if: success()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+          COFAIR_OPS_SOURCE: colonial-tokenizer-ledger
+        run: |
+          python scripts/ops/emit_pipeline_incident.py \
+            --pipeline colonial-tokenizer-ledger \
+            --status success \
+            --run-id "${GITHUB_RUN_ID}"
+
+      - name: Notify pipeline failure
+        if: failure()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+          COFAIR_OPS_SOURCE: colonial-tokenizer-ledger
+        run: |
+          python scripts/ops/emit_pipeline_incident.py \
+            --pipeline colonial-tokenizer-ledger \
+            --status failed \
+            --error "tokenizer ledger workflow failed" \
+            --run-id "${GITHUB_RUN_ID}"

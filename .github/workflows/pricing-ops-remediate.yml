@@ -1,0 +1,79 @@
+name: Pricing ops remediate
+
+permissions:
+  contents: write
+
+on:
+  workflow_run:
+    workflows: ["Daily Pricing Scraper"]
+    types: [completed]
+
+jobs:
+  remediate:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download run report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pricing-run-report
+          path: .
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Classify and remediate
+        id: remediate
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+          COFAIR_OPS_SOURCE: colonial-pricing-ops-remediate
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_WORKFLOW: pricing-ops-remediate.yml
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ ! -f run_report.json ]; then
+            echo "No run_report.json in artifact"
+            exit 1
+          fi
+          STATUS=$(python -c "import json; print(json.load(open('run_report.json')).get('status','failed'))")
+          if [ "$STATUS" = "degraded" ]; then
+            echo "Run status degraded (self-heal fallback) — skipping code remediation"
+            exit 0
+          fi
+          RUN_ID=$(python -c "import json; print(json.load(open('run_report.json')).get('run_id','unknown'))")
+          ERROR=$(python -c "import json; print(json.load(open('run_report.json')).get('error','unknown'))")
+          SIGNATURE=$(python -c "import re; e=open('run_report.json').read(); import json; err=json.loads(e).get('error',''); m=re.search(r\"KeyError:\\s*['\\\"]?([^'\\\"]+)['\\\"]?\", err); print(f'KeyError:{m.group(1)}' if m else ('SanityCheckFailed' if 'sanity' in err.lower() else 'UnknownError'))")
+          python scripts/ops/gha_ops.py remediate \
+            --pipeline colonial-daily-scrape \
+            --signature "$SIGNATURE" \
+            --run-id "$RUN_ID" \
+            --error-message "$ERROR" || REMED_FAILED=1
+          if [ "${REMED_FAILED:-0}" = "1" ]; then
+            python scripts/ops/gha_ops.py autofix-pr \
+              --signature "$SIGNATURE" \
+              --run-id "$RUN_ID" || true
+          fi
+
+      - name: Upload remediated incident
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: colonial-daily-scrape-incident-remediated
+          path: ops/incidents/latest.json
+          if-no-files-found: ignore
