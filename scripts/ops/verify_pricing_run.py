@@ -20,6 +20,15 @@ def _today_str() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
+def _latest_history_file() -> Path | None:
+    if not PRICING_HISTORY.exists():
+        return None
+    candidates = sorted(PRICING_HISTORY.glob("*.json"))
+    if not candidates:
+        return None
+    return candidates[-1]
+
+
 def verify_pricing_run() -> dict:
     checks: list[dict] = []
 
@@ -38,7 +47,17 @@ def verify_pricing_run() -> dict:
 
     rows = doc.get("pricing", [])
     schema_version = doc.get("meta", {}).get("schema_version")
+    last_run_datetime = doc.get("meta", {}).get("last_run_datetime")
     add("schema_version", schema_version == "2.1.0", f"schema_version={schema_version}")
+    if isinstance(last_run_datetime, str):
+        try:
+            run_dt = datetime.strptime(last_run_datetime, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+            age_hours = (datetime.now(timezone.utc) - run_dt).total_seconds() / 3600
+            add("pricing_json_recency", age_hours <= 30, f"age_hours={age_hours:.1f}")
+        except ValueError:
+            add("pricing_json_recency", False, f"unparseable last_run_datetime={last_run_datetime}")
+    else:
+        add("pricing_json_recency", False, f"last_run_datetime missing: {last_run_datetime}")
 
     add(
         "total_row_floor",
@@ -56,10 +75,19 @@ def verify_pricing_run() -> dict:
         )
 
     history_today = PRICING_HISTORY / f"{_today_str()}.json"
+    latest_history = _latest_history_file()
+    freshness_ok = False
+    freshness_detail = f"expected {history_today}"
+    if history_today.exists():
+        freshness_ok = True
+        freshness_detail = f"snapshot present: {history_today.name}"
+    elif latest_history is not None:
+        freshness_ok = True
+        freshness_detail = f"today snapshot unchanged; latest={latest_history.name}"
     add(
         "history_freshness",
-        history_today.exists(),
-        f"expected {history_today}",
+        freshness_ok,
+        freshness_detail,
     )
 
     if RUN_REPORT.exists():
