@@ -2429,7 +2429,9 @@ def main():
         }
         write_ops_incident(success_incident)
         print(json.dumps({"event": "pricing_update_success", "run_id": run_id, "error": None, "status": run_status}))
-        return 0 if run_status == "success" else 2
+        # Degraded is a successful execution with stale-provider fallback. Keep it
+        # visible via incident status + Slack, but do not fail the workflow.
+        return 0
 
     except Exception as exc:
         error = str(exc)
