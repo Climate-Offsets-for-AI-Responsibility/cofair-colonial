@@ -18,9 +18,9 @@ from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from provider_token_count import (  # noqa: E402
+    api_model_candidates,
     count_prompt_tokens_messages,
     env_for_provider,
-    resolve_api_model,
 )
 from task_corpus import (  # noqa: E402
     CHAT_CORPUS_VERSION,
@@ -95,9 +95,14 @@ def main() -> int:
 
     for model in models:
         api_key = env_for_provider(model["provider_id"])
-        api_model = resolve_api_model(
-            model["provider_id"], model["model_id"], model["tier"], api_key
+        candidates = api_model_candidates(
+            model["provider_id"],
+            model["model_id"],
+            model["tier"],
+            api_key,
+            model.get("api_candidates"),
         )
+        api_model = candidates[0] if candidates else model["model_id"]
         for turn in range(1, max_turn + 1):
             messages = transcript_prefix(turn)
             prefix_chars = transcript_prefix_chars(turn)
@@ -108,7 +113,7 @@ def main() -> int:
                 status, tokens, error = "missing_key", None, "provider API key missing"
             else:
                 status, tokens, error, api_model = count_prompt_tokens_messages(
-                    model["provider_id"], api_model, messages, api_key
+                    model["provider_id"], api_model, messages, api_key, candidates
                 )
 
             row = {

@@ -267,7 +267,15 @@ function aggregateMeter() {
 }
 
 function aggregateLedger() {
-  const taskIds = new Set(packTaskIds());
+  // Average over a FIXED task set, never "whatever was collected that day".
+  // The ledger runs A+B+C daily and D once a week with the meter, so folding D
+  // into the mean on that one day dropped the average by ~20% — a weekly
+  // sawtooth that reads exactly like drift on an instrument built to detect
+  // drift. D is charted on its own via the `long` pack.
+  const required = packTaskIds().filter((id) => id !== "D");
+  const need = required.length ? required : packTaskIds();
+  const taskIds = new Set(need);
+
   const groups = new Map();
   for (const row of state.eq?.tokenizer_ledger?.rows || []) {
     if (!taskIds.has(row.task_id)) continue;
@@ -291,10 +299,6 @@ function aggregateLedger() {
     group.densitySum += row.tokens_in_per_1k_chars;
     group.n += 1;
   }
-
-  // For suite packs, require A+B+C present (D is weekly-only on ledger).
-  const required = packTaskIds().filter((id) => id !== "D");
-  const need = required.length ? required : packTaskIds();
 
   const complete = [];
   let incomplete = 0;
@@ -330,6 +334,22 @@ function aggregateWrapper() {
   return { points: complete, incomplete: 0, xField: "week" };
 }
 
+/**
+ * Panel rows that collected nothing from the source behind the current measure.
+ *
+ * Without this, a provider whose every call failed draws exactly like a
+ * provider that is simply absent from the chart — which is how this surface sat
+ * dark for weeks while the pipeline reported success. Read the collection
+ * health the builder derives from observed rows, not the env-key check.
+ */
+function darkPanelRows() {
+  const source = METRICS[state.metric].source || "meter";
+  return (state.eq?.provider_health?.panel || []).filter((item) => {
+    const stats = item.sources?.[source];
+    return stats && !stats.ok_count && stats.error_count;
+  });
+}
+
 function renderProviderChips() {
   const el = document.getElementById("providerFilter");
   const providers = Object.keys(state.eq.provider_auth?.requirements || {}).sort();
@@ -339,6 +359,7 @@ function renderProviderChips() {
     chip.type = "button";
     chip.className = "chip cofair-badge";
     chip.dataset.series = String(providerSeries(provider));
+    chip.dataset.provider = provider;
     chip.setAttribute("aria-pressed", String(state.selectedProviders.has(provider)));
     chip.innerHTML = `<span class="chip__swatch"></span>${esc(providerLabel(provider))}`;
     chip.addEventListener("click", () => {
@@ -349,6 +370,39 @@ function renderProviderChips() {
     });
     el.appendChild(chip);
   });
+}
+
+function renderHealth() {
+  const dark = darkPanelRows();
+  const byProvider = new Map();
+  dark.forEach((item) => {
+    if (!byProvider.has(item.provider_id)) byProvider.set(item.provider_id, []);
+    byProvider.get(item.provider_id).push(item);
+  });
+
+  document.querySelectorAll(".chip[data-provider]").forEach((chip) => {
+    const rows = byProvider.get(chip.dataset.provider);
+    if (!rows) {
+      delete chip.dataset.dark;
+      chip.removeAttribute("title");
+      return;
+    }
+    chip.dataset.dark = "true";
+    chip.title = rows
+      .map((row) => {
+        const stats = row.sources[METRICS[state.metric].source || "meter"];
+        return `${row.tier}: ${stats.last_error_model || "?"} — ${String(stats.last_error || "").slice(0, 140)}`;
+      })
+      .join("\n");
+  });
+
+  const note = document.getElementById("healthNote");
+  note.hidden = dark.length === 0;
+  note.textContent = dark.length
+    ? `Not collecting for this measure: ${dark
+        .map((item) => `${providerLabel(item.provider_id)} · ${item.tier}`)
+        .join(", ")}. The last attempt returned an error, so these are missing rather than flat.`
+    : "";
 }
 
 function renderChart(points) {
@@ -681,6 +735,7 @@ function render() {
   const { points } = aggregate();
 
   document.getElementById("metricNote").textContent = METRICS[state.metric].note;
+  renderHealth();
   renderChart(points);
   renderTaskTable();
 }

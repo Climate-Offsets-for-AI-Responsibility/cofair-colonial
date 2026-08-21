@@ -69,7 +69,20 @@ jobs:
         run: |
           python scripts/run_wrapper_overhead.py --mode two --max-turn 10
 
+      # Keys are passed here too: the builder records which provider
+      # credentials are visible, and without them that field reads "none
+      # configured" on a run whose collection actually worked.
       - name: Rebuild dashboard datasets
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          TRACKER_AMAZON_API_KEY: ${{ secrets.TRACKER_AMAZON_API_KEY }}
+          AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
         run: |
           python scripts/build_dashboard_data.py --rebuild
 
@@ -83,6 +96,14 @@ jobs:
           git add dashboard/data/
           git commit -m "Auto-update weekly token equivalence" || echo "No changes to commit"
           git push
+
+      # Runs after the push on purpose: whatever a healthy provider collected
+      # should still publish. This step exists so a provider that collected
+      # NOTHING fails the job instead of passing silently.
+      - name: Verify collection health
+        run: |
+          python scripts/ops/verify_token_runs.py \
+            --sources meter --sources ledger --sources wrapper
 
       - name: Emit ops incident (success)
         if: success()

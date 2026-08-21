@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-21T07:29:24Z",
+  "generated_at": "2026-08-21T20:12:44Z",
   "corpus_version": "1.0.0",
   "row_count": 350,
   "rows": [
@@ -5254,7 +5254,7 @@
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-21T07:27:44Z"
+      "run_at": "2026-08-21T20:12:31Z"
     },
     {
       "date": "2026-08-21",
@@ -5271,7 +5271,7 @@
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-21T07:27:45Z"
+      "run_at": "2026-08-21T20:12:32Z"
     },
     {
       "date": "2026-08-21",
@@ -5288,7 +5288,7 @@
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-21T07:27:47Z"
+      "run_at": "2026-08-21T20:12:34Z"
     },
     {
       "date": "2026-08-21",
@@ -5296,16 +5296,16 @@
       "tier": "workhorse",
       "task_id": "A",
       "model_id": "claude-haiku-4.5",
-      "api_model": "claude-haiku-4.5",
-      "tokens_in": null,
+      "api_model": "claude-haiku-4-5-20251001",
+      "tokens_in": 40,
       "input_chars": 157,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 254.777,
       "label": "Bounded Q&A",
-      "run_status": "error",
-      "error": "404 Client Error: Not Found for url: https://api.anthropic.com/v1/messages :: {\"type\":\"error\",\"error\":{\"type\":\"not_found_error\",\"message\":\"model: claude-haiku-4.5\"},\"request_id\":\"req_011CeFVs8FRXjtdMK38GvXKw\"}",
+      "run_status": "ok",
+      "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-21T07:27:47Z"
+      "run_at": "2026-08-21T20:12:35Z"
     },
     {
       "date": "2026-08-21",
@@ -5313,16 +5313,16 @@
       "tier": "workhorse",
       "task_id": "B",
       "model_id": "claude-haiku-4.5",
-      "api_model": "claude-haiku-4.5",
-      "tokens_in": null,
+      "api_model": "claude-haiku-4-5-20251001",
+      "tokens_in": 173,
       "input_chars": 843,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 205.219,
       "label": "Summarize frozen essay",
-      "run_status": "error",
-      "error": "404 Client Error: Not Found for url: https://api.anthropic.com/v1/messages :: {\"type\":\"error\",\"error\":{\"type\":\"not_found_error\",\"message\":\"model: claude-haiku-4.5\"},\"request_id\":\"req_011CeFVs8wbNx6zZ31Z3sSUb\"}",
+      "run_status": "ok",
+      "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-21T07:27:48Z"
+      "run_at": "2026-08-21T20:12:35Z"
     },
     {
       "date": "2026-08-21",
@@ -5330,16 +5330,16 @@
       "tier": "workhorse",
       "task_id": "C",
       "model_id": "claude-haiku-4.5",
-      "api_model": "claude-haiku-4.5",
-      "tokens_in": null,
+      "api_model": "claude-haiku-4-5-20251001",
+      "tokens_in": 73,
       "input_chars": 217,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 336.406,
       "label": "Code from frozen spec",
-      "run_status": "error",
-      "error": "404 Client Error: Not Found for url: https://api.anthropic.com/v1/messages :: {\"type\":\"error\",\"error\":{\"type\":\"not_found_error\",\"message\":\"model: claude-haiku-4.5\"},\"request_id\":\"req_011CeFVs9c2sVBWQ5U6VVwkX\"}",
+      "run_status": "ok",
+      "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-21T07:27:48Z"
+      "run_at": "2026-08-21T20:12:36Z"
     },
     {
       "date": "2026-08-21",
@@ -5347,16 +5347,16 @@
       "tier": "flagship",
       "task_id": "A",
       "model_id": "nova-premier",
-      "api_model": "us.amazon.nova-premier-v1:0",
-      "tokens_in": null,
+      "api_model": "amazon.nova-pro-v1:0",
+      "tokens_in": 29,
       "input_chars": 157,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 184.713,
       "label": "Bounded Q&A",
-      "run_status": "error",
-      "error": "404 Client Error: Not Found for url: https://bedrock-runtime.us-east-1.amazonaws.com/model/us.amazon.nova-premier-v1:0/converse :: {\"message\":\"Access denied. This Model is marked by provider as Legacy and you have not been actively using the model in the last 30 days. Please upgrade to an active model on Amazon Bedrock\"}",
+      "run_status": "ok",
+      "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-21T07:29:09Z"
+      "run_at": "2026-08-21T20:12:38Z"
     },
     {
       "date": "2026-08-21",
@@ -5364,16 +5364,16 @@
       "tier": "flagship",
       "task_id": "B",
       "model_id": "nova-premier",
-      "api_model": "us.amazon.nova-premier-v1:0",
-      "tokens_in": null,
+      "api_model": "amazon.nova-pro-v1:0",
+      "tokens_in": 154,
       "input_chars": 843,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 182.681,
       "label": "Summarize frozen essay",
-      "run_status": "error",
-      "error": "404 Client Error: Not Found for url: https://bedrock-runtime.us-east-1.amazonaws.com/model/us.amazon.nova-premier-v1:0/converse :: {\"message\":\"Access denied. This Model is marked by provider as Legacy and you have not been actively using the model in the last 30 days. Please upgrade to an active model on Amazon Bedrock\"}",
+      "run_status": "ok",
+      "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-21T07:29:10Z"
+      "run_at": "2026-08-21T20:12:40Z"
     },
     {
       "date": "2026-08-21",
@@ -5381,16 +5381,16 @@
       "tier": "flagship",
       "task_id": "C",
       "model_id": "nova-premier",
-      "api_model": "us.amazon.nova-premier-v1:0",
-      "tokens_in": null,
+      "api_model": "amazon.nova-pro-v1:0",
+      "tokens_in": 73,
       "input_chars": 217,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 336.406,
       "label": "Code from frozen spec",
-      "run_status": "error",
-      "error": "404 Client Error: Not Found for url: https://bedrock-runtime.us-east-1.amazonaws.com/model/us.amazon.nova-premier-v1:0/converse :: {\"message\":\"Access denied. This Model is marked by provider as Legacy and you have not been actively using the model in the last 30 days. Please upgrade to an active model on Amazon Bedrock\"}",
+      "run_status": "ok",
+      "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-21T07:29:10Z"
+      "run_at": "2026-08-21T20:12:42Z"
     },
     {
       "date": "2026-08-21",
@@ -5407,7 +5407,7 @@
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-21T07:29:11Z"
+      "run_at": "2026-08-21T20:12:43Z"
     },
     {
       "date": "2026-08-21",
@@ -5424,7 +5424,7 @@
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-21T07:29:12Z"
+      "run_at": "2026-08-21T20:12:43Z"
     },
     {
       "date": "2026-08-21",
@@ -5441,7 +5441,7 @@
       "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-21T07:29:12Z"
+      "run_at": "2026-08-21T20:12:44Z"
     },
     {
       "date": "2026-08-21",
@@ -5654,15 +5654,15 @@
       "task_id": "A",
       "model_id": "chat-latest",
       "api_model": "chat-latest",
-      "tokens_in": null,
+      "tokens_in": 34,
       "input_chars": 157,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 216.561,
       "label": "Bounded Q&A",
-      "run_status": "error",
-      "error": "400 Client Error: Bad Request for url: https://api.openai.com/v1/chat/completions :: {\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}",
+      "run_status": "ok",
+      "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-21T07:27:49Z"
+      "run_at": "2026-08-21T20:12:22Z"
     },
     {
       "date": "2026-08-21",
@@ -5671,15 +5671,15 @@
       "task_id": "B",
       "model_id": "chat-latest",
       "api_model": "chat-latest",
-      "tokens_in": null,
+      "tokens_in": 155,
       "input_chars": 843,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 183.867,
       "label": "Summarize frozen essay",
-      "run_status": "error",
-      "error": "400 Client Error: Bad Request for url: https://api.openai.com/v1/chat/completions :: {\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}",
+      "run_status": "ok",
+      "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-21T07:27:50Z"
+      "run_at": "2026-08-21T20:12:23Z"
     },
     {
       "date": "2026-08-21",
@@ -5688,15 +5688,15 @@
       "task_id": "C",
       "model_id": "chat-latest",
       "api_model": "chat-latest",
-      "tokens_in": null,
+      "tokens_in": 68,
       "input_chars": 217,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 313.364,
       "label": "Code from frozen spec",
-      "run_status": "error",
-      "error": "400 Client Error: Bad Request for url: https://api.openai.com/v1/chat/completions :: {\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}",
+      "run_status": "ok",
+      "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-21T07:27:51Z"
+      "run_at": "2026-08-21T20:12:24Z"
     },
     {
       "date": "2026-08-21",
@@ -5705,15 +5705,15 @@
       "task_id": "A",
       "model_id": "gpt-5.6-luna",
       "api_model": "gpt-5.6-luna",
-      "tokens_in": null,
+      "tokens_in": 34,
       "input_chars": 157,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 216.561,
       "label": "Bounded Q&A",
-      "run_status": "error",
-      "error": "400 Client Error: Bad Request for url: https://api.openai.com/v1/chat/completions :: {\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}",
+      "run_status": "ok",
+      "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-21T07:27:52Z"
+      "run_at": "2026-08-21T20:12:25Z"
     },
     {
       "date": "2026-08-21",
@@ -5722,15 +5722,15 @@
       "task_id": "B",
       "model_id": "gpt-5.6-luna",
       "api_model": "gpt-5.6-luna",
-      "tokens_in": null,
+      "tokens_in": 155,
       "input_chars": 843,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 183.867,
       "label": "Summarize frozen essay",
-      "run_status": "error",
-      "error": "400 Client Error: Bad Request for url: https://api.openai.com/v1/chat/completions :: {\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}",
+      "run_status": "ok",
+      "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-21T07:27:53Z"
+      "run_at": "2026-08-21T20:12:28Z"
     },
     {
       "date": "2026-08-21",
@@ -5739,15 +5739,15 @@
       "task_id": "C",
       "model_id": "gpt-5.6-luna",
       "api_model": "gpt-5.6-luna",
-      "tokens_in": null,
+      "tokens_in": 68,
       "input_chars": 217,
-      "tokens_in_per_1k_chars": null,
+      "tokens_in_per_1k_chars": 313.364,
       "label": "Code from frozen spec",
-      "run_status": "error",
-      "error": "400 Client Error: Bad Request for url: https://api.openai.com/v1/chat/completions :: {\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}",
+      "run_status": "ok",
+      "error": null,
       "corpus_version": "1.0.0",
       "source": "tokenizer_ledger",
-      "run_at": "2026-08-21T07:27:53Z"
+      "run_at": "2026-08-21T20:12:29Z"
     },
     {
       "date": "2026-08-21",

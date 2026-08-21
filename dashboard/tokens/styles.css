@@ -2,6 +2,27 @@
   margin: var(--cofair-space-6) 0 var(--cofair-space-2);
 }
 
+/* ── Collection health ─────────────────────────────────────────────────── */
+
+/* A provider that failed every call used to look identical to one that simply
+   has no line yet. Warning tone rather than danger: the chart is still valid
+   for the providers that did report. */
+.health-note {
+  color: var(--cofair-color-warning);
+}
+
+/* Struck-through label reads as "not reporting" without adding a component
+   (hub R13); the chip's title carries the provider's last error. */
+.chip[data-dark="true"] .chip__swatch {
+  background: transparent;
+  border: var(--cofair-border-width-thin) dashed var(--cofair-color-warning);
+}
+
+.chip[data-dark="true"] {
+  text-decoration: line-through;
+  text-decoration-color: var(--cofair-color-warning);
+}
+
 /* ── Chart legend ──────────────────────────────────────────────────────── */
 
 .legend-swatch {

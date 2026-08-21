@@ -487,6 +487,89 @@ def build_token_runs(run_rows: list[dict]) -> list[dict]:
     return out
 
 
+def _tier_fallbacks(
+    by_provider_model: dict, provider_id: str, tier_ids: list[str], chosen_model_id: str
+) -> list[dict]:
+    out = []
+    for model_id in tier_ids:
+        if model_id == chosen_model_id:
+            continue
+        row = by_provider_model.get((provider_id, model_id))
+        if row is None:
+            continue
+        out.append(
+            {
+                "model_id": model_id,
+                "input_price": row.get("latest_input", row.get("input_price")),
+                "output_price": row.get("latest_output", row.get("output_price")),
+            }
+        )
+    return out
+
+
+def build_provider_health(
+    selected: list[dict],
+    run_rows: list[dict],
+    ledger_rows: list[dict],
+    wrapper_rows: list[dict],
+) -> list[dict]:
+    """Per-panel-row collection health, derived from observed runs.
+
+    Env inspection cannot answer "is this provider reporting?" — a key can be
+    present and every call still fail on a dead model id or a rejected
+    parameter, which is exactly how `/tokens` went dark while the workflow kept
+    reporting success. This reads the rows the runners actually wrote, so a
+    silent provider outage is visible on the surface and to the ops gate.
+    """
+    sources = []
+    for name, rows, date_field in (
+        ("meter", run_rows, "run_week"),
+        ("ledger", ledger_rows, "date"),
+        ("wrapper", wrapper_rows, "run_week"),
+    ):
+        attempted = [row for row in rows if row.get("run_status") not in (None, "dry_run")]
+        # Counts are scoped to the most recent collection for the source. All-time
+        # counts would let a fresh regression hide behind last week's successes —
+        # the whole point is to catch the run that just broke.
+        latest = max((row.get(date_field) or "" for row in attempted), default="") or None
+        sources.append((name, attempted, date_field, latest))
+
+    health = []
+    for entry in selected:
+        key = (entry["provider_id"], entry["tier"])
+        item = {"provider_id": entry["provider_id"], "tier": entry["tier"], "sources": {}}
+        for name, rows, date_field, latest in sources:
+            mine = [row for row in rows if (row.get("provider_id"), row.get("tier")) == key]
+            current = [row for row in mine if (row.get(date_field) or "") == latest]
+            ok_rows = [row for row in current if row.get("run_status") == "ok"]
+            failed = [row for row in current if row.get("run_status") != "ok"]
+            last_error = max(failed, key=lambda r: r.get("run_at") or "", default=None)
+            item["sources"][name] = {
+                "latest_observed": latest,
+                "ok_count": len(ok_rows),
+                "error_count": len(failed),
+                "last_ok": max(
+                    (
+                        row.get(date_field) or ""
+                        for row in mine
+                        if row.get("run_status") == "ok"
+                    ),
+                    default="",
+                )
+                or None,
+                "last_error": (last_error or {}).get("error"),
+                "last_error_model": (last_error or {}).get("api_model"),
+            }
+        item["reporting"] = any(src["ok_count"] for src in item["sources"].values())
+        item["dark_sources"] = sorted(
+            name
+            for name, src in item["sources"].items()
+            if src["error_count"] and not src["ok_count"]
+        )
+        health.append(item)
+    return health
+
+
 def _load_json_rows(path: Path) -> list[dict]:
     if not path.exists():
         return []
@@ -512,7 +595,8 @@ def build_equivalence(
     selected_by_mode = {"two": [], "three": []}
     for provider_id, tiers in TIER_CANDIDATES.items():
         for tier_name in TIER_ORDER:
-            row = _pick_tier_model(by_provider_model, provider_id, tiers.get(tier_name, []))
+            tier_ids = tiers.get(tier_name, [])
+            row = _pick_tier_model(by_provider_model, provider_id, tier_ids)
             if row is None:
                 continue
             entry = {
@@ -523,6 +607,14 @@ def build_equivalence(
                 "input_price": row.get("latest_input", row.get("input_price")),
                 "output_price": row.get("latest_output", row.get("output_price")),
                 "currency": row.get("currency", "USD"),
+                # The rest of the tier's preference list, priced. A pinned model
+                # can be in the catalog and still uncallable (Legacy on the key,
+                # absent from the Bedrock region), so runners fall through in
+                # this order and value the row at the price of the model that
+                # actually answered.
+                "api_candidates": _tier_fallbacks(
+                    by_provider_model, provider_id, tier_ids, row["model_id"]
+                ),
             }
             selected.append(entry)
             selected_by_mode["two"].append(entry)
@@ -548,12 +640,18 @@ def build_equivalence(
     }
     missing = [provider for provider, item in auth.items() if not item["configured"]]
     run_rows = _load_equivalence_runs()
+    ledger_all = _load_json_rows(TOKENIZER_LEDGER_FILE)
+    wrapper_all = _load_json_rows(WRAPPER_RUNS_FILE)
+    provider_health = build_provider_health(selected, run_rows, ledger_all, wrapper_all)
+    dark = sorted(
+        f"{item['provider_id']}·{item['tier']}" for item in provider_health if not item["reporting"]
+    )
     latest_week = max((row.get("run_week") for row in run_rows if row.get("run_week")), default=None)
     latest_rows = [row for row in run_rows if row.get("run_week") == latest_week] if latest_week else []
 
-    ledger_rows = _load_json_rows(TOKENIZER_LEDGER_FILE)
+    ledger_rows = ledger_all
     ledger_ok = [row for row in ledger_rows if row.get("run_status") == "ok"]
-    wrapper_rows = _load_json_rows(WRAPPER_RUNS_FILE)
+    wrapper_rows = wrapper_all
     wrapper_ok = [row for row in wrapper_rows if row.get("run_status") == "ok"]
 
     return {
@@ -602,7 +700,17 @@ def build_equivalence(
         "provider_auth": {
             "requirements": auth,
             "missing_providers": missing,
-            "ready_for_live_runs": not missing,
+            # Env-derived, and this builder normally runs in a step without the
+            # provider keys — so it says nothing about whether collection works.
+            # `provider_health` is the signal to trust.
+            "env_visible_to_builder": bool(auth) and len(missing) < len(auth),
+            "ready_for_live_runs": not dark,
+        },
+        "provider_health": {
+            "panel": provider_health,
+            "reporting_count": sum(1 for item in provider_health if item["reporting"]),
+            "panel_count": len(provider_health),
+            "dark": dark,
         },
         "live_runs": {
             "latest_week": latest_week,

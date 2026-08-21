@@ -16,9 +16,9 @@ from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from provider_token_count import (  # noqa: E402
+    api_model_candidates,
     count_prompt_tokens_text,
     env_for_provider,
-    resolve_api_model,
 )
 from task_corpus import CORPUS_VERSION, TASK_PROMPTS, TASK_SPECS  # noqa: E402
 
@@ -98,9 +98,14 @@ def main() -> int:
             prompt = TASK_PROMPTS[task_id]
             input_chars = len(prompt)
             api_key = env_for_provider(model["provider_id"])
-            api_model = resolve_api_model(
-                model["provider_id"], model["model_id"], model["tier"], api_key
+            candidates = api_model_candidates(
+                model["provider_id"],
+                model["model_id"],
+                model["tier"],
+                api_key,
+                model.get("api_candidates"),
             )
+            api_model = candidates[0] if candidates else model["model_id"]
 
             if args.dry_run:
                 status, tokens_in, error = "dry_run", None, None
@@ -108,7 +113,7 @@ def main() -> int:
                 status, tokens_in, error = "missing_key", None, "provider API key missing"
             else:
                 status, tokens_in, error, api_model = count_prompt_tokens_text(
-                    model["provider_id"], api_model, prompt, api_key
+                    model["provider_id"], api_model, prompt, api_key, candidates
                 )
 
             density = None

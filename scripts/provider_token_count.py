@@ -14,6 +14,13 @@ import requests
 
 TIMEOUT_SECONDS = 90
 
+# api.openai.com rejects both `max_tokens` and `temperature: 0` on its current
+# chat models, and refuses `max_completion_tokens: 1` outright ("could not
+# finish the message"). Counting only needs usage.prompt_tokens, so ask for the
+# smallest cap the API will actually accept and throw the completion away.
+OPENAI_BASE_URL = "https://api.openai.com/v1"
+OPENAI_MIN_OUTPUT_TOKENS = 16
+
 QWEN_MODEL_MAP = {
     "qwen3.7-max": "qwen-max",
     "qwen3.7-plus": "qwen-plus",
@@ -80,18 +87,197 @@ def env_for_provider(provider_id: str) -> str | None:
 
 
 def resolve_api_model(provider_id: str, model_id: str, tier: str, api_key: str | None) -> str:
-    if provider_id == "qwen":
-        return QWEN_MODEL_MAP.get(model_id, model_id)
-    if provider_id == "aws":
-        return BEDROCK_MODEL_MAP.get(model_id, model_id)
-    if provider_id == "google" and api_key:
-        # Prefer an available chat model; callers may still retry candidates.
-        return model_id
-    return model_id
+    candidates = api_model_candidates(provider_id, model_id, tier, api_key)
+    return candidates[0] if candidates else model_id
+
+
+_ANTHROPIC_MODEL_IDS: list[str] | None = None
+
+
+def anthropic_model_ids(api_key: str) -> list[str]:
+    """Ids Anthropic will actually serve on this key, newest first."""
+    global _ANTHROPIC_MODEL_IDS
+    if _ANTHROPIC_MODEL_IDS is not None:
+        return _ANTHROPIC_MODEL_IDS
+    response = requests.get(
+        "https://api.anthropic.com/v1/models?limit=100",
+        headers={"x-api-key": api_key, "anthropic-version": "2023-06-01"},
+        timeout=TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    _ANTHROPIC_MODEL_IDS = [item["id"] for item in response.json().get("data", []) if item.get("id")]
+    return _ANTHROPIC_MODEL_IDS
+
+
+def _anthropic_candidates(model_id: str, api_key: str | None) -> list[str]:
+    """Map a scraped marketing id onto a callable Anthropic api id.
+
+    The price catalog carries dotted names (``claude-haiku-4.5``) while the API
+    serves dashed ones, sometimes only as a dated snapshot
+    (``claude-haiku-4-5-20251001``). Resolution stays inside the same pinned
+    model — never a different family — so a substitution cannot quietly change
+    what the drift series is measuring.
+    """
+    dashed = model_id.replace(".", "-")
+    if not api_key:
+        return [dashed]
+    try:
+        ids = anthropic_model_ids(api_key)
+    except Exception:  # noqa: BLE001 — availability lookup is best-effort
+        return [dashed]
+    out = [i for i in ids if i == dashed]
+    dated = sorted((i for i in ids if i.startswith(f"{dashed}-")), reverse=True)
+    out.extend(i for i in dated if i not in out)
+    return out or [dashed]
+
+
+def api_model_candidates(
+    provider_id: str,
+    model_id: str,
+    tier: str,
+    api_key: str | None,
+    fallback_model_ids: list[Any] | None = None,
+) -> list[str]:
+    """Ordered api model ids to try for one panel row.
+
+    A pinned model can be present in the price catalog and still be uncallable —
+    Anthropic serves dated ids, and Bedrock refuses ids that are Legacy on the
+    key or absent from the region. `fallback_model_ids` carries the rest of the
+    tier's preference list (from TIER_CANDIDATES via `equivalence.json`) so the
+    caller can fall through instead of reporting the whole provider as dark.
+    """
+    if provider_id == "anthropic":
+        return _anthropic_candidates(model_id, api_key)
+    ordered: list[str] = []
+    for entry in [model_id, *(fallback_model_ids or [])]:
+        # Accepts bare ids or `equivalence.json`'s priced candidate rows.
+        candidate = entry["model_id"] if isinstance(entry, dict) else entry
+        if provider_id == "qwen":
+            mapped = QWEN_MODEL_MAP.get(candidate, candidate)
+        elif provider_id == "aws":
+            mapped = BEDROCK_MODEL_MAP.get(candidate, candidate)
+        else:
+            mapped = candidate
+        if mapped not in ordered:
+            ordered.append(mapped)
+    return ordered or [model_id]
+
+
+# Bodies that mean "this model id is not usable on this key/region", as opposed
+# to "the request was malformed". Only these justify trying the next candidate;
+# a genuine parameter error must surface instead of being retried seven times.
+_MODEL_UNAVAILABLE_PATTERNS = (
+    "not_found",
+    "not found",
+    "does not exist",
+    "invalid",
+    "legacy",
+    "access denied",
+    "no access",
+    "not authorized",
+    "unsupported model",
+)
+
+
+def _is_model_unavailable(exc: requests.HTTPError) -> bool:
+    response = exc.response
+    if response is None:
+        return False
+    if response.status_code in (403, 404):
+        return True
+    if response.status_code not in (400, 422):
+        return False
+    try:
+        body = response.text.lower()
+    except Exception:  # noqa: BLE001
+        return False
+    return "model" in body and any(p in body for p in _MODEL_UNAVAILABLE_PATTERNS)
 
 
 def _redact(msg: str) -> str:
     return re.sub(r"(key=)[^&\s]+", r"\1[REDACTED]", msg)
+
+
+def _http_error_message(exc: requests.HTTPError) -> str:
+    detail = ""
+    if exc.response is not None:
+        try:
+            detail = exc.response.text[:400]
+        except Exception:  # noqa: BLE001
+            detail = ""
+    return _redact(f"{exc} :: {detail}".strip(" :"))
+
+
+def normalize_messages(messages: list[dict[str, Any]]) -> list[dict[str, str]]:
+    """Coerce corpus turns onto the chat-API shape.
+
+    `CHAT_TRANSCRIPT` stores turns as ``{role, text}``, but every chat endpoint
+    except Bedrock and Gemini requires ``content``. Passing the corpus shape
+    straight through made Anthropic and all four OpenAI-compatible providers
+    reject the whole Test 4 run, which read on the dashboard as "no data" rather
+    than as a bug. Normalize once, at the boundary.
+    """
+    normalized: list[dict[str, str]] = []
+    for message in messages:
+        content = message.get("content")
+        if content is None:
+            content = message.get("text", "")
+        normalized.append({"role": message.get("role", "user"), "content": str(content)})
+    return normalized
+
+
+OPENAI_COMPATIBLE_BASES = {
+    "openai": OPENAI_BASE_URL,
+    "xai": "https://api.x.ai/v1",
+    "deepseek": "https://api.deepseek.com",
+    "qwen": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+}
+
+
+def _count_one(provider_id: str, api_model: str, payload: Any, api_key: str, is_messages: bool):
+    if provider_id == "anthropic":
+        counter = _anthropic_count_messages if is_messages else _anthropic_count_text
+        return counter(api_model, payload, api_key), api_model
+    if provider_id == "google":
+        if is_messages:
+            return _gemini_count_messages(api_model, payload, api_key)
+        return _gemini_count_text(api_model, payload, api_key, tier_hint="workhorse")
+    if provider_id in OPENAI_COMPATIBLE_BASES:
+        base = OPENAI_COMPATIBLE_BASES[provider_id]
+        counter = _openai_compat_count_messages if is_messages else _openai_compat_count_text
+        return counter(base, api_model, payload, api_key), api_model
+    if provider_id == "aws":
+        counter = _bedrock_count_messages if is_messages else _bedrock_count_text
+        return counter(api_model, payload, api_key), api_model
+    raise LookupError(f"provider {provider_id} not implemented")
+
+
+def _count(
+    provider_id: str,
+    api_model: str,
+    payload: Any,
+    api_key: str,
+    is_messages: bool,
+    candidates: list[str] | None,
+) -> tuple[str, int | None, str | None, str]:
+    attempts = [api_model, *[c for c in (candidates or []) if c != api_model]]
+    last_error: str | None = None
+    used = api_model
+    for candidate in attempts:
+        used = candidate
+        try:
+            tokens, used = _count_one(provider_id, candidate, payload, api_key, is_messages)
+        except LookupError as exc:
+            return "unsupported_provider", None, str(exc), candidate
+        except requests.HTTPError as exc:
+            last_error = _http_error_message(exc)
+            if _is_model_unavailable(exc):
+                continue
+            return "error", None, last_error, candidate
+        except Exception as exc:  # noqa: BLE001
+            return "error", None, str(exc), candidate
+        return "ok", tokens, None, used
+    return "error", None, last_error, used
 
 
 def count_prompt_tokens_text(
@@ -99,89 +285,28 @@ def count_prompt_tokens_text(
     api_model: str,
     text: str,
     api_key: str,
+    candidates: list[str] | None = None,
 ) -> tuple[str, int | None, str | None, str]:
     """Count tokens for a single user-text prompt. Returns status, tokens, error, model."""
-    try:
-        if provider_id == "anthropic":
-            tokens = _anthropic_count_text(api_model, text, api_key)
-        elif provider_id == "google":
-            tokens, api_model = _gemini_count_text(api_model, text, api_key, tier_hint="workhorse")
-        elif provider_id == "openai":
-            tokens = _openai_compat_count_text("https://api.openai.com/v1", api_model, text, api_key)
-        elif provider_id == "xai":
-            tokens = _openai_compat_count_text("https://api.x.ai/v1", api_model, text, api_key)
-        elif provider_id == "deepseek":
-            tokens = _openai_compat_count_text("https://api.deepseek.com", api_model, text, api_key)
-        elif provider_id == "qwen":
-            tokens = _openai_compat_count_text(
-                "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-                api_model,
-                text,
-                api_key,
-            )
-        elif provider_id == "aws":
-            tokens = _bedrock_count_text(api_model, text, api_key)
-        else:
-            return "unsupported_provider", None, f"provider {provider_id} not implemented", api_model
-    except requests.HTTPError as exc:
-        detail = ""
-        if exc.response is not None:
-            try:
-                detail = exc.response.text[:400]
-            except Exception:  # noqa: BLE001
-                detail = ""
-        return "error", None, _redact(f"{exc} :: {detail}".strip(" :")), api_model
-    except Exception as exc:  # noqa: BLE001
-        return "error", None, str(exc), api_model
-    return "ok", tokens, None, api_model
+    return _count(provider_id, api_model, text, api_key, is_messages=False, candidates=candidates)
 
 
 def count_prompt_tokens_messages(
     provider_id: str,
     api_model: str,
-    messages: list[dict[str, str]],
+    messages: list[dict[str, Any]],
     api_key: str,
+    candidates: list[str] | None = None,
 ) -> tuple[str, int | None, str | None, str]:
     """Count tokens for a chat-message prefix (Test 4)."""
-    try:
-        if provider_id == "anthropic":
-            tokens = _anthropic_count_messages(api_model, messages, api_key)
-        elif provider_id == "google":
-            tokens, api_model = _gemini_count_messages(api_model, messages, api_key)
-        elif provider_id == "openai":
-            tokens = _openai_compat_count_messages(
-                "https://api.openai.com/v1", api_model, messages, api_key
-            )
-        elif provider_id == "xai":
-            tokens = _openai_compat_count_messages(
-                "https://api.x.ai/v1", api_model, messages, api_key
-            )
-        elif provider_id == "deepseek":
-            tokens = _openai_compat_count_messages(
-                "https://api.deepseek.com", api_model, messages, api_key
-            )
-        elif provider_id == "qwen":
-            tokens = _openai_compat_count_messages(
-                "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-                api_model,
-                messages,
-                api_key,
-            )
-        elif provider_id == "aws":
-            tokens = _bedrock_count_messages(api_model, messages, api_key)
-        else:
-            return "unsupported_provider", None, f"provider {provider_id} not implemented", api_model
-    except requests.HTTPError as exc:
-        detail = ""
-        if exc.response is not None:
-            try:
-                detail = exc.response.text[:400]
-            except Exception:  # noqa: BLE001
-                detail = ""
-        return "error", None, _redact(f"{exc} :: {detail}".strip(" :")), api_model
-    except Exception as exc:  # noqa: BLE001
-        return "error", None, str(exc), api_model
-    return "ok", tokens, None, api_model
+    return _count(
+        provider_id,
+        api_model,
+        normalize_messages(messages),
+        api_key,
+        is_messages=True,
+        candidates=candidates,
+    )
 
 
 def _anthropic_count_text(model: str, text: str, api_key: str) -> int:
@@ -207,7 +332,7 @@ def _anthropic_count_messages(model: str, messages: list[dict[str, str]], api_ke
     # Anthropic requires alternating roles ending with user for some paths;
     # if the prefix ends on assistant, append a tiny user nudge that we do not
     # bill as content of interest — still counts wrapper on the frozen prefix.
-    api_messages = list(messages)
+    api_messages = normalize_messages(messages)
     if api_messages and api_messages[-1]["role"] == "assistant":
         api_messages = api_messages + [{"role": "user", "content": "."}]
     response = requests.post(
@@ -224,20 +349,29 @@ def _anthropic_count_messages(model: str, messages: list[dict[str, str]], api_ke
     return int(response.json().get("usage", {}).get("input_tokens", 0))
 
 
+def openai_compatible_body(
+    base_url: str, model: str, messages: list[dict[str, str]], max_tokens: int
+) -> dict[str, Any]:
+    """Chat-completions body for one OpenAI-compatible provider.
+
+    api.openai.com has diverged from the shape the other three still accept: it
+    requires `max_completion_tokens`, rejects `temperature: 0`, and will not
+    accept a cap of 1. Keep the divergence in one place so a body built for
+    OpenAI can never be sent to xAI/DeepSeek/Qwen, or vice versa.
+    """
+    body: dict[str, Any] = {"model": model, "messages": messages}
+    if base_url == OPENAI_BASE_URL:
+        body["max_completion_tokens"] = max(max_tokens, OPENAI_MIN_OUTPUT_TOKENS)
+    else:
+        body["max_tokens"] = max_tokens
+        body["temperature"] = 0
+    return body
+
+
 def _openai_compat_count_text(base_url: str, model: str, text: str, api_key: str) -> int:
-    response = requests.post(
-        f"{base_url}/chat/completions",
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={
-            "model": model,
-            "messages": [{"role": "user", "content": text}],
-            "max_tokens": 1,
-            "temperature": 0,
-        },
-        timeout=TIMEOUT_SECONDS,
+    return _openai_compat_count_messages(
+        base_url, model, [{"role": "user", "content": text}], api_key
     )
-    response.raise_for_status()
-    return int(response.json().get("usage", {}).get("prompt_tokens", 0))
 
 
 def _openai_compat_count_messages(
@@ -246,12 +380,7 @@ def _openai_compat_count_messages(
     response = requests.post(
         f"{base_url}/chat/completions",
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={
-            "model": model,
-            "messages": messages,
-            "max_tokens": 1,
-            "temperature": 0,
-        },
+        json=openai_compatible_body(base_url, model, normalize_messages(messages), 1),
         timeout=TIMEOUT_SECONDS,
     )
     response.raise_for_status()
@@ -260,12 +389,10 @@ def _openai_compat_count_messages(
 
 def _bedrock_messages(messages: list[dict[str, str]]) -> list[dict[str, Any]]:
     """Map {role, content|text} rows onto Bedrock Converse message shape."""
-    out: list[dict[str, Any]] = []
-    for msg in messages:
-        role = msg.get("role", "user")
-        text = msg.get("content") if "content" in msg else msg.get("text", "")
-        out.append({"role": role, "content": [{"text": text}]})
-    return out
+    return [
+        {"role": msg["role"], "content": [{"text": msg["content"]}]}
+        for msg in normalize_messages(messages)
+    ]
 
 
 def _bedrock_converse(
@@ -325,9 +452,9 @@ def _gemini_count_text(
 
 def _gemini_count_messages(model: str, messages: list[dict[str, str]], api_key: str) -> tuple[int, str]:
     contents = []
-    for turn in messages:
+    for turn in normalize_messages(messages):
         role = "user" if turn["role"] == "user" else "model"
-        contents.append({"role": role, "parts": [{"text": turn["text"]}]})
+        contents.append({"role": role, "parts": [{"text": turn["content"]}]})
     candidates = _gemini_candidates(api_key, "flagship", preferred=model)
     last_error: Exception | None = None
     for candidate in candidates:
