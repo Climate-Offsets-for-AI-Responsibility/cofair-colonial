@@ -4,16 +4,20 @@ from __future__ import annotations
 
 import sys
 import unittest
+from datetime import date, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_dashboard_data import (
+    DASHBOARD_START_DATE,
     build_equivalence,
     build_models,
     build_token_runs,
     include_dashboard_date,
     normalize_snapshot,
+    run_date_of,
 )
+from run_equivalence_tasks import current_run_date
 from task_corpus import TASK_PROMPTS
 
 
@@ -92,8 +96,13 @@ class NormalizeSnapshotTest(unittest.TestCase):
         self.assertIsNone(rows[0]["input_price"])
 
     def test_dashboard_start_date_cutoff(self) -> None:
-        self.assertFalse(include_dashboard_date("2026-06-16"))
-        self.assertTrue(include_dashboard_date("2026-06-17"))
+        day_before = (
+            date.fromisoformat(DASHBOARD_START_DATE) - timedelta(days=1)
+        ).isoformat()
+        self.assertFalse(include_dashboard_date(day_before))
+        self.assertTrue(include_dashboard_date(DASHBOARD_START_DATE))
+        self.assertFalse(include_dashboard_date(""))
+        self.assertFalse(include_dashboard_date(None or ""))
 
 
 class BuildModelsTest(unittest.TestCase):
@@ -138,7 +147,7 @@ class BuildModelsTest(unittest.TestCase):
 
 
 class BuildEquivalenceTest(unittest.TestCase):
-    def test_builds_weekly_aligned_budget(self) -> None:
+    def test_builds_daily_aligned_budget(self) -> None:
         models = [
             {
                 "provider_id": "anthropic",
@@ -185,8 +194,8 @@ class BuildEquivalenceTest(unittest.TestCase):
         }
 
         eq = build_equivalence(models, index, live_model_map={})
-        self.assertEqual(eq["tokenizer_ledger"]["cadence"], "daily_ABC_weekly_D")
-        self.assertEqual(eq["wrapper_runs"]["cadence"], "weekly")
+        self.assertEqual(eq["tokenizer_ledger"]["cadence"], "daily")
+        self.assertEqual(eq["wrapper_runs"]["cadence"], "daily")
         self.assertEqual(eq["tasks"][0]["task_id"], "A")
         self.assertIn("suiteLong", eq["task_packs"])
         self.assertEqual(len(eq["chat_transcript"]), 20)
@@ -203,8 +212,16 @@ class BuildEquivalenceTest(unittest.TestCase):
         self.assertTrue(all(row["tier"] in ("flagship", "workhorse") for row in two_tiers))
         self.assertNotIn("default", {row["tier"] for row in eq["selected_models"]})
 
-        self.assertEqual(eq["runs_per_year"], 52)
-        self.assertGreater(eq["budget"]["two"]["suiteLong"]["annual_usd"], 0)
+        self.assertEqual(eq["runs_per_year"], 365)
+        budget = eq["budget"]["two"]["suiteLong"]
+        self.assertGreater(budget["annual_usd"], 0)
+        # `/pricing` prices the alternative cadences from this map; it read as
+        # em-dashes for as long as the builder omitted it.
+        by_cadence = budget["annual_usd_by_cadence"]
+        self.assertEqual(budget["annual_usd"], by_cadence["daily"])
+        self.assertAlmostEqual(by_cadence["daily"], budget["per_run_usd"] * 365)
+        self.assertGreater(by_cadence["daily"], by_cadence["weekly"])
+        self.assertGreater(by_cadence["weekly"], by_cadence["monthly"])
 
         # Tasks expose the invariant denominator the index normalizes on.
         self.assertGreater(eq["tasks"][0]["input_chars"], 0)
@@ -215,7 +232,7 @@ class BuildTokenRunsTest(unittest.TestCase):
     def test_normalizes_density_and_flags_censored_output(self) -> None:
         rows = [
             {
-                "run_week": "2026-08-10",
+                "run_date": "2026-08-22",
                 "provider_id": "google",
                 "tier": "flagship",
                 "task_id": "A",
@@ -230,7 +247,7 @@ class BuildTokenRunsTest(unittest.TestCase):
             },
             # Not ok → excluded.
             {
-                "run_week": "2026-08-10",
+                "run_date": "2026-08-22",
                 "provider_id": "anthropic",
                 "tier": "flagship",
                 "task_id": "A",
@@ -240,7 +257,7 @@ class BuildTokenRunsTest(unittest.TestCase):
             },
             # Dry run → excluded.
             {
-                "run_week": "2026-08-10",
+                "run_date": "2026-08-22",
                 "provider_id": "xai",
                 "tier": "flagship",
                 "task_id": "A",
@@ -265,7 +282,7 @@ class BuildTokenRunsTest(unittest.TestCase):
     def test_medians_workhorse_replicates(self) -> None:
         rows = [
             {
-                "run_week": "2026-08-10",
+                "run_date": "2026-08-22",
                 "provider_id": "deepseek",
                 "tier": "workhorse",
                 "task_id": "A",
@@ -287,7 +304,7 @@ class BuildTokenRunsTest(unittest.TestCase):
     def test_uses_corpus_chars_when_row_omits_them(self) -> None:
         rows = [
             {
-                "run_week": "2026-08-10",
+                "run_date": "2026-08-22",
                 "provider_id": "deepseek",
                 "tier": "workhorse",
                 "task_id": "A",
@@ -301,6 +318,47 @@ class BuildTokenRunsTest(unittest.TestCase):
         self.assertEqual(len(out), 1)
         self.assertEqual(out[0]["input_chars"], len(TASK_PROMPTS["A"]))
         self.assertFalse(out[0]["output_censored"])
+
+
+class RunDateTest(unittest.TestCase):
+    def test_prefers_run_date_but_falls_back_to_the_old_week_anchor(self) -> None:
+        self.assertEqual(run_date_of({"run_date": "2026-08-22"}), "2026-08-22")
+        self.assertEqual(run_date_of({"run_week": "2026-08-17"}), "2026-08-17")
+        self.assertEqual(run_date_of({}), "")
+
+    def test_token_runs_drop_rows_from_before_the_epoch(self) -> None:
+        """Pre-epoch rows were collected on the weekly cadence, so charting them
+        beside daily rows would read as drift in the models rather than a change
+        in how the meter was run."""
+        stale = {
+            "run_week": "2026-08-10",
+            "provider_id": "google",
+            "tier": "flagship",
+            "task_id": "A",
+            "tokens_in": 200,
+            "tokens_out": 10,
+            "input_chars": 1000,
+            "output_cap": 400,
+            "run_status": "ok",
+        }
+        current = {**stale, "run_week": None, "run_date": "2026-08-22"}
+
+        out = build_token_runs([stale, current])
+
+        self.assertEqual([row["date"] for row in out], ["2026-08-22"])
+
+
+class DailyMeterAnchorTest(unittest.TestCase):
+    def test_anchor_is_the_calendar_day_not_the_week_start(self) -> None:
+        """A Monday-snapped anchor would make every run in a week collide on the
+        replace key, so a daily cadence would silently keep one row per week."""
+        wednesday = date(2026, 8, 26)
+        self.assertEqual(current_run_date(wednesday), "2026-08-26")
+        self.assertNotEqual(current_run_date(wednesday), "2026-08-24")
+        self.assertEqual(
+            len({current_run_date(date(2026, 8, 24) + timedelta(days=n)) for n in range(7)}),
+            7,
+        )
 
 
 if __name__ == "__main__":

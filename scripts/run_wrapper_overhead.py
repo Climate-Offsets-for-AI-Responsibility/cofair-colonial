@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -43,9 +43,9 @@ def now_iso_z() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def current_week_anchor(today: date | None = None) -> str:
-    d = today or datetime.now(timezone.utc).date()
-    return (d - timedelta(days=d.weekday())).isoformat()
+def current_run_date(today: date | None = None) -> str:
+    """The UTC day this run belongs to (see run_equivalence_tasks.current_run_date)."""
+    return (today or datetime.now(timezone.utc).date()).isoformat()
 
 
 def load_panel(mode: str = "two") -> list[dict]:
@@ -76,14 +76,14 @@ def save_rows(rows: list[dict]) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Run Test 4 wrapper overhead counts.")
-    ap.add_argument("--week", help="Override week anchor YYYY-MM-DD")
+    ap.add_argument("--date", help="Override the run date (YYYY-MM-DD); defaults to today UTC")
     ap.add_argument("--mode", choices=["two", "three"], default="two")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--provider", help="Limit to one provider_id")
     ap.add_argument("--max-turn", type=int, default=10, help="Highest turn to count (1-10)")
     args = ap.parse_args()
 
-    run_week = args.week or current_week_anchor()
+    run_date = args.date or current_run_date()
     max_turn = max(1, min(10, args.max_turn))
     models = load_panel(args.mode)
     if args.provider:
@@ -117,7 +117,7 @@ def main() -> int:
                 )
 
             row = {
-                "run_week": run_week,
+                "run_date": run_date,
                 "provider_id": model["provider_id"],
                 "tier": model["tier"],
                 "turn": turn,
@@ -136,18 +136,18 @@ def main() -> int:
                 "run_at": now_iso_z(),
             }
             new_rows.append(row)
-            replace.add((run_week, model["provider_id"], model["tier"], turn))
+            replace.add((run_date, model["provider_id"], model["tier"], turn))
 
     keep = [
         row
         for row in existing
-        if (row.get("run_week"), row.get("provider_id"), row.get("tier"), row.get("turn"))
+        if (row.get("run_date"), row.get("provider_id"), row.get("tier"), row.get("turn"))
         not in replace
     ]
     merged = keep + new_rows
     merged.sort(
         key=lambda r: (
-            r.get("run_week") or "",
+            r.get("run_date") or "",
             r.get("provider_id") or "",
             r.get("tier") or "",
             r.get("turn") or 0,
@@ -160,7 +160,7 @@ def main() -> int:
         json.dumps(
             {
                 "event": "wrapper_runs_written",
-                "run_week": run_week,
+                "run_date": run_date,
                 "max_turn": max_turn,
                 "rows_written": len(new_rows),
                 "ok_rows": ok,

@@ -1,11 +1,11 @@
-name: Weekly Token Equivalence
+name: Daily Token Equivalence
 
 permissions:
   contents: write
 
 on:
   schedule:
-    - cron: "15 20 * * 1" # weekly Monday at 20:15 UTC
+    - cron: "15 20 * * *" # daily at 20:15 UTC
   workflow_dispatch:
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run weekly meter (flagship N=1, workhorse N=3)
+      - name: Run daily meter (flagship N=1, workhorse N=1)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -39,23 +39,9 @@ jobs:
           TRACKER_AMAZON_API_KEY: ${{ secrets.TRACKER_AMAZON_API_KEY }}
           AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
         run: |
-          python scripts/run_equivalence_tasks.py --mode two --workhorse-replicates 3
+          python scripts/run_equivalence_tasks.py --mode two --workhorse-replicates 1
 
-      - name: Weekly tokenizer ledger (task D)
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
-          TRACKER_AMAZON_API_KEY: ${{ secrets.TRACKER_AMAZON_API_KEY }}
-          AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
-        run: |
-          python scripts/run_tokenizer_ledger.py --tasks D --mode two
-
-      - name: Weekly Test 4 wrapper overhead (turns 1-10)
+      - name: Daily Test 4 wrapper overhead (turns 1-10)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -89,12 +75,12 @@ jobs:
       # No "[skip ci]" — see the note in daily-tokenizer-ledger.yml: Netlify
       # honours the marker, and this repo is repo-linked, so it would publish
       # stale data (I16). Nothing here runs on `push`.
-      - name: Commit weekly equivalence artifacts
+      - name: Commit daily equivalence artifacts
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add dashboard/data/
-          git commit -m "Auto-update weekly token equivalence" || echo "No changes to commit"
+          git commit -m "Auto-update daily token equivalence" || echo "No changes to commit"
           git push
 
       # Runs after the push on purpose: whatever a healthy provider collected

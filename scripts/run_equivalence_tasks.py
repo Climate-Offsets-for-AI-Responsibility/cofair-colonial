@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Run weekly token-equivalence tasks across configured providers.
+"""Run the daily token-equivalence tasks across configured providers.
 
 Writes dashboard/data/equivalence_runs.json with one row per
-(run_week, task_id, provider_id, tier, mode).
+(run_date, task_id, provider_id, tier, mode).
 """
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import argparse
 import json
 import re
 import sys
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import NamedTuple
 
@@ -26,7 +26,13 @@ from provider_token_count import (  # noqa: E402
     env_for_provider,
     openai_compatible_body,
 )
-from task_corpus import CORPUS_VERSION, TASK_PROMPTS, TASK_SPECS  # noqa: E402
+from task_corpus import (  # noqa: E402
+    CORPUS_VERSION,
+    METER_TASK_IDS,
+    OUTPUT_POLICY_VERSION,
+    TASK_PROMPTS,
+    TASK_SPECS,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SHARED_ENV = (REPO_ROOT.parent / "cofair" / ".env" / ".env.cofair")
@@ -46,10 +52,15 @@ def now_iso_z() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def current_week_anchor(today: date | None = None) -> str:
-    d = today or datetime.now(timezone.utc).date()
-    monday = d - timedelta(days=d.weekday())
-    return monday.isoformat()
+def current_run_date(today: date | None = None) -> str:
+    """The UTC day this run belongs to.
+
+    The meter used to snap to the ISO week's Monday. On a daily cadence that
+    anchor is actively harmful: rows are replaced on a key that includes it, so
+    every run in a week would overwrite the last and the record would still show
+    one observation per week without ever saying so.
+    """
+    return (today or datetime.now(timezone.utc).date()).isoformat()
 
 
 def run_anthropic(model: str, prompt: str, max_tokens: int, api_key: str) -> tuple[int, int]:
@@ -356,9 +367,9 @@ def save_runs(rows: list[dict]) -> None:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Run weekly token-equivalence tasks.")
+    ap = argparse.ArgumentParser(description="Run the daily token-equivalence tasks.")
     ap.add_argument("--mode", choices=["two", "three"], default="two")
-    ap.add_argument("--week", help="Override run week anchor (YYYY-MM-DD)")
+    ap.add_argument("--date", help="Override the run date (YYYY-MM-DD); defaults to today UTC")
     ap.add_argument("--dry-run", action="store_true", help="Do not call providers; emit dry_run statuses.")
     ap.add_argument("--limit-models", type=int, default=0, help="Optional model row limit for smoke runs.")
     ap.add_argument(
@@ -382,7 +393,7 @@ def main() -> int:
     if args.limit_models and args.limit_models > 0:
         models = models[: args.limit_models]
 
-    run_week = args.week or current_week_anchor()
+    run_date = args.date or current_run_date()
     existing = load_existing_runs()
     keep = []
     replace_keys = set()
@@ -392,7 +403,7 @@ def main() -> int:
     for model in models:
         replicates = wh_reps if model["tier"] == "workhorse" else 1
         for replicate in range(1, replicates + 1):
-            for task_id in ("A", "B", "C", "D"):
+            for task_id in METER_TASK_IDS:
                 task = tasks[task_id]
                 output_cap = int(task.get("output_cap") or task.get("output_tokens"))
                 result = run_provider_task(model, task_id, output_cap, args.dry_run)
@@ -404,7 +415,7 @@ def main() -> int:
                 input_chars = len(TASK_PROMPTS[task_id])
 
                 row = {
-                    "run_week": run_week,
+                    "run_date": run_date,
                     "mode": args.mode,
                     "task_id": task_id,
                     "provider_id": model["provider_id"],
@@ -420,6 +431,7 @@ def main() -> int:
                     ),
                     "input_chars": input_chars,
                     "corpus_version": CORPUS_VERSION,
+                    "output_policy_version": OUTPUT_POLICY_VERSION,
                     "run_status": status,
                     "error": error,
                     "input_price": result.input_price,
@@ -430,12 +442,12 @@ def main() -> int:
                 }
                 new_rows.append(row)
                 replace_keys.add(
-                    (run_week, args.mode, task_id, model["provider_id"], model["tier"], replicate)
+                    (run_date, args.mode, task_id, model["provider_id"], model["tier"], replicate)
                 )
 
     for row in existing:
         key = (
-            row.get("run_week"),
+            row.get("run_date"),
             row.get("mode"),
             row.get("task_id"),
             row.get("provider_id"),
@@ -449,7 +461,7 @@ def main() -> int:
     merged = keep + new_rows
     merged.sort(
         key=lambda r: (
-            r["run_week"],
+            r.get("run_date") or "",
             r["provider_id"],
             r["tier"],
             r.get("replicate", 1),
@@ -463,7 +475,7 @@ def main() -> int:
         json.dumps(
             {
                 "event": "equivalence_runs_written",
-                "run_week": run_week,
+                "run_date": run_date,
                 "mode": args.mode,
                 "workhorse_replicates": wh_reps,
                 "dry_run": args.dry_run,

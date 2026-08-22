@@ -1,4 +1,27 @@
-/** Pure label / hover helpers for the pricing trend chart. */
+/** Pure label / hover / color helpers shared by the trend charts. */
+
+export function hexToHsl(hex) {
+  const raw = String(hex ?? "").replace("#", "").trim();
+  const full = raw.length === 3 ? raw.split("").map((c) => c + c).join("") : raw;
+  const r = parseInt(full.slice(0, 2), 16) / 255;
+  const g = parseInt(full.slice(2, 4), 16) / 255;
+  const b = parseInt(full.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  let h = 0;
+  let s = 0;
+  if (d !== 0) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return { h, s: s * 100, l: l * 100 };
+}
 
 const STARTING_BYLINE = /\s+starting\s+[A-Za-z]+ \d{1,2}, \d{4}/g;
 const THROUGH_BYLINE = /\s+through\s+[A-Za-z]+ \d{1,2}, \d{4}/g;
@@ -54,8 +77,16 @@ export function contextsNeedDisambiguation(rows) {
   return need;
 }
 
+/**
+ * The ISO day a point sits on.
+ *
+ * Sliced to 10 characters because the two charts carry `x` differently —
+ * /pricing plots plain `YYYY-MM-DD`, /tokens plots a full `…T00:00:00Z` so its
+ * time scale reads UTC. Compared whole, a timestamp always sorts after the bare
+ * date it belongs to, which silently dropped every value on the hovered day.
+ */
 function pointDate(point) {
-  return typeof point.x === "string" ? point.x : "";
+  return typeof point.x === "string" ? point.x.slice(0, 10) : "";
 }
 
 export function priceAtOrBefore(points, dateStr) {

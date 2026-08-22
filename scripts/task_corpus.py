@@ -18,6 +18,22 @@ from __future__ import annotations
 # version so a corpus edit never silently rewrites history.
 CORPUS_VERSION = "1.0.0"
 
+# Versioned separately from the prompt text because it governs a different
+# quantity. `max_tokens` cannot affect how a prompt tokenizes, so a cap change
+# leaves every input-density series continuous — but it does break `tokens_out`
+# and `usd` comparability, and those series must be read as starting fresh here.
+#
+# 1.0.0 = tight per-task caps (400/600/1500/300), which truncated most flagship
+#         answers and made observed verbosity a floor rather than a measurement.
+# 2.0.0 = one generous ceiling for every task (below).
+OUTPUT_POLICY_VERSION = "2.0.0"
+
+# High enough that a model finishing naturally is the normal case, so `tokens_out`
+# measures verbosity instead of the cap — which is what makes output-side drift
+# legible as models version. Still a hard ceiling: it exists to bound a runaway
+# generation, not to bound a typical one.
+OUTPUT_CEILING = 4000
+
 TASK_PROMPTS = {
     "A": (
         "Answer this clearly in 3 bullet points: "
@@ -52,21 +68,23 @@ TASK_PROMPTS = {
     ),
 }
 
-# `output_cap` bounds spend. It is recorded on every run row so a run that hits
-# the ceiling can be marked censored — a capped output is a truncated
-# observation, not a measurement of how verbose the model actually is.
+# Every task shares `OUTPUT_CEILING`. Per-task caps were tuned to the answer each
+# prompt "should" need, which meant the cap — not the model — decided the observed
+# length, and a model that grew more verbose between versions looked unchanged.
+# `output_cap` is still recorded on every run row so a run that does reach the
+# ceiling is marked censored rather than read as a natural stopping point.
 TASK_SPECS = {
     "A": {
         "label": "Bounded Q&A",
         "probes": "Baseline prompt-side tokenizer density on ordinary prose.",
-        "output_cap": 400,
-        "cadence": "weekly",
+        "output_cap": OUTPUT_CEILING,
+        "cadence": "daily",
     },
     "B": {
         "label": "Summarize frozen essay",
         "probes": "Prose compression; input density on a longer natural-language block.",
-        "output_cap": 600,
-        "cadence": "weekly",
+        "output_cap": OUTPUT_CEILING,
+        "cadence": "daily",
     },
     "C": {
         "label": "Code from frozen spec",
@@ -74,8 +92,8 @@ TASK_SPECS = {
             "Code/punctuation tokenization, where BPE vocabularies diverge most. "
             "Highest-signal task for cross-provider density differences."
         ),
-        "output_cap": 1500,
-        "cadence": "weekly",
+        "output_cap": OUTPUT_CEILING,
+        "cadence": "daily",
     },
     "D": {
         "label": "Long-context needle",
@@ -83,18 +101,23 @@ TASK_SPECS = {
             "Repetitive long context — exposes vocabulary merge behavior and any "
             "long-context billing surcharge."
         ),
-        "output_cap": 300,
-        "cadence": "weekly",
+        "output_cap": OUTPUT_CEILING,
+        "cadence": "daily",
     },
 }
+
+# The generating tasks. Task E is the frozen chat transcript below: it is counted,
+# never generated, so it has no place in a meter or ledger run.
+METER_TASK_IDS = ("A", "B", "C", "D")
 
 TASK_PACKS = {
     "qa": ["A"],
     "summarize": ["B"],
     "code": ["C"],
     "long": ["D"],
+    "chat": ["E"],
     "suite": ["A", "B", "C"],
-    "suiteLong": ["A", "B", "C", "D"],
+    "suiteLong": ["A", "B", "C", "D", "E"],
 }
 
 
@@ -115,6 +138,7 @@ def task_definitions() -> list[dict]:
                 "output_cap": spec["output_cap"],
                 "cadence": spec["cadence"],
                 "corpus_version": CORPUS_VERSION,
+                "output_policy_version": OUTPUT_POLICY_VERSION,
             }
         )
     return out
@@ -131,6 +155,22 @@ TASK_DEFINITIONS = task_definitions()
 # frozen prefix would bill.
 
 CHAT_CORPUS_VERSION = "1.0.0"
+
+# Corpus entry E. Sits alongside A–D in the published task list even though it is
+# collected by a different runner, because to a reader it is simply the fifth task.
+CHAT_TASK_ID = "E"
+
+CHAT_TASK = {
+    "task_id": CHAT_TASK_ID,
+    "label": "Chat transcript",
+    "probes": (
+        "Chat wrapper and history-packing overhead across 10 frozen turns — the "
+        "structural tokens a provider adds around multi-turn history, which never "
+        "appear in the raw user text."
+    ),
+    "cadence": "daily",
+    "chat_corpus_version": CHAT_CORPUS_VERSION,
+}
 
 # Each user turn ≈15 words; each assistant turn ≈50 words. Locked forever.
 CHAT_TRANSCRIPT: list[dict[str, str]] = [
@@ -324,3 +364,11 @@ def transcript_prefix_text(n_turns: int) -> str:
 
 def transcript_prefix_chars(n_turns: int) -> int:
     return sum(len(turn["text"]) for turn in transcript_prefix(n_turns))
+
+
+# Same invariant size measures A–D publish, over the full 10-turn transcript, so
+# task E can be listed in the corpus table without the dashboard recomputing them.
+_CHAT_FULL_TEXT = "\n".join(turn["text"] for turn in CHAT_TRANSCRIPT)
+CHAT_TASK["input_chars"] = len(_CHAT_FULL_TEXT)
+CHAT_TASK["input_bytes"] = len(_CHAT_FULL_TEXT.encode("utf-8"))
+CHAT_TASK["input_words"] = len(_CHAT_FULL_TEXT.split())

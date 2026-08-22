@@ -259,6 +259,22 @@ a { color: var(--cofair-color-primary); }
 /* Multiplied by the chip's own opacity, so the dot recedes further than its label. */
 .chip.cofair-badge[aria-pressed="false"] .chip__swatch { opacity: 0.35; }
 
+/* Three-position pill: shown → isolated → hidden. `aria-pressed` already tells
+   shown from not-shown, so these two only need to separate the reason a chip is
+   emphasized (this provider alone) from the reason it is dimmed (deliberately
+   hidden, versus merely dimmed because a sibling is isolated). Both carry a
+   non-color cue — weight and a ring, or a strikethrough — so the distinction
+   survives without hue. */
+.chip.cofair-badge[data-mode="solo"] {
+  font-weight: var(--cofair-heading-weight);
+  border-color: currentColor;
+}
+
+.chip.cofair-badge[data-mode="hidden"] {
+  text-decoration: line-through;
+}
+
+
 /* ── Chart ─────────────────────────────────────────────────────────────── */
 
 .chart-card {
@@ -279,6 +295,10 @@ a { color: var(--cofair-color-primary); }
 .chart-node-tooltip {
   position: absolute;
   z-index: 2;
+  /* Sized to its longest line rather than to the space left beside the node:
+     shrink-to-fit measures against the gap to the plot edge, which reflowed the
+     card to one word per line for any node on the right-hand side. */
+  width: max-content;
   max-width: 14rem;
   padding: var(--cofair-space-2) var(--cofair-space-3);
   border: var(--cofair-border-width-thin) solid var(--cofair-color-border);

@@ -2,6 +2,89 @@
   margin: var(--cofair-space-6) 0 var(--cofair-space-2);
 }
 
+/* Pack + measure share a full-width row under the provider chips so the pack
+   dropdown stays to the left of measure instead of wrapping independently. */
+.pack-measure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--cofair-space-4);
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.control-group--measure {
+  flex: 1 1 22rem;
+  min-width: 16rem;
+}
+
+/* The task selects name a task and nothing more, so they are sized to their
+   longest option instead of taking the row's slack — `Measure` is the control
+   that benefits from the extra width. */
+#pack,
+#ledgerTask {
+  width: auto;
+  max-width: 100%;
+}
+
+.ledger-filters .control-group--task {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.ledger-filters .cofair-input {
+  width: auto;
+}
+
+#ledgerRange {
+  margin: var(--cofair-space-2) 0 0;
+}
+
+.measure-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cofair-space-4);
+}
+
+.measure-row .cofair-select {
+  width: auto;
+  flex: 0 1 22rem;
+  min-width: 14rem;
+}
+
+.measure-row .cofair-help {
+  margin: 0;
+  flex: 1 1 16rem;
+}
+
+/* Ledger: fit the page width. Shared `.cofair-table` cells are nowrap, which
+   forces a horizontal scroll once model ids and task labels sit side by side. */
+.ledger-scroll { overflow-x: hidden; }
+
+.ledger-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.ledger-table .cofair-table__th,
+.ledger-table .cofair-table__td {
+  padding: var(--cofair-space-1) var(--cofair-space-2);
+}
+
+.ledger-col-date { width: 7.5rem; }
+.ledger-col-provider { width: 10.5rem; }
+.ledger-col-task {
+  width: 11.5rem;
+  white-space: normal;
+}
+.ledger-col-in { width: 6.5rem; }
+.ledger-col-density { width: 5.5rem; }
+
+.ledger-col-model {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ── Collection health ─────────────────────────────────────────────────── */
 
 /* A provider that failed every call used to look identical to one that simply
@@ -9,6 +92,12 @@
    for the providers that did report. */
 .health-note {
   color: var(--cofair-color-warning);
+}
+
+/* The last tier left showing cannot be removed, so the pill drops its pointer
+   affordance rather than implying a click that will be ignored. */
+.chip[data-tier][aria-disabled="true"] {
+  cursor: default;
 }
 
 /* Struck-through label reads as "not reporting" without adding a component
@@ -37,11 +126,120 @@
 .legend-swatch--solid { border-top-style: solid; }
 .legend-swatch--dashed { border-top-style: dashed; }
 
+/* Matches /pricing's legend row so the rollover highlight sits on the same box.
+   Provider visibility is driven by the chips here, not the legend, so the row
+   is inert and must not claim /pricing's pointer affordance. */
 .chart-legend__item {
   display: flex;
+  align-items: baseline;
+  gap: var(--cofair-space-2);
+  padding: var(--cofair-space-1) var(--cofair-space-2);
+  border-radius: var(--cofair-radius-sm);
+  cursor: default;
+}
+
+/* Provider · tier on the first line, the pinned model on the second. The model
+   is what a re-tokenization is attributed to, so it stays visible rather than
+   living only in the rollover. */
+.legend-id {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.legend-model {
+  color: var(--cofair-color-text-muted);
+  font-family: var(--cofair-font-mono);
+  overflow-wrap: anywhere;
+}
+
+/* The header's date and unit sit on the same two columns as a legend row. */
+.chart-legend__header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--cofair-space-2);
+  padding: 0 var(--cofair-space-2) var(--cofair-space-2);
+}
+
+.chart-legend__header .legend-value {
+  color: var(--cofair-color-text-muted);
+}
+
+/* Providers routinely plot within a token of one another, where the later series
+   draws over the earlier and the reader concludes a provider is missing. The
+   value printed here is what makes a fully coincident series legible. */
+.legend-value {
+  margin-left: auto;
+  padding-left: var(--cofair-space-2);
+  font-family: var(--cofair-font-mono);
+  color: var(--cofair-color-text-muted);
+  white-space: nowrap;
+}
+
+/* ── "What it probes" tooltip ──────────────────────────────────────────── */
+
+.task-cell {
+  display: inline-flex;
   align-items: center;
   gap: var(--cofair-space-2);
-  padding: var(--cofair-space-1) 0;
+}
+
+.task-info {
+  position: relative;
+  display: inline-flex;
+}
+
+.task-info__trigger {
+  width: var(--cofair-space-4);
+  height: var(--cofair-space-4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: var(--cofair-border-width-thin) solid var(--cofair-color-border);
+  border-radius: var(--cofair-radius-pill);
+  background: transparent;
+  color: var(--cofair-color-text-muted);
+  font-family: var(--cofair-font-sans);
+  font-size: var(--cofair-font-size-xs);
+  line-height: 1;
+  cursor: help;
+}
+
+.task-info__trigger:hover {
+  border-color: var(--cofair-color-primary);
+  color: var(--cofair-color-primary);
+}
+
+.task-info__trigger:focus-visible {
+  outline: var(--cofair-border-width-medium) solid var(--cofair-color-primary);
+  outline-offset: var(--cofair-space-px);
+}
+
+/* Hidden from sight but not from the accessibility tree, so the `aria-describedby`
+   on the trigger still reads the text out when the tooltip is not shown. */
+/* Left-anchored rather than centred on the icon: the first column sits close to
+   the viewport edge, and a centred bubble runs off it and truncates the text. */
+.task-info__bubble {
+  position: absolute;
+  bottom: calc(100% + var(--cofair-space-1));
+  left: 0;
+  width: max-content;
+  max-width: min(28rem, 60vw);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 120ms ease-out;
+  pointer-events: none;
+}
+
+.task-info:hover .task-info__bubble,
+.task-info__trigger:focus-visible + .task-info__bubble {
+  opacity: 1;
+  visibility: visible;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-info__bubble { transition: none; }
 }
 
 /* ── Task link ─────────────────────────────────────────────────────────── */
@@ -102,6 +300,10 @@
   gap: var(--cofair-space-4);
   padding: var(--cofair-space-5);
   border-bottom: var(--cofair-border-width-thin) solid var(--cofair-color-border-subtle);
+}
+
+.drawer__header .cofair-dialog__close {
+  flex-shrink: 0;
 }
 
 .drawer__eyebrow {

@@ -39,8 +39,12 @@ if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 from task_corpus import (  # noqa: E402
     CHAT_CORPUS_VERSION,
+    CHAT_TASK,
     CHAT_TRANSCRIPT,
     CORPUS_VERSION,
+    METER_TASK_IDS,
+    OUTPUT_CEILING,
+    OUTPUT_POLICY_VERSION,
     TASK_DEFINITIONS,
     TASK_PACKS,
     TASK_PROMPTS,
@@ -64,7 +68,15 @@ TOKENIZER_LEDGER_FILE = DASHBOARD_DATA_DIR / "tokenizer_ledger.json"
 WRAPPER_RUNS_FILE = DASHBOARD_DATA_DIR / "wrapper_runs.json"
 
 TOKEN_UNIT = "per_1M_tokens"
-DASHBOARD_START_DATE = "2026-06-17"
+
+# The epoch the published dashboards start from. Everything before it was
+# collected under earlier practices — a weekly meter, a Monday-anchored run
+# date, a partial task set — so mixing it with what we collect now would read as
+# drift in the instrument rather than a change in how the instrument was run.
+# Raw pricing_history snapshots and the run files keep their full history; this
+# only governs what the dashboards are built from, so moving the date back
+# restores the older record.
+DASHBOARD_START_DATE = "2026-08-21"
 
 
 # ---- normalization ---------------------------------------------------------
@@ -160,7 +172,17 @@ def normalize_snapshot(snapshot: dict, date: str) -> list[dict]:
 
 
 def include_dashboard_date(date: str) -> bool:
-    return date >= DASHBOARD_START_DATE
+    return bool(date) and date >= DASHBOARD_START_DATE
+
+
+def run_date_of(row: dict) -> str:
+    """The day a meter or wrapper row belongs to.
+
+    Reads `run_week` as a fallback so rows written before the daily cadence are
+    dated by their real anchor and excluded on their own merits, rather than
+    landing dateless and being dropped for the wrong reason.
+    """
+    return row.get("run_date") or row.get("run_week") or ""
 
 
 # ---- aggregation -----------------------------------------------------------
@@ -172,9 +194,16 @@ DEPRECATED_HINTS = ("deprecated", "retired", "legacy")
 # adding a distinct signal.
 TIER_ORDER = ("flagship", "workhorse")
 
-# The index runs on one fixed weekly cadence so every task is directly
-# comparable week over week.
-WEEKLY_RUNS_PER_YEAR = 52
+# The index runs on one fixed daily cadence so every task is directly comparable
+# day over day, and the annual budget is a run's cost times the days in a year.
+DAILY_RUNS_PER_YEAR = 365
+
+RUNS_PER_YEAR_BY_CADENCE = {
+    "daily": DAILY_RUNS_PER_YEAR,
+    "weekly": 52,
+    "biweekly": 26,
+    "monthly": 12,
+}
 
 TIER_CANDIDATES = {
     "anthropic": {
@@ -357,10 +386,16 @@ BUDGET_CHARS_PER_TOKEN = 4
 
 
 def _pack_cost(models: list[dict], tasks_by_id: dict[str, dict], task_ids: list[str]) -> float:
-    """Worst-case list cost for one run: estimated input + fully-spent output cap."""
+    """Worst-case list cost for one run: estimated input + fully-spent output cap.
+
+    Task ids with no generating spec (task E is counted, never generated) cost
+    nothing here and are skipped rather than treated as missing.
+    """
     total = 0.0
     for task_id in task_ids:
-        task = tasks_by_id[task_id]
+        task = tasks_by_id.get(task_id)
+        if task is None:
+            continue
         est_input_tokens = task["input_chars"] / BUDGET_CHARS_PER_TOKEN
         for model in models:
             input_price = model.get("latest_input", model.get("input_price"))
@@ -444,11 +479,15 @@ def build_token_runs(run_rows: list[dict]) -> list[dict]:
         if not input_chars:
             continue
 
-        key = (row.get("run_week"), row.get("provider_id"), row.get("tier"), task_id)
+        run_date = run_date_of(row)
+        if not include_dashboard_date(run_date):
+            continue
+
+        key = (run_date, row.get("provider_id"), row.get("tier"), task_id)
         groups.setdefault(key, []).append(row)
 
     out: list[dict] = []
-    for (week, provider_id, tier, task_id), rows in groups.items():
+    for (run_date, provider_id, tier, task_id), rows in groups.items():
         input_chars = rows[0].get("input_chars") or chars_by_task[task_id]
         tokens_in = _median([float(r["tokens_in"]) for r in rows])
         tokens_out = _median([float(r["tokens_out"]) for r in rows])
@@ -464,7 +503,7 @@ def build_token_runs(run_rows: list[dict]) -> list[dict]:
 
         out.append(
             {
-                "week": week,
+                "date": run_date,
                 "provider_id": provider_id,
                 "tier": tier,
                 "task_id": task_id,
@@ -480,10 +519,13 @@ def build_token_runs(run_rows: list[dict]) -> list[dict]:
                 "output_censored": bool(censored),
                 "replicate_count": len(rows),
                 "corpus_version": rows[0].get("corpus_version", CORPUS_VERSION),
+                # Absent on rows collected before the cap regime was versioned;
+                # those are the tight per-task caps, i.e. policy 1.0.0.
+                "output_policy_version": rows[0].get("output_policy_version", "1.0.0"),
             }
         )
 
-    out.sort(key=lambda r: (r["week"] or "", r["provider_id"] or "", r["tier"] or "", r["task_id"] or ""))
+    out.sort(key=lambda r: (r["date"] or "", r["provider_id"] or "", r["tier"] or "", r["task_id"] or ""))
     return out
 
 
@@ -521,26 +563,30 @@ def build_provider_health(
     reporting success. This reads the rows the runners actually wrote, so a
     silent provider outage is visible on the surface and to the ops gate.
     """
+    # Health reports on the last collection that was *attempted*, so it is read
+    # from the unfiltered rows rather than from the post-epoch view. Scoping it to
+    # the epoch would make "we have not run the new cadence yet" indistinguishable
+    # from "every provider is failing", which is the alarm this exists to raise.
     sources = []
-    for name, rows, date_field in (
-        ("meter", run_rows, "run_week"),
-        ("ledger", ledger_rows, "date"),
-        ("wrapper", wrapper_rows, "run_week"),
+    for name, rows, date_of in (
+        ("meter", run_rows, run_date_of),
+        ("ledger", ledger_rows, lambda row: row.get("date") or ""),
+        ("wrapper", wrapper_rows, run_date_of),
     ):
         attempted = [row for row in rows if row.get("run_status") not in (None, "dry_run")]
         # Counts are scoped to the most recent collection for the source. All-time
         # counts would let a fresh regression hide behind last week's successes —
         # the whole point is to catch the run that just broke.
-        latest = max((row.get(date_field) or "" for row in attempted), default="") or None
-        sources.append((name, attempted, date_field, latest))
+        latest = max((date_of(row) for row in attempted), default="") or None
+        sources.append((name, attempted, date_of, latest))
 
     health = []
     for entry in selected:
         key = (entry["provider_id"], entry["tier"])
         item = {"provider_id": entry["provider_id"], "tier": entry["tier"], "sources": {}}
-        for name, rows, date_field, latest in sources:
+        for name, rows, date_of, latest in sources:
             mine = [row for row in rows if (row.get("provider_id"), row.get("tier")) == key]
-            current = [row for row in mine if (row.get(date_field) or "") == latest]
+            current = [row for row in mine if date_of(row) == latest]
             ok_rows = [row for row in current if row.get("run_status") == "ok"]
             failed = [row for row in current if row.get("run_status") != "ok"]
             last_error = max(failed, key=lambda r: r.get("run_at") or "", default=None)
@@ -549,11 +595,7 @@ def build_provider_health(
                 "ok_count": len(ok_rows),
                 "error_count": len(failed),
                 "last_ok": max(
-                    (
-                        row.get(date_field) or ""
-                        for row in mine
-                        if row.get("run_status") == "ok"
-                    ),
+                    (date_of(row) for row in mine if row.get("run_status") == "ok"),
                     default="",
                 )
                 or None,
@@ -627,8 +669,22 @@ def build_equivalence(
             per_run = _pack_cost(mode_models, tasks_by_id, task_ids)
             budgets[mode][pack_id] = {
                 "per_run_usd": per_run,
-                "annual_usd": per_run * WEEKLY_RUNS_PER_YEAR,
+                "annual_usd": per_run * DAILY_RUNS_PER_YEAR,
+                # `/pricing` prices the alternative cadences side by side so the
+                # shipped one can be compared against what it replaced. It reads
+                # this map, which the builder previously never wrote — the whole
+                # table rendered as em-dashes.
+                "annual_usd_by_cadence": {
+                    name: per_run * runs for name, runs in RUNS_PER_YEAR_BY_CADENCE.items()
+                },
             }
+
+    # Worst case for the shipped cadence: one run of every panel row, every task
+    # spending its whole output ceiling. Derived rather than written down,
+    # because the ceiling and the rate cards both move.
+    meter_models = selected_by_mode["two"]
+    ceiling_per_run = _pack_cost(meter_models, tasks_by_id, TASK_PACKS["suiteLong"])
+    ceiling_annual = ceiling_per_run * DAILY_RUNS_PER_YEAR
 
     auth = {
         provider: {
@@ -646,38 +702,49 @@ def build_equivalence(
     dark = sorted(
         f"{item['provider_id']}·{item['tier']}" for item in provider_health if not item["reporting"]
     )
-    latest_week = max((row.get("run_week") for row in run_rows if row.get("run_week")), default=None)
-    latest_rows = [row for row in run_rows if row.get("run_week") == latest_week] if latest_week else []
+    # `live_runs` is collection telemetry — the last time the runner wrote rows —
+    # so like health it reads the unfiltered rows.
+    latest_date = max((run_date_of(row) for row in run_rows), default="") or None
+    latest_rows = [row for row in run_rows if run_date_of(row) == latest_date] if latest_date else []
 
-    ledger_rows = ledger_all
+    # Everything charted or tabulated starts at the epoch.
+    ledger_rows = [row for row in ledger_all if include_dashboard_date(row.get("date") or "")]
     ledger_ok = [row for row in ledger_rows if row.get("run_status") == "ok"]
-    wrapper_rows = wrapper_all
+    wrapper_rows = [row for row in wrapper_all if include_dashboard_date(run_date_of(row))]
     wrapper_ok = [row for row in wrapper_rows if row.get("run_status") == "ok"]
 
     return {
         "generated_at": index["generated_at"],
         "corpus_version": CORPUS_VERSION,
         "chat_corpus_version": CHAT_CORPUS_VERSION,
+        "output_policy_version": OUTPUT_POLICY_VERSION,
+        "output_ceiling": OUTPUT_CEILING,
         "tiers": list(TIER_ORDER),
         "tasks": TASK_DEFINITIONS,
+        "meter_task_ids": list(METER_TASK_IDS),
+        "chat_task": CHAT_TASK,
         "task_packs": TASK_PACKS,
         "chat_transcript": CHAT_TRANSCRIPT,
-        "runs_per_year": WEEKLY_RUNS_PER_YEAR,
+        "runs_per_year": DAILY_RUNS_PER_YEAR,
         "selected_models": selected,
         "selected_models_by_mode": selected_by_mode,
         "budget": budgets,
+        "package_ceiling_annual_usd": ceiling_annual,
         "package_cost_note": (
-            "Recommended package (~$40–45/yr list): weekly meter with flagship N=1 + "
-            "workhorse N=3, daily ABC tokenizer ledger, weekly D ledger count, weekly "
-            "Test 4 wrapper counts on turns 1–10."
+            "Shipped package: daily meter with flagship N=1 + workhorse N=1, daily "
+            "tokenizer ledger on tasks A–D, daily task E wrapper counts on turns 1–10. "
+            f"Ceiling is ${ceiling_annual:,.0f}/yr at list — every task spending all "
+            f"{OUTPUT_CEILING:,} output tokens, every day. Observed spend runs well "
+            "under it because models stop when they are done; the ceiling only bounds a "
+            "runaway generation."
         ),
         "token_runs": build_token_runs(run_rows),
         "tokenizer_ledger": {
-            "cadence": "daily_ABC_weekly_D",
+            "cadence": "daily",
             "status": "active" if ledger_ok else "pending_first_run",
             "note": (
-                "Count-only density on the frozen corpus. ABC collected daily; "
-                "task D counted weekly with the meter week."
+                "Count-only density on the frozen corpus. Tasks A\u2013D all counted "
+                "daily."
             ),
             "last_observed_date": max((r.get("date") for r in ledger_ok), default=None),
             "row_count": len(ledger_rows),
@@ -685,14 +752,14 @@ def build_equivalence(
             "rows": ledger_ok,
         },
         "wrapper_runs": {
-            "cadence": "weekly",
+            "cadence": "daily",
             "status": "active" if wrapper_ok else "pending_first_run",
             "note": (
                 "Test 4: frozen 10-turn transcript; api_prompt_tokens at turns 1–10. "
                 "Assistant turns are never regenerated."
             ),
             "chat_corpus_version": CHAT_CORPUS_VERSION,
-            "last_week": max((r.get("run_week") for r in wrapper_ok), default=None),
+            "last_date": max((run_date_of(r) for r in wrapper_ok), default="") or None,
             "row_count": len(wrapper_rows),
             "ok_row_count": len(wrapper_ok),
             "rows": wrapper_ok,
@@ -713,11 +780,16 @@ def build_equivalence(
             "dark": dark,
         },
         "live_runs": {
-            "latest_week": latest_week,
+            "latest_date": latest_date,
             "latest_row_count": len(latest_rows),
             "total_row_count": len(run_rows),
             "latest_rows": latest_rows,
-            "workhorse_replicates": 3,
+            # Read off the rows rather than restated, so it cannot drift from the
+            # replicate count the workflow actually passes the runner.
+            "workhorse_replicates": max(
+                (r.get("replicate", 1) for r in latest_rows if r.get("tier") == "workhorse"),
+                default=1,
+            ),
         },
         "window": {
             "first_date": index.get("first_date"),

@@ -9,6 +9,7 @@ import {
   contextsNeedDisambiguation,
   effectiveModality,
   formatLegendLabel,
+  hexToHsl,
   isFutureSchedulePlaceholder,
   priceAtOrBefore,
   sortDatasetsForDate,
@@ -47,15 +48,24 @@ const state = {
   index: null,
   equivalence: null,
   providers: new Set(),
-  selectedProviders: new Set(),
-  archiveSelectedProviders: new Set(),
-  changesSelectedProviders: new Set(),
+  // One provider-visibility model per surface: provider_id → "solo" | "hidden".
+  // Absent means "shown alongside the rest", so an untouched map shows everything.
+  // Same three-position interaction as the trend chart's legend.
+  providerModes: {
+    trend: new Map(),
+    archive: new Map(),
+    changes: new Map(),
+  },
   modalities: new Set(),
   selectedModalities: new Set(),
   providerSeries: new Map(), // provider_id → 0-based data-viz step
   chart: null,
+  // Resting state is the most recent scraped day rather than nothing, so the
+  // legend opens on a real column of prices. No series is selected at rest —
+  // the highlight is reserved for an actual rollover.
   hoverDate: null,
   hoverPricingId: null,
+  defaultHoverDate: null,
   legendMode: new Map(), // pricing_id → "solo" | "hidden"
   priceField: "output_price",
 };
@@ -84,29 +94,6 @@ function theme() {
       token(`--cofair-dataviz-${i + 1}`),
     ),
   };
-}
-
-function hexToHsl(hex) {
-  const raw = hex.replace("#", "").trim();
-  const full = raw.length === 3 ? raw.split("").map((c) => c + c).join("") : raw;
-  const r = parseInt(full.slice(0, 2), 16) / 255;
-  const g = parseInt(full.slice(2, 4), 16) / 255;
-  const b = parseInt(full.slice(4, 6), 16) / 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const l = (max + min) / 2;
-  const d = max - min;
-  let h = 0;
-  let s = 0;
-  if (d !== 0) {
-    s = d / (1 - Math.abs(2 * l - 1));
-    if (max === r) h = ((g - b) / d) % 6;
-    else if (max === g) h = (b - r) / d + 2;
-    else h = (r - g) / d + 4;
-    h *= 60;
-    if (h < 0) h += 360;
-  }
-  return { h, s: s * 100, l: l * 100 };
 }
 
 function hash(str) {
@@ -257,9 +244,6 @@ async function loadData() {
     state.providers.add(r.provider_id);
     state.modalities.add(effectiveModality(r.modality));
   }
-  state.selectedProviders = new Set(state.providers);
-  state.archiveSelectedProviders = new Set(state.providers);
-  state.changesSelectedProviders = new Set(state.providers);
   state.selectedModalities = new Set(state.modalities);
   assignProviderSeries();
 }
@@ -282,8 +266,77 @@ function renderHeader() {
 
 // ---- provider filter chips -------------------------------------------------
 
-function renderProviderChips() {
-  const el = document.getElementById("providerFilter");
+function soloProvider(scope) {
+  for (const [pid, mode] of state.providerModes[scope]) {
+    if (mode === "solo") return pid;
+  }
+  return null;
+}
+
+function providerVisible(scope, providerId) {
+  const solo = soloProvider(scope);
+  if (solo) return providerId === solo;
+  return state.providerModes[scope].get(providerId) !== "hidden";
+}
+
+/**
+ * none → solo → hidden → none, with at most one provider soloed per surface.
+ *
+ * While a provider is isolated every other chip reads as "not shown", so a
+ * click on one of them means "isolate this one instead" — whatever mode that
+ * chip happened to be left in before the isolation took effect.
+ */
+function cycleProviderMode(scope, providerId) {
+  const modes = state.providerModes[scope];
+  const solo = soloProvider(scope);
+  if (solo && solo !== providerId) {
+    modes.delete(solo);
+    modes.set(providerId, "solo");
+    return;
+  }
+  const mode = modes.get(providerId);
+  if (!mode) {
+    modes.set(providerId, "solo");
+    return;
+  }
+  if (mode === "solo") {
+    modes.set(providerId, "hidden");
+    return;
+  }
+  modes.delete(providerId);
+}
+
+/**
+ * Push a surface's visibility model onto its chips.
+ *
+ * Separate from construction because soloing one provider changes how every
+ * *other* chip in the row reads, so a click cannot just restyle the chip that
+ * was clicked.
+ */
+function syncProviderChipRow(el, scope) {
+  const solo = soloProvider(scope);
+  el.querySelectorAll(".chip[data-provider]").forEach((chip) => {
+    const pid = chip.dataset.provider;
+    const mode = state.providerModes[scope].get(pid) || "";
+    chip.dataset.mode = mode;
+    chip.setAttribute("aria-pressed", String(providerVisible(scope, pid)));
+    // State never rests on styling alone: say which of the three positions the
+    // chip is in and what clicking it does next.
+    const position =
+      mode === "solo"
+        ? "isolated — click to hide"
+        : mode === "hidden"
+          ? "hidden — click to restore"
+          : solo
+            ? "hidden while another provider is isolated — click to isolate"
+            : "shown — click to isolate";
+    chip.setAttribute("aria-label", `${providerLabel(pid)}: ${position}`);
+  });
+}
+
+function renderProviderChipRow(elementId, scope, onChange) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
   el.innerHTML = "";
   for (const pid of [...state.providers].sort()) {
     const step = state.providerSeries.get(pid) ?? 0;
@@ -292,65 +345,27 @@ function renderProviderChips() {
     chip.className = "chip cofair-badge";
     chip.dataset.provider = pid;
     chip.dataset.series = String((step % SERIES_COUNT) + 1);
-    chip.setAttribute("aria-pressed", "true");
     chip.innerHTML = `<span class="chip__swatch"></span>${esc(providerLabel(pid))}`;
     chip.addEventListener("click", () => {
-      const on = state.selectedProviders.has(pid);
-      if (on) state.selectedProviders.delete(pid);
-      else state.selectedProviders.add(pid);
-      chip.setAttribute("aria-pressed", String(!on));
-      renderTrendChart();
+      cycleProviderMode(scope, pid);
+      syncProviderChipRow(el, scope);
+      onChange();
     });
     el.appendChild(chip);
   }
+  syncProviderChipRow(el, scope);
+}
+
+function renderProviderChips() {
+  renderProviderChipRow("providerFilter", "trend", renderTrendChart);
 }
 
 function renderArchiveProviderChips() {
-  const el = document.getElementById("archiveProviderFilter");
-  el.innerHTML = "";
-  for (const pid of [...state.providers].sort()) {
-    const step = state.providerSeries.get(pid) ?? 0;
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "chip cofair-badge";
-    chip.dataset.provider = pid;
-    chip.dataset.series = String((step % SERIES_COUNT) + 1);
-    const on = state.archiveSelectedProviders.has(pid);
-    chip.setAttribute("aria-pressed", String(on));
-    chip.innerHTML = `<span class="chip__swatch"></span>${esc(providerLabel(pid))}`;
-    chip.addEventListener("click", () => {
-      const selected = state.archiveSelectedProviders.has(pid);
-      if (selected) state.archiveSelectedProviders.delete(pid);
-      else state.archiveSelectedProviders.add(pid);
-      chip.setAttribute("aria-pressed", String(!selected));
-      renderArchive();
-    });
-    el.appendChild(chip);
-  }
+  renderProviderChipRow("archiveProviderFilter", "archive", renderArchive);
 }
 
 function renderChangesProviderChips() {
-  const el = document.getElementById("changesProviderFilter");
-  el.innerHTML = "";
-  for (const pid of [...state.providers].sort()) {
-    const step = state.providerSeries.get(pid) ?? 0;
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "chip cofair-badge";
-    chip.dataset.provider = pid;
-    chip.dataset.series = String((step % SERIES_COUNT) + 1);
-    const on = state.changesSelectedProviders.has(pid);
-    chip.setAttribute("aria-pressed", String(on));
-    chip.innerHTML = `<span class="chip__swatch"></span>${esc(providerLabel(pid))}`;
-    chip.addEventListener("click", () => {
-      const selected = state.changesSelectedProviders.has(pid);
-      if (selected) state.changesSelectedProviders.delete(pid);
-      else state.changesSelectedProviders.add(pid);
-      chip.setAttribute("aria-pressed", String(!selected));
-      renderChanges();
-    });
-    el.appendChild(chip);
-  }
+  renderProviderChipRow("changesProviderFilter", "changes", renderChanges);
 }
 
 function renderModalityChips() {
@@ -374,29 +389,6 @@ function renderModalityChips() {
     });
     el.appendChild(chip);
   }
-}
-
-// ---- weekly bucketing ------------------------------------------------------
-
-function isoWeekKey(dateStr) {
-  // YYYY-Www: ISO week's Monday date as the bucket label
-  const d = new Date(dateStr + "T00:00:00Z");
-  const day = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() - day + 1); // back to Monday
-  return d.toISOString().slice(0, 10);
-}
-
-function bucketed(rows, bucket) {
-  if (bucket === "daily") return rows;
-  // weekly: keep the latest date per (pricing_id, week)
-  const byKey = new Map();
-  for (const r of rows) {
-    const wk = isoWeekKey(r.date);
-    const k = `${r.pricing_id}|${wk}`;
-    const prev = byKey.get(k);
-    if (!prev || prev.date < r.date) byKey.set(k, { ...r, date: wk });
-  }
-  return [...byKey.values()];
 }
 
 // ---- trend chart -----------------------------------------------------------
@@ -496,17 +488,21 @@ function showNodeTooltip(chart, hit, priceField) {
   const plotRect = plot.getBoundingClientRect();
   const canvasRect = canvas.getBoundingClientRect();
   const x = canvasRect.left - plotRect.left + element.x;
-  const y = canvasRect.top - plotRect.top + element.y;
-
-  tooltip.style.left = `${x}px`;
-  tooltip.style.top = `${y}px`;
+  tooltip.style.top = `${canvasRect.top - plotRect.top + element.y}px`;
   tooltip.hidden = false;
+  // The card is centred on the node, so a node near either edge pushes half of
+  // it outside the plot and the text reflows to one word per line. Measure at a
+  // position with room, then clamp so the card stays inside.
+  tooltip.style.left = "0px";
+  const half = tooltip.offsetWidth / 2;
+  tooltip.style.left = `${Math.min(Math.max(x, half), plotRect.width - half)}px`;
 }
 
+/** Leaving the plot returns to the resting state: latest day, nothing selected. */
 function clearChartHover() {
   hideNodeTooltip();
-  if (!state.hoverDate && !state.hoverPricingId) return;
-  state.hoverDate = null;
+  if (state.hoverDate === state.defaultHoverDate && !state.hoverPricingId) return;
+  state.hoverDate = state.defaultHoverDate;
   state.hoverPricingId = null;
   if (state.chart) {
     renderLegend(state.chart);
@@ -630,7 +626,6 @@ function onChartHover(evt, _elements, chart) {
 
 function renderTrendChart() {
   const field = document.getElementById("priceField").value;
-  const bucket = document.getElementById("bucket").value;
   const yScale = document.getElementById("yScale").value;
   const activeOnly = document.getElementById("activeOnly").checked;
   const changedOnly = document.getElementById("changedOnly").checked;
@@ -648,7 +643,7 @@ function renderTrendChart() {
     `Only changed ${field.replace(/_/g, " ")}s`;
 
   let rows = state.series.filter(r =>
-    state.selectedProviders.has(r.provider_id)
+    providerVisible("trend", r.provider_id)
     && state.selectedModalities.has(effectiveModality(r.modality))
     && !isFutureSchedulePlaceholder(r),
   );
@@ -668,8 +663,6 @@ function renderTrendChart() {
     const changedIds = pricingIdsThatChanged(rows, field);
     rows = rows.filter(r => changedIds.has(r.pricing_id));
   }
-
-  rows = bucketed(rows, bucket);
 
   const byPid = new Map();
   for (const r of rows) {
@@ -725,7 +718,7 @@ function renderTrendChart() {
       scales: {
         x: {
           type: "time",
-          time: { unit: bucket === "weekly" ? "week" : "day" },
+          time: { unit: "day" },
           ticks: { color: palette.muted, font: { family: palette.mono, size: palette.sizeXs } },
           grid: { color: palette.grid },
         },
@@ -747,6 +740,14 @@ function renderTrendChart() {
       },
     },
   });
+
+  state.defaultHoverDate =
+    datasets.reduce((max, ds) => {
+      const last = pointDate(ds.data.at(-1));
+      return last && last > max ? last : max;
+    }, "") || null;
+  state.hoverDate = state.defaultHoverDate;
+  state.hoverPricingId = null;
 
   applyLegendVisibility(state.chart);
   state.chart.update();
@@ -794,7 +795,7 @@ function renderArchive() {
   } else {
     rows = rows.filter(m => m.deprecated_on || !m.currently_present || m.name_marks_deprecation);
   }
-  rows = rows.filter(m => state.archiveSelectedProviders.has(m.provider_id));
+  rows = rows.filter(m => providerVisible("archive", m.provider_id));
 
   for (const cell of document.querySelectorAll(".archive-col-flagged-on")) {
     cell.hidden = !showFlaggedOn;
@@ -863,7 +864,7 @@ function detectChanges() {
 }
 
 function renderChanges() {
-  const events = detectChanges().filter(e => state.changesSelectedProviders.has(e.provider_id));
+  const events = detectChanges().filter(e => providerVisible("changes", e.provider_id));
   const tbody = document.getElementById("changesBody");
   if (!events.length) {
     tbody.innerHTML = emptyRow(
@@ -914,7 +915,7 @@ function renderEquivalence() {
 
   const eqSummary = document.getElementById("eqSummary");
   const live = eq.live_runs || {};
-  eqSummary.textContent = `${modeModels.length} models · ${packDef.join("+")} · ${cadence} cadence · tokenizer ledger cadence ${eq.tokenizer_ledger.cadence} · latest live week ${live.latest_week || "—"}`;
+  eqSummary.textContent = `${modeModels.length} models · ${packDef.join("+")} · ${cadence} cadence · tokenizer ledger cadence ${eq.tokenizer_ledger.cadence} · latest live day ${live.latest_date || "—"}`;
 
   const modelBody = document.getElementById("eqModelBody");
   if (!modeModels.length) {
@@ -977,7 +978,7 @@ function renderEquivalence() {
       .join(", ");
     liveBody.innerHTML = `
       <tr class="cofair-table__row">
-        <td class="cofair-table__td">${esc(live.latest_week)}</td>
+        <td class="cofair-table__td">${esc(live.latest_date)}</td>
         <td class="cofair-table__td cofair-table__td--num">${esc(String(latestRows.length))}</td>
         <td class="cofair-table__td cofair-table__td--num">${esc(String(okCount))}</td>
         <td class="cofair-table__td">${esc(statusSummary)}</td>
@@ -1037,7 +1038,7 @@ function setupTabs() {
 }
 
 function bindControls() {
-  ["priceField", "bucket", "yScale", "activeOnly", "changedOnly"].forEach(id => {
+  ["priceField", "yScale", "activeOnly", "changedOnly"].forEach(id => {
     document.getElementById(id).addEventListener("change", renderTrendChart);
   });
   ["archiveFilter"].forEach(id => {

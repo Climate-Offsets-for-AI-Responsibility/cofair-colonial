@@ -49,68 +49,142 @@
   </header>
 
   <main class="page">
-    <div class="controls">
-      <div class="cofair-field control-group">
-        <label class="cofair-label" for="pack">Task pack</label>
-        <select class="cofair-select" id="pack">
-          <option value="suiteLong" selected>A+B+C+D (full suite)</option>
-          <option value="suite">A+B+C</option>
-          <option value="qa">A · Bounded Q&amp;A</option>
-          <option value="summarize">B · Summarize</option>
-          <option value="code">C · Code</option>
-          <option value="long">D · Long context</option>
-        </select>
+    <div class="cofair-tabs">
+      <div class="cofair-tabs__list" role="tablist" aria-label="Token views">
+        <button type="button" role="tab" class="cofair-tabs__tab cofair-tabs__tab--active"
+                id="tab-trends" aria-selected="true" aria-controls="panel-trends"
+                data-tab="trends" tabindex="0">Trends and Analysis</button>
+        <button type="button" role="tab" class="cofair-tabs__tab"
+                id="tab-ledger" aria-selected="false" aria-controls="panel-ledger"
+                data-tab="ledger" tabindex="-1">Ledger</button>
       </div>
-      <div class="cofair-field control-group">
-        <label class="cofair-label" for="metric">Measure</label>
-        <select class="cofair-select" id="metric">
-          <option value="tokens_in_per_1k_chars" selected>Tokenizer density (meter, tokens / 1K chars)</option>
-          <option value="ledger_density">Tokenizer density (ledger, tokens / 1K chars)</option>
-          <option value="wrapper_turn10">Wrapper overhead (turn-10 prompt tokens)</option>
-          <option value="tokens_total">Total tokens consumed (meter)</option>
-          <option value="tokens_in">Input tokens (meter)</option>
-          <option value="tokens_out">Output tokens (meter)</option>
-          <option value="usd">Cost per run (USD)</option>
-        </select>
+
+      <div class="cofair-tabs__panel" role="tabpanel" id="panel-trends"
+           aria-labelledby="tab-trends" data-panel="trends">
+        <div class="controls">
+          <fieldset class="control-group control-group--wide">
+            <legend class="cofair-label">Providers</legend>
+            <div class="chip-row" id="providerFilter"></div>
+          </fieldset>
+          <fieldset class="control-group">
+            <legend class="cofair-label">Tier</legend>
+            <div class="chip-row" id="tierFilter"></div>
+          </fieldset>
+          <div class="pack-measure">
+            <div class="cofair-field control-group">
+              <label class="cofair-label" for="pack">Task pack</label>
+              <select class="cofair-select" id="pack">
+                <option value="suiteLong" selected>Full suite (A–E)</option>
+                <option value="qa">A · Bounded Q&amp;A</option>
+                <option value="summarize">B · Summarize</option>
+                <option value="code">C · Code</option>
+                <option value="long">D · Long context</option>
+                <option value="chat">E · Chat transcript</option>
+              </select>
+            </div>
+            <div class="cofair-field control-group control-group--measure">
+              <label class="cofair-label" for="metric">Measure</label>
+              <div class="measure-row">
+                <select class="cofair-select" id="metric" aria-describedby="metricNote">
+                  <option value="tokens_in_per_1k_chars" selected>Tokenizer density (meter, tokens / 1K chars)</option>
+                  <option value="ledger_density">Tokenizer density (ledger, tokens / 1K chars)</option>
+                  <option value="wrapper_turn10">Wrapper overhead (turn-10 prompt tokens)</option>
+                  <option value="tokens_total">Total tokens consumed (meter)</option>
+                  <option value="tokens_in">Input tokens (meter)</option>
+                  <option value="tokens_out">Output tokens (meter)</option>
+                  <option value="usd">Cost per run (USD)</option>
+                </select>
+                <p class="cofair-help" id="metricNote"></p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p class="hint cofair-text cofair-text--small health-note" id="healthNote" hidden></p>
+
+        <div class="cofair-card chart-card">
+          <div class="chart-card__plot">
+            <canvas id="tokenChart" aria-label="Token consumption over time"></canvas>
+            <div id="chartNodeTooltip" class="chart-node-tooltip" hidden role="tooltip">
+              <p class="chart-node-tooltip__provider cofair-text cofair-text--xs"></p>
+              <p class="chart-node-tooltip__model cofair-text cofair-text--small"></p>
+              <p class="chart-node-tooltip__meta cofair-text cofair-text--xs"></p>
+            </div>
+          </div>
+          <aside class="chart-legend" aria-label="Provider tiers">
+            <h2 class="chart-legend__header cofair-text cofair-text--xs">
+              <span id="chartLegendDate">Provider · tier</span>
+              <span class="legend-value" id="chartLegendUnit"></span>
+            </h2>
+            <ul class="chart-legend__list" id="chartLegend"></ul>
+          </aside>
+        </div>
+
+        <section>
+          <h2 class="cofair-heading cofair-heading--4 section-heading">Task Corpus</h2>
+          <div class="cofair-card">
+            <div class="cofair-table__scroll">
+              <table class="cofair-table cofair-table--striped">
+                <thead class="cofair-table__head">
+                  <tr class="cofair-table__row">
+                    <th class="cofair-table__th" scope="col">Task</th>
+                    <th class="cofair-table__th cofair-table__th--num" scope="col">Input chars</th>
+                    <th class="cofair-table__th cofair-table__th--num" scope="col">Words</th>
+                  </tr>
+                </thead>
+                <tbody class="cofair-table__body" id="taskBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
       </div>
-      <fieldset class="control-group control-group--wide">
-        <legend class="cofair-label">Providers</legend>
-        <div class="chip-row" id="providerFilter"></div>
-      </fieldset>
-    </div>
 
-    <p class="hint cofair-text cofair-text--small" id="metricNote"></p>
-    <p class="hint cofair-text cofair-text--small health-note" id="healthNote" hidden></p>
-
-    <div class="cofair-card chart-card">
-      <div class="chart-card__plot">
-        <canvas id="tokenChart" aria-label="Token consumption over time"></canvas>
-      </div>
-      <aside class="chart-legend" aria-label="Provider tiers">
-        <h2 class="chart-legend__header cofair-text cofair-text--xs">Provider · tier</h2>
-        <ul class="chart-legend__list" id="chartLegend"></ul>
-      </aside>
-    </div>
-
-    <section>
-      <h2 class="cofair-heading cofair-heading--4 section-heading">Frozen task corpus</h2>
-      <div class="cofair-card">
-        <div class="cofair-table__scroll">
-          <table class="cofair-table cofair-table--striped">
-            <thead class="cofair-table__head">
-              <tr class="cofair-table__row">
-                <th class="cofair-table__th" scope="col">Task</th>
-                <th class="cofair-table__th cofair-table__th--num" scope="col">Input chars</th>
-                <th class="cofair-table__th cofair-table__th--num" scope="col">Words</th>
-                <th class="cofair-table__th cofair-table__th--num" scope="col">Output cap</th>
-                <th class="cofair-table__th" scope="col">What it probes</th>
-              </tr>
-            </thead>
-            <tbody class="cofair-table__body" id="taskBody"></tbody>
-          </table>
+      <div class="cofair-tabs__panel" role="tabpanel" id="panel-ledger"
+           aria-labelledby="tab-ledger" data-panel="ledger" hidden>
+        <div class="controls">
+          <fieldset class="control-group control-group--wide">
+            <legend class="cofair-label">Providers</legend>
+            <div class="chip-row" id="ledgerProviderFilter"></div>
+          </fieldset>
+          <fieldset class="control-group">
+            <legend class="cofair-label">Tier</legend>
+            <div class="chip-row" id="ledgerTierFilter"></div>
+          </fieldset>
+          <div class="pack-measure ledger-filters">
+            <div class="cofair-field control-group control-group--task">
+              <label class="cofair-label" for="ledgerTask">Task</label>
+              <select class="cofair-select" id="ledgerTask"></select>
+            </div>
+            <div class="cofair-field control-group">
+              <label class="cofair-label" for="ledgerFrom">From</label>
+              <input class="cofair-input" type="date" id="ledgerFrom" />
+            </div>
+            <div class="cofair-field control-group">
+              <label class="cofair-label" for="ledgerTo">To</label>
+              <input class="cofair-input" type="date" id="ledgerTo" />
+            </div>
+          </div>
+        </div>
+        <p class="cofair-help" id="ledgerRange"></p>
+        <div class="cofair-card">
+          <div class="cofair-table__scroll ledger-scroll">
+            <table class="cofair-table cofair-table--striped ledger-table">
+              <thead class="cofair-table__head">
+                <tr class="cofair-table__row">
+                  <th class="cofair-table__th ledger-col-date" scope="col">Date</th>
+                  <th class="cofair-table__th ledger-col-provider" scope="col">Provider</th>
+                  <th class="cofair-table__th ledger-col-model" scope="col">Model</th>
+                  <th class="cofair-table__th ledger-col-task" scope="col">Task</th>
+                  <th class="cofair-table__th cofair-table__th--num ledger-col-in" scope="col">Prompt tokens</th>
+                  <th class="cofair-table__th cofair-table__th--num ledger-col-density" scope="col">/ 1K chars</th>
+                </tr>
+              </thead>
+              <tbody class="cofair-table__body" id="ledgerBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </section>
+    </div>
   </main>
 
   <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
@@ -127,7 +201,9 @@
         <p class="drawer__eyebrow cofair-text cofair-text--xs" id="drawerEyebrow"></p>
         <h2 class="cofair-heading cofair-heading--4" id="drawerTitle"></h2>
       </div>
-      <button type="button" class="cofair-button cofair-button--ghost" id="drawerClose" aria-label="Close task details">Close</button>
+      <button type="button" class="cofair-dialog__close" id="drawerClose" aria-label="Close task details">
+        <span aria-hidden="true">×</span>
+      </button>
     </header>
     <div class="drawer__body" id="drawerBody"></div>
   </aside>

@@ -58,7 +58,7 @@
       <div class="cofair-tabs__list" role="tablist" aria-label="Pricing views">
         <button type="button" role="tab" class="cofair-tabs__tab cofair-tabs__tab--active"
                 id="tab-trends" aria-selected="true" aria-controls="panel-trends"
-                data-tab="trends" tabindex="0">Trends</button>
+                data-tab="trends" tabindex="0">Trends and Analysis</button>
         <button type="button" role="tab" class="cofair-tabs__tab"
                 id="tab-changes" aria-selected="false" aria-controls="panel-changes"
                 data-tab="changes" tabindex="-1">Price changes</button>
@@ -85,23 +85,14 @@
             <select class="cofair-select" id="priceField">
               <option value="input_price">Input</option>
               <option value="output_price" selected>Output</option>
-              <option value="cached_input_price">Cached input</option>
-            </select>
-          </div>
-
-          <div class="cofair-field control-group">
-            <label class="cofair-label" for="bucket">Bucket</label>
-            <select class="cofair-select" id="bucket">
-              <option value="daily" selected>Daily</option>
-              <option value="weekly">Weekly (last in week)</option>
             </select>
           </div>
 
           <div class="cofair-field control-group">
             <label class="cofair-label" for="yScale">Y-axis</label>
             <select class="cofair-select" id="yScale">
-              <option value="logarithmic" selected>Log</option>
-              <option value="linear">Linear</option>
+              <option value="logarithmic">Log</option>
+              <option value="linear" selected>Linear</option>
             </select>
           </div>
 

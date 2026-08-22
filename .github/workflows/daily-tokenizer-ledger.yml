@@ -21,7 +21,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Count-only ledger (tasks A+B+C)
+      - name: Count-only ledger (tasks A+B+C+D)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -33,7 +33,7 @@ jobs:
           TRACKER_AMAZON_API_KEY: ${{ secrets.TRACKER_AMAZON_API_KEY }}
           AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
         run: |
-          python scripts/run_tokenizer_ledger.py --tasks ABC --mode two
+          python scripts/run_tokenizer_ledger.py --tasks ABCD --mode two
       # Keys are passed here too: the builder records which provider
       # credentials are visible, and without them that field reads "none
       # configured" on a run whose collection actually worked.
