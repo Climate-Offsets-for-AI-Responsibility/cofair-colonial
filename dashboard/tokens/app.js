@@ -1,4 +1,4 @@
-// Token equivalence index — weekly token-consumption drift for a frozen task
+// Token equivalence index — daily token-consumption drift for a frozen task
 // corpus. Reads dashboard/data/equivalence.json (see build_dashboard_data.py).
 //
 // Provider tinting matches /pricing exactly; every color comes from a
@@ -61,21 +61,26 @@ const PROVIDER_LABELS = new Map([["aws", "amazon"]]);
 
 const METRICS = {
   tokens_in_per_1k_chars: {
-    label: "Input tokens per 1,000 characters (meter)",
-    axis: "tokens / 1K chars",
+    label: "Input tokens per 1,000 characters, pack-weighted (meter)",
+    axis: "tokens / 1K chars (pack-weighted)",
     source: "meter",
     note:
-      "Tokenizer density from the weekly task meter (median of workhorse replicates). " +
-      "A step change on a pinned model is the signature of a silent re-tokenization.",
+      "Tokenizer density from the daily task meter, pooled across the pack: total input " +
+      "tokens over total characters. Task D carries 25,743 of the suite's ~27,000 " +
+      "characters, so it dominates this figure. A step change on a pinned model is the " +
+      "signature of a silent re-tokenization.",
     decimals: 1,
   },
   ledger_density: {
-    label: "Input tokens per 1,000 characters (ledger)",
-    axis: "tokens / 1K chars",
+    label: "Input tokens per 1,000 characters, mean of tasks A–C (ledger)",
+    axis: "tokens / 1K chars (task mean)",
     source: "ledger",
     note:
-      "Count-only daily ledger on frozen tasks A+B+C (task D weekly). No generation — " +
-      "7× the resolution of the meter on the cleanest drift hypothesis.",
+      "Count-only daily ledger, no generation: the unweighted mean of the per-task " +
+      "densities for A, B and C. Every task counts equally here, so short prompts carry " +
+      "the same weight as long ones and the value runs several times above the " +
+      "pack-weighted meter. The two are different statistics on the same corpus — read " +
+      "each against its own history, not against the other.",
     decimals: 1,
   },
   wrapper_turn10: {
@@ -112,8 +117,7 @@ const METRICS = {
     note:
       "Stochastic, and now bounded only by a generous ceiling rather than a per-task cap — " +
       "so a model that grows more verbose between versions shows up here instead of flattening " +
-      "against the cap. Runs that still reach the ceiling are censored observations. " +
-      "Workhorse points are medians of N=3.",
+      "against the cap. Runs that still reach the ceiling are censored observations.",
     decimals: 0,
   },
   usd: {

@@ -8,6 +8,12 @@ on:
     - cron: "30 6 * * *" # daily 06:30 UTC
   workflow_dispatch:
 
+# Shared with the other two workflows that commit dashboard/data: they push
+# without rebasing, so overlapping runs would fail on a non-fast-forward.
+concurrency:
+  group: dashboard-data-write
+  cancel-in-progress: false
+
 jobs:
   ledger:
     runs-on: ubuntu-latest

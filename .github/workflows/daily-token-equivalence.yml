@@ -5,8 +5,22 @@ permissions:
 
 on:
   schedule:
-    - cron: "15 20 * * *" # daily at 20:15 UTC
+    # Morning, so the meter lands in step with the 06:30 ledger instead of
+    # trailing it by most of a day — at 20:15 the default measure on /tokens
+    # read a day behind the ledger for fourteen hours out of every twenty-four.
+    #
+    # Not 06:45, though it wants to be: scheduled runs here start 39–54 minutes
+    # after their cron, so a 15-minute nominal gap would put this job inside the
+    # ledger's window, and both push dashboard/data. The concurrency group below
+    # is the real guard; this spacing keeps it from being exercised daily.
+    - cron: "0 8 * * *" # daily at 08:00 UTC
   workflow_dispatch:
+
+# Three workflows commit dashboard/data and push with no rebase, so two that
+# overlap would end with the loser failing on a non-fast-forward. Queue them.
+concurrency:
+  group: dashboard-data-write
+  cancel-in-progress: false
 
 jobs:
   run-equivalence:

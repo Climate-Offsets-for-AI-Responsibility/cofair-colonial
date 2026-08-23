@@ -8,6 +8,12 @@ on:
     - cron: "0 19 * * *" # run daily at 19:00 UTC
   workflow_dispatch: # manual run button
 
+# Shared with the two token workflows that commit dashboard/data: they push
+# without rebasing, so overlapping runs would fail on a non-fast-forward.
+concurrency:
+  group: dashboard-data-write
+  cancel-in-progress: false
+
 env:
   COFAIR_PIPELINE_WORKFLOW: daily-scrape.yml
 
