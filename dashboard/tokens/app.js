@@ -635,7 +635,10 @@ function emptyChartReason() {
     return "Wrapper overhead is measured on task E only. Choose the full suite or E · Chat transcript.";
   }
   if (source !== "wrapper" && !meterTaskIds().length) {
-    return "Task E is counted, never generated, so it has no tokens of its own. Choose the full suite or a task A–D.";
+    // Not "task E has no tokens" — it has plenty, and they are billed. What it
+    // has is no *generated* output, and no row in the meter or ledger series,
+    // which carry tasks A–D. Name the measure that does show it.
+    return "Task E is counted, never generated: its replies are frozen text, so it has prompt tokens but no output, and no meter or ledger row. Choose “Wrapper overhead” to see it.";
   }
   if (!state.providerMode.size) return "No completed runs yet.";
   return "Every provider is hidden. Click a provider pill to bring it back.";
