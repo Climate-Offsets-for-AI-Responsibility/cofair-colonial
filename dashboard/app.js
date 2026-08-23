@@ -256,12 +256,31 @@ function fmtUsd(value) {
 
 // ---- header / stats --------------------------------------------------------
 
+/**
+ * Why the page is empty when the published record has not started yet.
+ *
+ * Mirrors the same function on /tokens. An empty chart on the day the epoch moves
+ * forward is a page waiting, not a page broken, and the epoch is the only thing
+ * that can tell those apart. Returns null once it is genuinely in the past, so a
+ * real collection failure is never excused as a wait.
+ */
+function awaitingEpochReason() {
+  const start = state.index?.dashboard_start_date;
+  if (!start) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  if (start < today) return null;
+  return `The published record starts ${fmtDate(start)}. Earlier snapshots are held back rather than charted beside what follows. The first daily scrape lands that morning.`;
+}
+
 function renderHeader() {
   const i = state.index;
   const rangeSummary = document.getElementById("rangeSummary");
   if (!rangeSummary) return;
-  rangeSummary.textContent =
-    `${i.snapshot_count} daily snapshots · ${fmtDate(i.first_date)} → ${fmtDate(i.last_date)} · regenerated ${fmtDateTime(i.generated_at)}`;
+  // `fmtDate(null)` renders as an invalid date, so the empty window needs its own
+  // sentence rather than a summary of nothing.
+  rangeSummary.textContent = i.snapshot_count
+    ? `${i.snapshot_count} daily snapshots · ${fmtDate(i.first_date)} → ${fmtDate(i.last_date)} · regenerated ${fmtDateTime(i.generated_at)}`
+    : awaitingEpochReason() || "No snapshots in the published window.";
 }
 
 // ---- provider filter chips -------------------------------------------------
@@ -551,6 +570,18 @@ function renderLegend(chart) {
 
   const soloId = soloLegendPricingId();
   list.replaceChildren();
+
+  // An empty trend chart with an empty legend beside it reads as a broken page,
+  // which is exactly what a reader would see on the day the published epoch moves
+  // forward. Say what is being waited for instead.
+  if (!datasets.length) {
+    const li = document.createElement("li");
+    li.className = "cofair-text cofair-text--xs";
+    li.textContent = awaitingEpochReason() || "No priced models match the current filters.";
+    list.appendChild(li);
+    return;
+  }
+
   for (const ds of ordered) {
     const li = document.createElement("li");
     const btn = document.createElement("button");

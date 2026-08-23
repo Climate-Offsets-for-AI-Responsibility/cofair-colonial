@@ -76,7 +76,16 @@ TOKEN_UNIT = "per_1M_tokens"
 # Raw pricing_history snapshots and the run files keep their full history; this
 # only governs what the dashboards are built from, so moving the date back
 # restores the older record.
-DASHBOARD_START_DATE = "2026-08-21"
+#
+# Moved to the first run under output policy 4.0.0 (no output cap, truncation read
+# from the provider). Strictly, only the meter's `tokens_out` and the totals built
+# on it lose comparability at that boundary: pricing is an independent list-price
+# scrape, and the tokenizer ledger counts with an explicit 1-token cap so it never
+# generates. Both were reset anyway, by decision, so the published record has one
+# start line instead of three — the alternative was a page whose series began on
+# different days for reasons no reader could see. The cost is a dashboard that is
+# empty until the first runs land, which is why this date is not moved casually.
+DASHBOARD_START_DATE = "2026-08-24"
 
 
 # ---- normalization ---------------------------------------------------------
@@ -365,6 +374,10 @@ def build_index(series: list[dict], schema_by_date: dict[str, str]) -> dict:
         "snapshot_count": len(dates),
         "row_count": len(series),
         "schema_versions": schema_by_date,
+        # Published so an empty chart can say *why* it is empty. Without it a
+        # reader on the day the epoch moves sees a blank page and concludes the
+        # site is broken, which is worse than the history the epoch hides.
+        "dashboard_start_date": DASHBOARD_START_DATE,
     }
 
 
@@ -831,6 +844,7 @@ def build_equivalence(
         "chat_corpus_version": CHAT_CORPUS_VERSION,
         "output_policy_version": OUTPUT_POLICY_VERSION,
         "output_ceiling": OUTPUT_CEILING,
+        "dashboard_start_date": DASHBOARD_START_DATE,
         "tiers": list(TIER_ORDER),
         "tasks": TASK_DEFINITIONS,
         "meter_task_ids": list(METER_TASK_IDS),

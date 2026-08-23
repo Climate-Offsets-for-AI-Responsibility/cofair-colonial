@@ -23,6 +23,13 @@ from build_dashboard_data import (
 from run_equivalence_tasks import current_run_date
 from task_corpus import TASK_PROMPTS
 
+# Fixture dates for anything that passes through the epoch filter are pinned to the
+# epoch rather than written down. A hard-coded date silently empties the fixture the
+# moment DASHBOARD_START_DATE moves past it, and the failure then looks like the
+# behaviour under test broke rather than the fixture aging out.
+POST_EPOCH = DASHBOARD_START_DATE
+PRE_EPOCH = (date.fromisoformat(DASHBOARD_START_DATE) - timedelta(days=1)).isoformat()
+
 
 class NormalizeSnapshotTest(unittest.TestCase):
     def test_v2_passes_modality_and_context_window(self) -> None:
@@ -235,7 +242,7 @@ class BuildTokenRunsTest(unittest.TestCase):
     def test_normalizes_density_and_flags_censored_output(self) -> None:
         rows = [
             {
-                "run_date": "2026-08-22",
+                "run_date": POST_EPOCH,
                 "provider_id": "google",
                 "tier": "flagship",
                 "task_id": "A",
@@ -250,7 +257,7 @@ class BuildTokenRunsTest(unittest.TestCase):
             },
             # Not ok → excluded.
             {
-                "run_date": "2026-08-22",
+                "run_date": POST_EPOCH,
                 "provider_id": "anthropic",
                 "tier": "flagship",
                 "task_id": "A",
@@ -260,7 +267,7 @@ class BuildTokenRunsTest(unittest.TestCase):
             },
             # Dry run → excluded.
             {
-                "run_date": "2026-08-22",
+                "run_date": POST_EPOCH,
                 "provider_id": "xai",
                 "tier": "flagship",
                 "task_id": "A",
@@ -285,7 +292,7 @@ class BuildTokenRunsTest(unittest.TestCase):
     def test_medians_workhorse_replicates(self) -> None:
         rows = [
             {
-                "run_date": "2026-08-22",
+                "run_date": POST_EPOCH,
                 "provider_id": "deepseek",
                 "tier": "workhorse",
                 "task_id": "A",
@@ -307,7 +314,7 @@ class BuildTokenRunsTest(unittest.TestCase):
     def test_uses_corpus_chars_when_row_omits_them(self) -> None:
         rows = [
             {
-                "run_date": "2026-08-22",
+                "run_date": POST_EPOCH,
                 "provider_id": "deepseek",
                 "tier": "workhorse",
                 "task_id": "A",
@@ -334,7 +341,7 @@ class RunDateTest(unittest.TestCase):
         beside daily rows would read as drift in the models rather than a change
         in how the meter was run."""
         stale = {
-            "run_week": "2026-08-10",
+            "run_week": PRE_EPOCH,
             "provider_id": "google",
             "tier": "flagship",
             "task_id": "A",
@@ -344,11 +351,11 @@ class RunDateTest(unittest.TestCase):
             "output_cap": 400,
             "run_status": "ok",
         }
-        current = {**stale, "run_week": None, "run_date": "2026-08-22"}
+        current = {**stale, "run_week": None, "run_date": POST_EPOCH}
 
         out = build_token_runs([stale, current])
 
-        self.assertEqual([row["date"] for row in out], ["2026-08-22"])
+        self.assertEqual([row["date"] for row in out], [POST_EPOCH])
 
 
 class DailyMeterAnchorTest(unittest.TestCase):

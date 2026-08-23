@@ -731,8 +731,27 @@ function emptyChartReason() {
     // which carry tasks A–D. Name the measure that does show it.
     return "Task E is counted, never generated: its replies are frozen text, so it has prompt tokens but no output, and no meter or ledger row. Choose “Wrapper overhead” to see it.";
   }
-  if (!state.providerMode.size) return "No completed runs yet.";
+  if (!state.providerMode.size) return awaitingEpochReason() || "No completed runs yet.";
   return "Every provider is hidden. Click a provider pill to bring it back.";
+}
+
+/**
+ * Why the page is empty when the published record has not started yet.
+ *
+ * "No completed runs yet" is the wrong sentence on the day the epoch moves: runs
+ * have completed, they are just before the line the published record starts from.
+ * Saying so is the difference between a page that is waiting and a page that looks
+ * broken. Returns null once there is anything to draw.
+ */
+function awaitingEpochReason() {
+  const start = state.eq?.dashboard_start_date;
+  if (!start) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  // Still applies on the epoch day itself, before that morning's run lands. Once
+  // the epoch is genuinely in the past, an empty chart is a collection failure
+  // rather than a wait, and must not be excused as one.
+  if (start < today) return null;
+  return `The published record starts ${fmtDate(start)}. Earlier runs were collected under a different output policy, so they are held back rather than charted beside what follows. The first daily run lands that morning.`;
 }
 
 /**
