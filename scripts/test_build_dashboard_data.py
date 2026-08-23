@@ -10,7 +10,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_dashboard_data import (
     DASHBOARD_START_DATE,
+    MIN_FIT_CHAR_SPAN,
+    MIN_FIT_TASKS,
     build_equivalence,
+    build_ledger_fits,
     build_models,
     build_token_runs,
     include_dashboard_date,
@@ -358,6 +361,112 @@ class DailyMeterAnchorTest(unittest.TestCase):
         self.assertEqual(
             len({current_run_date(date(2026, 8, 24) + timedelta(days=n)) for n in range(7)}),
             7,
+        )
+
+
+class LedgerFitTest(unittest.TestCase):
+    """The overhead/content split, and the reason it exists."""
+
+    # Real task lengths — the span between them is what makes the fit possible.
+    CHARS = {"A": 157, "B": 843, "C": 217, "D": 25_743}
+
+    def rows(self, date_: str, tokens: dict[str, int], provider: str = "xai") -> list[dict]:
+        return [
+            {
+                "date": date_,
+                "provider_id": provider,
+                "tier": "flagship",
+                "task_id": task_id,
+                "model_id": "grok-4.6",
+                "api_model": "grok-4.6",
+                "input_chars": self.CHARS[task_id],
+                "tokens_in": count,
+                "run_status": "ok",
+            }
+            for task_id, count in tokens.items()
+        ]
+
+    def synth(self, fixed: int, rate: float) -> dict[str, int]:
+        return {task: round(fixed + rate * chars) for task, chars in self.CHARS.items()}
+
+    def test_recovers_the_parameters_it_was_built_from(self) -> None:
+        rows = self.rows("2026-08-23", self.synth(fixed=655, rate=0.1557))
+        (fit,) = build_ledger_fits(rows)
+
+        self.assertTrue(fit["fit_ok"])
+        self.assertAlmostEqual(fit["fixed_overhead_tokens"], 655, delta=1.5)
+        self.assertAlmostEqual(fit["content_density_per_1k_chars"], 155.7, delta=0.5)
+
+    def test_a_pure_overhead_change_does_not_move_content_density(self) -> None:
+        """The observation the measure was added for.
+
+        On 2026-08-23 grok-4.6 gained exactly 430 prompt tokens on all four tasks
+        at once — on a 157-character prompt and a 25,743-character one alike. A
+        vocabulary change scales with content; this did not, so it was scaffolding.
+        The per-task density read that as +2,739 tokens/1K chars on task A and +17
+        on task D. Content density must read it as nothing at all.
+        """
+        before = {"A": 237, "B": 357, "C": 270, "D": 4233}
+        after = {task: count + 430 for task, count in before.items()}
+
+        fits = build_ledger_fits(self.rows("2026-08-22", before) + self.rows("2026-08-23", after))
+        by_date = {fit["date"]: fit for fit in fits}
+
+        self.assertEqual(
+            by_date["2026-08-22"]["content_density_per_1k_chars"],
+            by_date["2026-08-23"]["content_density_per_1k_chars"],
+        )
+        self.assertAlmostEqual(
+            by_date["2026-08-23"]["fixed_overhead_tokens"]
+            - by_date["2026-08-22"]["fixed_overhead_tokens"],
+            430,
+            delta=0.5,
+        )
+
+    def test_narrow_char_span_is_not_fitted(self) -> None:
+        """2026-08-21 collected A, B and C but not D — a 5.4x span. Fitting it
+        yields a rate 3% off the next day's four-task fit, which would render as a
+        step change caused purely by the task mix."""
+        short = {task: count for task, count in self.synth(655, 0.1557).items() if task != "D"}
+        (fit,) = build_ledger_fits(self.rows("2026-08-21", short))
+
+        self.assertLess(fit["char_span_ratio"], MIN_FIT_CHAR_SPAN)
+        self.assertFalse(fit["fit_ok"])
+        self.assertIsNone(fit["content_density_per_1k_chars"])
+        self.assertIsNone(fit["fixed_overhead_tokens"])
+
+    def test_too_few_tasks_is_not_fitted(self) -> None:
+        two = {"A": 237, "D": 4233}
+        (fit,) = build_ledger_fits(self.rows("2026-08-23", two))
+
+        self.assertEqual(fit["task_count"], 2)
+        self.assertLess(fit["task_count"], MIN_FIT_TASKS)
+        self.assertFalse(fit["fit_ok"])
+
+    def test_failed_rows_are_excluded(self) -> None:
+        rows = self.rows("2026-08-23", self.synth(655, 0.1557))
+        for row in rows:
+            row["run_status"] = "error"
+
+        self.assertEqual(build_ledger_fits(rows), [])
+
+    def test_one_fit_per_provider_tier_day(self) -> None:
+        rows = self.rows("2026-08-23", self.synth(655, 0.1557), provider="xai")
+        rows += self.rows("2026-08-23", self.synth(22, 0.1556), provider="openai")
+
+        fits = {fit["provider_id"]: fit for fit in build_ledger_fits(rows)}
+
+        self.assertEqual(sorted(fits), ["openai", "xai"])
+        # Same tokenizer rate, wildly different scaffolding — the split the
+        # per-task density charts could not show.
+        self.assertAlmostEqual(
+            fits["xai"]["content_density_per_1k_chars"],
+            fits["openai"]["content_density_per_1k_chars"],
+            delta=0.5,
+        )
+        self.assertGreater(
+            fits["xai"]["fixed_overhead_tokens"],
+            fits["openai"]["fixed_overhead_tokens"] + 500,
         )
 
 

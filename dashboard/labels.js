@@ -89,14 +89,18 @@ function pointDate(point) {
   return typeof point.x === "string" ? point.x.slice(0, 10) : "";
 }
 
-export function priceAtOrBefore(points, dateStr) {
-  let price = null;
+export function pointAtOrBefore(points, dateStr) {
+  let found = null;
   for (const p of points) {
     const d = pointDate(p);
     if (!d || d > dateStr) continue;
-    price = p.y;
+    found = p;
   }
-  return price;
+  return found;
+}
+
+export function priceAtOrBefore(points, dateStr) {
+  return pointAtOrBefore(points, dateStr)?.y ?? null;
 }
 
 export function sortDatasetsForDate(datasets, dateStr) {

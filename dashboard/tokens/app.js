@@ -4,7 +4,7 @@
 // Provider tinting matches /pricing exactly; every color comes from a
 // --cofair-* token, nothing visual is hard-coded here (hub R13).
 
-import { hexToHsl, priceAtOrBefore, sortDatasetsForDate } from "../labels.js";
+import { hexToHsl, pointAtOrBefore, sortDatasetsForDate } from "../labels.js";
 
 const Chart = window.Chart;
 
@@ -20,7 +20,10 @@ const state = {
   // filter — unlike providers, there is no solo position to cycle through.
   tiers: new Set(TIERS),
   pack: "suiteLong",
-  metric: "tokens_in_per_1k_chars",
+  // Total billed tokens leads, because that is the quantity the provider controls
+  // and the recipient pays for. Density and the overhead/content split explain a
+  // move; they are diagnostics under the headline, not the headline.
+  metric: "tokens_total",
   // Ledger tab filters. `ledgerTask` is "" for every task; the dates are
   // ISO days clamped to the observed ledger window (see ledgerDates()).
   ledgerTask: "",
@@ -38,6 +41,22 @@ const state = {
 };
 
 const SERIES_COUNT = 7;
+
+/**
+ * Whether to expose the measures flagged `internal` in METRICS.
+ *
+ * `/tokens` answers one question — how many tokens the same frozen task consumes
+ * over time, which is the half of the cost equation providers control and
+ * `/pricing` cannot see. What it costs *us* to operate the panel is a different
+ * subject, and putting the two on one selector invites reading our infrastructure
+ * spend as a finding about a provider.
+ *
+ * This is UI gating, not secrecy: `equivalence.json` is a public artifact and
+ * still carries the cost fields, because the internal view reads the same file.
+ * The point is to keep them out of the story the page tells, which is what the
+ * flag achieves.
+ */
+const INTERNAL_ONLY = new URLSearchParams(location.search).has("internal");
 
 // Corpus entry E is counted, never generated, so it is absent from every meter
 // and ledger row and is the only task the wrapper measure can report.
@@ -70,6 +89,7 @@ const METRICS = {
       "characters, so it dominates this figure. A step change on a pinned model is the " +
       "signature of a silent re-tokenization.",
     decimals: 1,
+    beginAtZero: false,
   },
   ledger_density: {
     label: "Input tokens per 1,000 characters, mean of tasks A–C (ledger)",
@@ -83,6 +103,33 @@ const METRICS = {
       "each against its own history, not against the other.",
     decimals: 1,
   },
+  ledger_content_density: {
+    label: "Content density — overhead removed (ledger fit)",
+    axis: "tokens / 1K chars (content only)",
+    source: "fit",
+    note:
+      "The tokenizer measure the other two are not. Each day's counts are fitted as " +
+      "tokens = fixed overhead + rate × characters across tasks A–D; this is the rate. " +
+      "Because it is estimated across the tasks rather than within one, it does not " +
+      "change when you change the task pack, and it ignores the constant every provider " +
+      "prepends. It moves only on a real re-tokenization.",
+    decimals: 1,
+    // Twelve of fourteen rows sit within 0.2 tokens/1K chars of each other; a zero
+    // baseline would render that as one line and hide the only real outlier.
+    beginAtZero: false,
+  },
+  ledger_fixed_overhead: {
+    label: "Fixed request overhead (ledger fit)",
+    axis: "tokens added per request",
+    source: "fit",
+    note:
+      "The other half of the same fit: tokens charged regardless of payload size — chat " +
+      "template, system preamble, injected tool schema. This is where provider-side " +
+      "wrapper changes land, and it is what the short-task density charts were showing " +
+      "all along, divided by their own character count. grok-4.6 gained 430 tokens here " +
+      "on 23 Aug 2026, on every task at once.",
+    decimals: 0,
+  },
   wrapper_turn10: {
     label: "Turn-10 prompt tokens (Test 4)",
     axis: "prompt tokens",
@@ -93,12 +140,16 @@ const METRICS = {
     decimals: 0,
   },
   tokens_total: {
-    label: "Total tokens consumed",
+    label: "Total tokens billed",
     axis: "tokens",
     source: "meter",
     note:
-      "Input + output tokens billed for the selected pack. Moves with tokenizer density AND " +
-      "model verbosity, so treat it as cost telemetry rather than drift evidence.",
+      "Every token the provider charges for on a frozen prompt: all input — content plus the " +
+      "fixed per-request overhead the provider adds — plus all output. Nothing is netted out, " +
+      "because everything here is billed. This is the quantity side of the cost equation, and " +
+      "the input is frozen, so a move over time is the provider's move, not ours. The measures " +
+      "below decompose it when it does move: output is the dominant term, and overhead is small " +
+      "in share but drifts on its own (xAI's flagship added ~430 tokens per request in a day).",
     decimals: 0,
   },
   tokens_in: {
@@ -115,9 +166,14 @@ const METRICS = {
     axis: "tokens",
     source: "meter",
     note:
-      "Stochastic, and now bounded only by a generous ceiling rather than a per-task cap — " +
-      "so a model that grows more verbose between versions shows up here instead of flattening " +
-      "against the cap. Runs that still reach the ceiling are censored observations.",
+      "The dominant term. Output is 80–98% of the tokens billed on tasks A–C, and it is the " +
+      "provider's choice, not the prompt's: on the same frozen input this panel spans 6.5× on " +
+      "task A and 17.8× on task C. Uncapped — no output limit is requested at all, so verbosity " +
+      "is measured rather than clipped. Any cap high enough to be safe eventually binds: 4,000 " +
+      "pinned both DeepSeek tiers at exactly 4,000 on task C, reporting the cap instead of the " +
+      "model. A run the provider still cuts short at its own internal maximum is drawn as a " +
+      "cross, not a dot — read from its stop reason, and a floor on the real length rather than " +
+      "a measurement of it.",
     decimals: 0,
   },
   usd: {
@@ -125,10 +181,14 @@ const METRICS = {
     axis: "USD",
     source: "meter",
     note:
-      "Observed tokens valued at the same-day rate card, with output allowed to run to its " +
-      "natural length — this is what the work actually costs, not what a truncated answer cost. " +
-      "Separates price changes from consumption changes only when read alongside tokenizer density.",
+      "What it costs us to run the suite — operating telemetry, not a reading about any " +
+      "provider. Kept off the public surface because the reader's cost question is about " +
+      "the tokens a task consumes, which is priced on /pricing.",
     decimals: 4,
+    // Infrastructure cost. This index reports token *quantity*; what the panel
+    // costs to operate is our concern, not a finding about a provider, and mixing
+    // the two invites reading our spend as their behaviour. See INTERNAL_ONLY.
+    internal: true,
   },
 };
 
@@ -338,7 +398,33 @@ function aggregate() {
 
   if (source === "ledger") return aggregateLedger();
   if (source === "wrapper") return aggregateWrapper();
+  if (source === "fit") return aggregateFit();
   return aggregateMeter();
+}
+
+/**
+ * The daily overhead/content split, one point per (date, provider, tier).
+ *
+ * Deliberately ignores the task pack. The fit's whole purpose is to be a reading
+ * that does not depend on which task you picked, so scoping it to a pack would
+ * reintroduce the dependence it removes. `fit_ok` days are the only ones plotted:
+ * a two-parameter fit on tasks that barely differ in length is not a measurement.
+ */
+function aggregateFit() {
+  const points = (state.eq?.tokenizer_ledger?.fits || [])
+    .filter((fit) => fit.fit_ok && panelVisible(fit.provider_id, fit.tier))
+    .map((fit) => ({
+      date: fit.date,
+      provider_id: fit.provider_id,
+      tier: fit.tier,
+      model_id: fit.model_id,
+      api_model: fit.api_model,
+      ledger_content_density: fit.content_density_per_1k_chars,
+      ledger_fixed_overhead: fit.fixed_overhead_tokens,
+    }))
+    .filter((point) => point[state.metric] != null)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  return { points, incomplete: 0, xField: "date" };
 }
 
 function aggregateMeter() {
@@ -634,6 +720,11 @@ function emptyChartReason() {
   if (source === "wrapper" && !packHasChatTask()) {
     return "Wrapper overhead is measured on task E only. Choose the full suite or E · Chat transcript.";
   }
+  if (source === "fit") {
+    // The fit spans the day's whole task set by design, so an empty chart here is
+    // never about the pack — it is a day that could not be fitted at all.
+    return "No day in the window has enough of a spread in task length to separate fixed overhead from content rate. Needs at least three tasks spanning 10× in characters.";
+  }
   if (source !== "wrapper" && !meterTaskIds().length) {
     // Not "task E has no tokens" — it has plenty, and they are billed. What it
     // has is no *generated* output, and no row in the meter or ledger series,
@@ -642,6 +733,28 @@ function emptyChartReason() {
   }
   if (!state.providerMode.size) return "No completed runs yet.";
   return "Every provider is hidden. Click a provider pill to bring it back.";
+}
+
+/**
+ * Drop the infrastructure-cost measures from the selector unless `?internal`.
+ *
+ * Removes the options rather than disabling them, so the public surface offers no
+ * evidence a cost measure exists; and re-points `state.metric` if a bookmarked
+ * `?metric=usd`-style state would otherwise leave the select showing one measure
+ * while the chart drew another.
+ */
+function gateInternalMeasures() {
+  if (INTERNAL_ONLY) return;
+  const select = document.getElementById("metric");
+  if (!select) return;
+
+  for (const option of [...select.options]) {
+    if (METRICS[option.value]?.internal) option.remove();
+  }
+  if (METRICS[state.metric]?.internal) {
+    state.metric = select.options[0]?.value || "tokens_total";
+  }
+  select.value = state.metric;
 }
 
 function pointDate(point) {
@@ -680,8 +793,17 @@ function showNodeTooltip(chart, hit) {
   if (!provider || !model || !meta) return;
 
   provider.textContent = `${providerLabel(ds.providerId)} · ${ds.tier}`;
-  model.textContent = ds.model || "—";
-  meta.textContent = `${fmtDate(pointDate(point))} · ${fmtMetric(point.y, state.metric)}`;
+  // The model that produced *this* reading. `ds.model` is the newest one, which
+  // is the wrong identity for any point before a re-pin.
+  model.textContent = point.model || ds.model || "—";
+  // Flagged rather than left as a bare number: nothing was requested to stop this
+  // run, so the provider stopped it at its own maximum and the reading is a floor
+  // on the model's real length, not a measurement of it.
+  const notes = [];
+  if (point.newModel) notes.push("new model");
+  if (point.censored) notes.push("cut short by provider");
+  const suffix = notes.length ? ` · ${notes.join(" · ")}` : "";
+  meta.textContent = `${fmtDate(pointDate(point))} · ${fmtMetric(point.y, state.metric)}${suffix}`;
 
   const plotRect = plot.getBoundingClientRect();
   const canvasRect = canvas.getBoundingClientRect();
@@ -755,16 +877,19 @@ function renderChartLegend(chart) {
 
   list.innerHTML = ordered
     .map((ds) => {
-      const value = state.hoverDate
-        ? priceAtOrBefore(ds.data, state.hoverDate)
-        : ds.data.at(-1)?.y;
+      // The point in force on the hovered date, so the model named beside the
+      // number is the one that produced it rather than whatever is newest.
+      const point = state.hoverDate
+        ? pointAtOrBefore(ds.data, state.hoverDate)
+        : ds.data.at(-1);
+      const value = point?.y;
       const active = state.hoverLineKey === ds.lineKey ? " chart-legend__item--active" : "";
       return `<li class="chart-legend__item${active}">
         <span class="legend-swatch legend-swatch--${ds.tier === "flagship" ? "solid" : "dashed"}"
               style="--legend-color: ${esc(ds.borderColor)}"></span>
         <span class="legend-id">
           <span class="cofair-text cofair-text--xs">${esc(providerLabel(ds.providerId))} · ${esc(ds.tier)}</span>
-          <span class="cofair-text cofair-text--xs legend-model">${esc(ds.model || "—")}</span>
+          <span class="cofair-text cofair-text--xs legend-model">${esc(point?.model || ds.model || "—")}</span>
         </span>
         <span class="cofair-text cofair-text--xs legend-value">${esc(fmtMetric(value, state.metric))}</span>
       </li>`;
@@ -829,9 +954,24 @@ function renderChart(points) {
     const color = tierColor(providerId, tier);
     const dash = tier === "flagship" ? [] : [5, 4];
     const ordered = [...linePoints].sort((a, b) => a.date.localeCompare(b.date));
+    // A provider releasing a new flagship or workhorse re-points the panel, so the
+    // series continues under a different model. Joining across that boundary would
+    // draw one model's drift where there are two models — the same mistake as
+    // reading a censored point as a natural stop. Flag the boundary here and the
+    // line is broken at it below.
+    const modelAt = ordered.map((p) => p.api_model || p.model_id || "");
+    const newModelAt = modelAt.map((m, i) => i > 0 && m !== modelAt[i - 1]);
     datasets.push({
       label: `${providerLabel(providerId)} · ${tier}`,
-      data: ordered.map((p) => ({ x: `${p.date}T00:00:00Z`, y: p[state.metric] })),
+      data: ordered.map((p, i) => ({
+        x: `${p.date}T00:00:00Z`,
+        y: p[state.metric],
+        censored: Boolean(p.censored),
+        // Per point, not per series: the tooltip has to name the model that
+        // produced the reading being pointed at, which the newest model is not.
+        model: modelAt[i],
+        newModel: newModelAt[i],
+      })),
       borderColor: color,
       backgroundColor: color,
       borderDash: dash,
@@ -841,12 +981,30 @@ function renderChart(points) {
       hoverBorderDash: dash,
       borderWidth: 0.5,
       hoverBorderWidth: 0.5,
-      pointStyle: "circle",
+      // Break the line across a model change. `spanGaps` deliberately bridges a
+      // missing day, and a model swap is not a missing day — it is two different
+      // things being measured, so the gap has to come from here rather than from
+      // the data having a hole in it.
+      segment: {
+        borderColor: (ctx) => (newModelAt[ctx.p1DataIndex] ? "transparent" : undefined),
+      },
+      // A truncated point is the provider's limit, not the model's length, so it
+      // must not be drawn as though the model chose to stop there. Marked with a
+      // cross and enlarged: on an output measure the difference between "finished"
+      // and "was cut off" is the difference between a reading and a floor.
+      // A model changeover gets a diamond — the first reading from a new model,
+      // and truncation wins the marker when both land on the same point, because
+      // it is the one that says the number cannot be trusted.
+      pointStyle: ordered.map((p, i) =>
+        p.censored ? "crossRot" : newModelAt[i] ? "rectRot" : "circle",
+      ),
       pointBackgroundColor: color,
       pointBorderColor: color,
-      pointBorderWidth: 1,
+      pointBorderWidth: ordered.map((p) => (p.censored ? 1.5 : 1)),
       // Same node and rollover geometry as /pricing's trend chart.
-      pointRadius: ordered.length === 1 ? 3 : 1.5,
+      pointRadius: ordered.map((p, i) =>
+        p.censored ? 4 : newModelAt[i] ? 3.5 : ordered.length === 1 ? 3 : 1.5,
+      ),
       pointHoverRadius: 5,
       pointHitRadius: 10,
       tension: 0,
@@ -900,7 +1058,7 @@ function renderChart(points) {
           ticks: { color: palette.muted, font: tickFont },
         },
         y: {
-          beginAtZero: state.metric !== "tokens_in_per_1k_chars",
+          beginAtZero: metric.beginAtZero !== false,
           grid: { color: palette.grid },
           border: { color: palette.grid },
           ticks: { color: palette.muted, font: tickFont },
@@ -1340,6 +1498,7 @@ async function main() {
   const eq = await res.json();
   state.eq = eq;
 
+  gateInternalMeasures();
   renderProviderChips();
   setupTabs();
   setupLedgerFilters();

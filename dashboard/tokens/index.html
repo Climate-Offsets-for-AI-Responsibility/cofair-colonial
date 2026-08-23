@@ -86,12 +86,14 @@
               <label class="cofair-label" for="metric">Measure</label>
               <div class="measure-row">
                 <select class="cofair-select" id="metric" aria-describedby="metricNote">
-                  <option value="tokens_in_per_1k_chars" selected>Tokenizer density — pack-weighted (meter)</option>
-                  <option value="ledger_density">Tokenizer density — task mean A–C (ledger)</option>
-                  <option value="wrapper_turn10">Wrapper overhead (turn-10 prompt tokens)</option>
-                  <option value="tokens_total">Total tokens consumed (meter)</option>
-                  <option value="tokens_in">Input tokens (meter)</option>
+                  <option value="tokens_total" selected>Total tokens billed (meter)</option>
                   <option value="tokens_out">Output tokens (meter)</option>
+                  <option value="tokens_in">Input tokens (meter)</option>
+                  <option value="ledger_fixed_overhead">Fixed request overhead (ledger fit)</option>
+                  <option value="tokens_in_per_1k_chars">Tokenizer density — pack-weighted (meter)</option>
+                  <option value="ledger_density">Tokenizer density — task mean A–C (ledger)</option>
+                  <option value="ledger_content_density">Content density — overhead removed (ledger fit)</option>
+                  <option value="wrapper_turn10">Wrapper overhead (turn-10 prompt tokens)</option>
                   <option value="usd">Cost per run (USD)</option>
                 </select>
                 <p class="cofair-help" id="metricNote"></p>

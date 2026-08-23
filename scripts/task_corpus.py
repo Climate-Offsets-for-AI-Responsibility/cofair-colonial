@@ -25,14 +25,29 @@ CORPUS_VERSION = "1.0.0"
 #
 # 1.0.0 = tight per-task caps (400/600/1500/300), which truncated most flagship
 #         answers and made observed verbosity a floor rather than a measurement.
-# 2.0.0 = one generous ceiling for every task (below).
-OUTPUT_POLICY_VERSION = "2.0.0"
+# 2.0.0 = one generous ceiling for every task, 4,000.
+# 3.0.0 = ceiling raised to 8,000.
+# 4.0.0 = no cap at all (below).
+OUTPUT_POLICY_VERSION = "4.0.0"
 
-# High enough that a model finishing naturally is the normal case, so `tokens_out`
-# measures verbosity instead of the cap — which is what makes output-side drift
-# legible as models version. Still a hard ceiling: it exists to bound a runaway
-# generation, not to bound a typical one.
-OUTPUT_CEILING = 4000
+# No cap. Verbosity is the measurement, and any cap high enough to be safe is also
+# high enough to bind eventually — 4,000 pinned both DeepSeek tiers at exactly
+# 4,000 on task C, and each raise only moves the number a future chattier model
+# will reach. A capped run reports the cap, not the model, so the instrument would
+# keep quietly converting "this provider got more verbose" into "no change", on the
+# term that is 80–98% of the billed tokens for tasks A–C.
+#
+# `None` means *omit the parameter*, letting each provider apply its own model
+# maximum, rather than encoding a guess about that maximum here. Anthropic's
+# Messages API requires `max_tokens`, so the runner discovers an accepted value by
+# ladder (see ANTHROPIC_MAX_TOKENS_LADDER) instead of this constant holding a
+# number that would 400 the entire provider the day a model's limit moved.
+#
+# What replaces the cap as a guard is detection, not truncation: the runner reads
+# each provider's own stop reason, so a truncated run says so instead of being
+# inferred from `tokens_out == cap` — an inference that stops working the moment
+# there is no cap to compare against.
+OUTPUT_CEILING = None
 
 TASK_PROMPTS = {
     "A": (
@@ -68,11 +83,12 @@ TASK_PROMPTS = {
     ),
 }
 
-# Every task shares `OUTPUT_CEILING`. Per-task caps were tuned to the answer each
-# prompt "should" need, which meant the cap — not the model — decided the observed
-# length, and a model that grew more verbose between versions looked unchanged.
-# `output_cap` is still recorded on every run row so a run that does reach the
-# ceiling is marked censored rather than read as a natural stopping point.
+# Every task shares `OUTPUT_CEILING`, which is now `None` — uncapped. Per-task caps
+# were tuned to the answer each prompt "should" need, which meant the cap, not the
+# model, decided the observed length; a single shared ceiling had the same defect at
+# a higher number. `output_cap` is still recorded on every run row, now carrying the
+# value actually sent to the provider (`None` where the parameter was omitted), so
+# the policy in force for a given row stays readable after the fact.
 TASK_SPECS = {
     "A": {
         "label": "Bounded Q&A",

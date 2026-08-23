@@ -63,8 +63,63 @@ def current_run_date(today: date | None = None) -> str:
     return (today or datetime.now(timezone.utc).date()).isoformat()
 
 
-def run_anthropic(model: str, prompt: str, max_tokens: int, api_key: str) -> tuple[int, int]:
-    response = requests.post(
+class Usage(NamedTuple):
+    """One call's billed quantities, plus whether the provider cut it short.
+
+    `truncated` is read from the provider's own stop reason rather than inferred
+    from `tokens_out == max_tokens`. The inference was only ever a proxy, and it
+    stops working entirely once there is no cap to compare against (policy 4.0.0).
+    """
+
+    tokens_in: int
+    tokens_out: int
+    truncated: bool
+    # The cap actually sent, or None if the parameter was omitted. Recorded so a
+    # row stays interpretable after the policy changes again.
+    cap_sent: int | None
+
+
+# Anthropic's Messages API requires `max_tokens`, so "uncapped" is not expressible
+# there and some number has to be sent. The goal is a number that will not bind
+# even on a model that has not shipped yet, which rules out writing one down: a
+# hard-coded limit is wrong in both directions, 400-ing the provider when a model's
+# maximum is lower and silently censoring when it is higher.
+#
+# So ask for more than any model could allow and let the API name the real limit.
+# The top rung is deliberately absurd; the normal path is one rejection whose
+# message states the maximum ("max_tokens: 1000000 > 64000, which is the maximum
+# allowed..."), which is then used exactly. Rejected requests are not billed, so
+# discovery costs latency only, and it tracks a limit that moves in either
+# direction without anyone editing this file.
+#
+# The ladder is the fallback for when that message cannot be parsed — including the
+# case where a large `max_tokens` is refused because the request would have to be
+# streamed. Stepping down is the right response to that too, since these calls are
+# not streamed.
+ANTHROPIC_MAX_TOKENS_LADDER = (
+    1_000_000,
+    262_144,
+    131_072,
+    64_000,
+    32_000,
+    16_384,
+    8_192,
+    4_096,
+)
+
+# Highest value a model has accepted this run, and the lowest it has refused.
+# Process-local on purpose: every run re-derives the limit from the live API, so a
+# model whose maximum *rises* is picked up the next morning without intervention.
+_ANTHROPIC_ACCEPTED_MAX: dict[str, int] = {}
+_ANTHROPIC_REJECTED_MIN: dict[str, int] = {}
+
+# "max_tokens: 1000000 > 64000, which is the maximum allowed number of output
+# tokens for claude-..." — the second number is the model's real limit.
+_ANTHROPIC_LIMIT_RE = re.compile(r"max_tokens:\s*\d+\s*>\s*(\d+)")
+
+
+def _anthropic_call(model: str, prompt: str, max_tokens: int, api_key: str):
+    return requests.post(
         "https://api.anthropic.com/v1/messages",
         headers={
             "x-api-key": api_key,
@@ -78,19 +133,132 @@ def run_anthropic(model: str, prompt: str, max_tokens: int, api_key: str) -> tup
         },
         timeout=TIMEOUT_SECONDS,
     )
-    response.raise_for_status()
-    payload = response.json()
+
+
+def _is_max_tokens_rejection(response) -> bool:
+    """A 400 specifically about `max_tokens` exceeding the model's limit.
+
+    Deliberately narrow: any other 400 is a real fault and must surface rather
+    than be retried down the ladder and reported as a smaller cap.
+    """
+    if response is None or response.status_code != 400:
+        return False
+    try:
+        body = response.text.lower()
+    except Exception:  # noqa: BLE001
+        return False
+    return "max_tokens" in body
+
+
+def _anthropic_stated_limit(response) -> int | None:
+    """The maximum the rejection names, if it names one."""
+    try:
+        match = _ANTHROPIC_LIMIT_RE.search(response.text)
+    except Exception:  # noqa: BLE001
+        return None
+    return int(match.group(1)) if match else None
+
+
+def _cap_below(model: str, value: int) -> int | None:
+    """Next rung down, never at or above a value this model has refused."""
+    ceiling = min(value, _ANTHROPIC_REJECTED_MIN.get(model, value))
+    rungs = [rung for rung in ANTHROPIC_MAX_TOKENS_LADDER if rung < ceiling]
+    return max(rungs) if rungs else None
+
+
+def _cap_above(model: str, value: int) -> int | None:
+    """Next rung up, staying strictly below anything this model has refused."""
+    limit = _ANTHROPIC_REJECTED_MIN.get(model)
+    rungs = [
+        rung
+        for rung in ANTHROPIC_MAX_TOKENS_LADDER
+        if rung > value and (limit is None or rung < limit)
+    ]
+    return min(rungs) if rungs else None
+
+
+def _initial_cap(model: str) -> int | None:
+    """Where to start: what this model already accepted, else the top rung."""
+    accepted = _ANTHROPIC_ACCEPTED_MAX.get(model)
+    if accepted is not None:
+        return accepted
+    return _cap_below(model, ANTHROPIC_MAX_TOKENS_LADDER[0] + 1)
+
+
+def _usage_from_anthropic(payload: dict, cap_sent: int) -> Usage:
     usage = payload.get("usage", {})
-    return int(usage.get("input_tokens", 0)), int(usage.get("output_tokens", 0))
+    return Usage(
+        int(usage.get("input_tokens", 0)),
+        int(usage.get("output_tokens", 0)),
+        payload.get("stop_reason") == "max_tokens",
+        cap_sent,
+    )
+
+
+def run_anthropic(model: str, prompt: str, max_tokens: int | None, api_key: str) -> Usage:
+    if max_tokens is not None:
+        # An explicit cap is a caller's instruction, not a guess to be revised.
+        response = _anthropic_call(model, prompt, max_tokens, api_key)
+        response.raise_for_status()
+        return _usage_from_anthropic(response.json(), max_tokens)
+
+    candidate = _initial_cap(model)
+    tried: set[int] = set()
+    last_response = None
+
+    while candidate is not None and candidate not in tried:
+        tried.add(candidate)
+        last_response = response = _anthropic_call(model, prompt, candidate, api_key)
+
+        if _is_max_tokens_rejection(response):
+            stated = _anthropic_stated_limit(response)
+            _ANTHROPIC_REJECTED_MIN[model] = min(
+                candidate, _ANTHROPIC_REJECTED_MIN.get(model, candidate)
+            )
+            if stated is not None:
+                # The API named the limit, so stop guessing at rungs. Recording
+                # stated+1 as refused also means a later truncation at `stated`
+                # is understood as the model's own ceiling rather than ours.
+                _ANTHROPIC_REJECTED_MIN[model] = stated + 1
+                candidate = stated
+            else:
+                candidate = _cap_below(model, candidate)
+            continue
+
+        response.raise_for_status()
+        usage = _usage_from_anthropic(response.json(), candidate)
+        _ANTHROPIC_ACCEPTED_MAX[model] = max(
+            candidate, _ANTHROPIC_ACCEPTED_MAX.get(model, candidate)
+        )
+
+        if not usage.truncated:
+            return usage
+
+        # Truncated, so this is a floor on the model's length rather than a
+        # measurement of it. Step back *up* the ladder if there is headroom below
+        # what the model has refused. This is what stops the cache from pinning
+        # the instrument: a cap discovered once is only a hint, and a truncated
+        # reading is proof the hint was too low.
+        higher = _cap_above(model, candidate)
+        if higher is None:
+            # Nothing left to try, so the ceiling is the provider's own and
+            # `truncated` reports it honestly rather than hiding it.
+            return usage
+        candidate = higher
+
+    # Every candidate refused: surface it rather than returning a zeroed reading.
+    if last_response is not None:
+        last_response.raise_for_status()
+    raise RuntimeError(f"anthropic rejected every max_tokens candidate for {model}")
 
 
 def run_openai_compatible(
     base_url: str,
     model: str,
     prompt: str,
-    max_tokens: int,
+    max_tokens: int | None,
     api_key: str,
-) -> tuple[int, int]:
+) -> Usage:
     response = requests.post(
         f"{base_url}/chat/completions",
         headers={
@@ -105,27 +273,46 @@ def run_openai_compatible(
     response.raise_for_status()
     payload = response.json()
     usage = payload.get("usage", {})
-    return int(usage.get("prompt_tokens", 0)), int(usage.get("completion_tokens", 0))
+    choices = payload.get("choices") or [{}]
+    return Usage(
+        int(usage.get("prompt_tokens", 0)),
+        int(usage.get("completion_tokens", 0)),
+        choices[0].get("finish_reason") == "length",
+        max_tokens,
+    )
 
 
-def run_gemini(model: str, prompt: str, max_tokens: int, api_key: str) -> tuple[int, int]:
+def run_gemini(model: str, prompt: str, max_tokens: int | None, api_key: str) -> Usage:
+    generation_config: dict = {"temperature": 0}
+    # Omitted entirely when uncapped, so the model applies its own maximum.
+    if max_tokens is not None:
+        generation_config["maxOutputTokens"] = max_tokens
     response = requests.post(
         f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
         headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
         json={
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0},
+            "generationConfig": generation_config,
         },
         timeout=TIMEOUT_SECONDS,
     )
     response.raise_for_status()
     payload = response.json()
     usage = payload.get("usageMetadata", {})
-    return int(usage.get("promptTokenCount", 0)), int(usage.get("candidatesTokenCount", 0))
+    candidates = payload.get("candidates") or [{}]
+    return Usage(
+        int(usage.get("promptTokenCount", 0)),
+        int(usage.get("candidatesTokenCount", 0)),
+        candidates[0].get("finishReason") == "MAX_TOKENS",
+        max_tokens,
+    )
 
 
-def run_bedrock(model: str, prompt: str, max_tokens: int, api_key: str) -> tuple[int, int]:
+def run_bedrock(model: str, prompt: str, max_tokens: int | None, api_key: str) -> Usage:
     region = bedrock_region()
+    inference_config: dict = {"temperature": 0}
+    if max_tokens is not None:
+        inference_config["maxTokens"] = max_tokens
     response = requests.post(
         f"https://bedrock-runtime.{region}.amazonaws.com/model/{model}/converse",
         headers={
@@ -134,13 +321,19 @@ def run_bedrock(model: str, prompt: str, max_tokens: int, api_key: str) -> tuple
         },
         json={
             "messages": [{"role": "user", "content": [{"text": prompt}]}],
-            "inferenceConfig": {"maxTokens": max_tokens, "temperature": 0},
+            "inferenceConfig": inference_config,
         },
         timeout=TIMEOUT_SECONDS,
     )
     response.raise_for_status()
-    usage = response.json().get("usage", {})
-    return int(usage.get("inputTokens", 0)), int(usage.get("outputTokens", 0))
+    payload = response.json()
+    usage = payload.get("usage", {})
+    return Usage(
+        int(usage.get("inputTokens", 0)),
+        int(usage.get("outputTokens", 0)),
+        payload.get("stopReason") == "max_tokens",
+        max_tokens,
+    )
 
 
 def available_google_models(api_key: str) -> list[str]:
@@ -243,7 +436,9 @@ def candidate_plan(
     return plan
 
 
-def _run_one(provider_id: str, api_model: str, prompt: str, max_tokens: int, api_key: str):
+def _run_one(
+    provider_id: str, api_model: str, prompt: str, max_tokens: int | None, api_key: str
+) -> Usage:
     if provider_id == "anthropic":
         return run_anthropic(api_model, prompt, max_tokens, api_key)
     if provider_id == "google":
@@ -265,9 +460,14 @@ class TaskResult(NamedTuple):
     api_model: str
     input_price: float | None
     output_price: float | None
+    # From the provider's stop reason, not from comparing against a cap.
+    truncated: bool = False
+    cap_sent: int | None = None
 
 
-def run_provider_task(entry: dict, task_id: str, max_tokens: int, dry_run: bool) -> TaskResult:
+def run_provider_task(
+    entry: dict, task_id: str, max_tokens: int | None, dry_run: bool
+) -> TaskResult:
     provider_id = entry["provider_id"]
     model_id = entry["model_id"]
     tier = entry["tier"]
@@ -291,7 +491,7 @@ def run_provider_task(entry: dict, task_id: str, max_tokens: int, dry_run: bool)
     for candidate, input_price, output_price in plan:
         api_model = candidate
         try:
-            tokens_in, tokens_out = _run_one(provider_id, candidate, prompt, max_tokens, api_key)
+            usage = _run_one(provider_id, candidate, prompt, max_tokens, api_key)
         except LookupError as exc:
             return TaskResult(
                 "unsupported_provider", None, None, str(exc), candidate, *own_prices
@@ -314,7 +514,17 @@ def run_provider_task(entry: dict, task_id: str, max_tokens: int, dry_run: bool)
             return TaskResult("error", None, None, last_error, candidate, *own_prices)
         except Exception as exc:  # noqa: BLE001
             return TaskResult("error", None, None, str(exc), candidate, *own_prices)
-        return TaskResult("ok", tokens_in, tokens_out, None, candidate, input_price, output_price)
+        return TaskResult(
+            "ok",
+            usage.tokens_in,
+            usage.tokens_out,
+            None,
+            candidate,
+            input_price,
+            output_price,
+            usage.truncated,
+            usage.cap_sent,
+        )
 
     return TaskResult(
         "error",
@@ -405,7 +615,12 @@ def main() -> int:
         for replicate in range(1, replicates + 1):
             for task_id in METER_TASK_IDS:
                 task = tasks[task_id]
-                output_cap = int(task.get("output_cap") or task.get("output_tokens"))
+                # None under output policy 4.0.0 — uncapped. `or` would swallow a
+                # legitimate 0 and a legitimate None alike, so be explicit.
+                requested_cap = task.get("output_cap")
+                if requested_cap is None:
+                    requested_cap = task.get("output_tokens")
+                output_cap = None if requested_cap is None else int(requested_cap)
                 result = run_provider_task(model, task_id, output_cap, args.dry_run)
                 status = result.status
                 tokens_in, tokens_out = result.tokens_in, result.tokens_out
@@ -425,10 +640,13 @@ def main() -> int:
                     "api_model": used_model,
                     "tokens_in": tokens_in,
                     "tokens_out": tokens_out,
-                    "output_cap": output_cap,
-                    "output_censored": (
-                        tokens_out is not None and tokens_out >= output_cap
-                    ),
+                    # What was actually sent: the requested cap, or the rung
+                    # Anthropic accepted, or None where the parameter was omitted.
+                    "output_cap": result.cap_sent if status == "ok" else output_cap,
+                    # The provider's own stop reason. Uncapped runs can still be
+                    # truncated at a model's internal maximum, and that has to
+                    # read as truncation rather than as a natural stopping point.
+                    "output_censored": bool(result.truncated),
                     "input_chars": input_chars,
                     "corpus_version": CORPUS_VERSION,
                     "output_policy_version": OUTPUT_POLICY_VERSION,

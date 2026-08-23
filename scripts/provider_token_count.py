@@ -350,7 +350,7 @@ def _anthropic_count_messages(model: str, messages: list[dict[str, str]], api_ke
 
 
 def openai_compatible_body(
-    base_url: str, model: str, messages: list[dict[str, str]], max_tokens: int
+    base_url: str, model: str, messages: list[dict[str, str]], max_tokens: int | None
 ) -> dict[str, Any]:
     """Chat-completions body for one OpenAI-compatible provider.
 
@@ -358,12 +358,19 @@ def openai_compatible_body(
     requires `max_completion_tokens`, rejects `temperature: 0`, and will not
     accept a cap of 1. Keep the divergence in one place so a body built for
     OpenAI can never be sent to xAI/DeepSeek/Qwen, or vice versa.
+
+    `max_tokens=None` omits the cap entirely (output policy 4.0.0), letting the
+    model apply its own maximum. The count-only ledger still passes an explicit 1,
+    so both regimes have to work: this is the one place that knows which key each
+    base URL wants, and therefore the only place that can leave it out.
     """
     body: dict[str, Any] = {"model": model, "messages": messages}
     if base_url == OPENAI_BASE_URL:
-        body["max_completion_tokens"] = max(max_tokens, OPENAI_MIN_OUTPUT_TOKENS)
+        if max_tokens is not None:
+            body["max_completion_tokens"] = max(max_tokens, OPENAI_MIN_OUTPUT_TOKENS)
     else:
-        body["max_tokens"] = max_tokens
+        if max_tokens is not None:
+            body["max_tokens"] = max_tokens
         body["temperature"] = 0
     return body
 

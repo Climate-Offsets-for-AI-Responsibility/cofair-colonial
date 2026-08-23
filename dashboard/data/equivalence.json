@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-08-23T07:20:21Z",
+  "generated_at": "2026-08-23T09:59:31Z",
   "corpus_version": "1.0.0",
   "chat_corpus_version": "1.0.0",
-  "output_policy_version": "2.0.0",
-  "output_ceiling": 4000,
+  "output_policy_version": "4.0.0",
+  "output_ceiling": null,
   "tiers": [
     "flagship",
     "workhorse"
@@ -17,10 +17,10 @@
       "input_chars": 157,
       "input_bytes": 157,
       "input_words": 23,
-      "output_cap": 4000,
+      "output_cap": null,
       "cadence": "daily",
       "corpus_version": "1.0.0",
-      "output_policy_version": "2.0.0"
+      "output_policy_version": "4.0.0"
     },
     {
       "task_id": "B",
@@ -30,10 +30,10 @@
       "input_chars": 843,
       "input_bytes": 843,
       "input_words": 118,
-      "output_cap": 4000,
+      "output_cap": null,
       "cadence": "daily",
       "corpus_version": "1.0.0",
-      "output_policy_version": "2.0.0"
+      "output_policy_version": "4.0.0"
     },
     {
       "task_id": "C",
@@ -43,10 +43,10 @@
       "input_chars": 217,
       "input_bytes": 217,
       "input_words": 33,
-      "output_cap": 4000,
+      "output_cap": null,
       "cadence": "daily",
       "corpus_version": "1.0.0",
-      "output_policy_version": "2.0.0"
+      "output_policy_version": "4.0.0"
     },
     {
       "task_id": "D",
@@ -56,10 +56,10 @@
       "input_chars": 25743,
       "input_bytes": 25743,
       "input_words": 3221,
-      "output_cap": 4000,
+      "output_cap": null,
       "cadence": "daily",
       "corpus_version": "1.0.0",
-      "output_policy_version": "2.0.0"
+      "output_policy_version": "4.0.0"
     }
   ],
   "meter_task_ids": [
@@ -920,8 +920,9 @@
       }
     }
   },
-  "package_ceiling_annual_usd": 723.1914360000001,
-  "package_cost_note": "Shipped package: daily meter with flagship N=1 + workhorse N=1, daily tokenizer ledger on tasks A\u2013D, daily task E wrapper counts on turns 1\u201310. Ceiling is $723/yr at list \u2014 every task spending all 4,000 output tokens, every day. Observed spend runs well under it because models stop when they are done; the ceiling only bounds a runaway generation.",
+  "package_ceiling_annual_usd": null,
+  "package_planning_annual_usd": 723.1914360000001,
+  "package_cost_note": "Shipped package: daily meter with flagship N=1 + workhorse N=1, daily tokenizer ledger on tasks A\u2013D, daily task E wrapper counts on turns 1\u201310. Planning figure is $723/yr at list, assuming 4,000 output tokens per task per day. Output is uncapped, so this bounds nothing: verbosity is the measurement, and a cap high enough to be safe is also high enough to eventually truncate the reading. Runs that a provider does cut short are flagged from its own stop reason.",
   "token_runs": [
     {
       "date": "2026-08-22",
@@ -4613,6 +4614,792 @@
         "corpus_version": "1.0.0",
         "source": "tokenizer_ledger",
         "run_at": "2026-08-23T07:19:55Z"
+      }
+    ],
+    "fits": [
+      {
+        "date": "2026-08-21",
+        "provider_id": "anthropic",
+        "tier": "flagship",
+        "model_id": "claude-opus-5",
+        "api_model": "claude-opus-5",
+        "task_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "task_count": 3,
+        "char_span_ratio": 5.37,
+        "fit_ok": false,
+        "fixed_overhead_tokens": null,
+        "content_density_per_1k_chars": null,
+        "r2": null
+      },
+      {
+        "date": "2026-08-21",
+        "provider_id": "anthropic",
+        "tier": "workhorse",
+        "model_id": "claude-haiku-4.5",
+        "api_model": "claude-haiku-4-5-20251001",
+        "task_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "task_count": 3,
+        "char_span_ratio": 5.37,
+        "fit_ok": false,
+        "fixed_overhead_tokens": null,
+        "content_density_per_1k_chars": null,
+        "r2": null
+      },
+      {
+        "date": "2026-08-21",
+        "provider_id": "aws",
+        "tier": "flagship",
+        "model_id": "nova-premier",
+        "api_model": "amazon.nova-pro-v1:0",
+        "task_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "task_count": 3,
+        "char_span_ratio": 5.37,
+        "fit_ok": false,
+        "fixed_overhead_tokens": null,
+        "content_density_per_1k_chars": null,
+        "r2": null
+      },
+      {
+        "date": "2026-08-21",
+        "provider_id": "aws",
+        "tier": "workhorse",
+        "model_id": "nova-micro",
+        "api_model": "amazon.nova-micro-v1:0",
+        "task_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "task_count": 3,
+        "char_span_ratio": 5.37,
+        "fit_ok": false,
+        "fixed_overhead_tokens": null,
+        "content_density_per_1k_chars": null,
+        "r2": null
+      },
+      {
+        "date": "2026-08-21",
+        "provider_id": "deepseek",
+        "tier": "flagship",
+        "model_id": "deepseek-v4-pro",
+        "api_model": "deepseek-v4-pro",
+        "task_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "task_count": 3,
+        "char_span_ratio": 5.37,
+        "fit_ok": false,
+        "fixed_overhead_tokens": null,
+        "content_density_per_1k_chars": null,
+        "r2": null
+      },
+      {
+        "date": "2026-08-21",
+        "provider_id": "deepseek",
+        "tier": "workhorse",
+        "model_id": "deepseek-v4-flash",
+        "api_model": "deepseek-v4-flash",
+        "task_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "task_count": 3,
+        "char_span_ratio": 5.37,
+        "fit_ok": false,
+        "fixed_overhead_tokens": null,
+        "content_density_per_1k_chars": null,
+        "r2": null
+      },
+      {
+        "date": "2026-08-21",
+        "provider_id": "google",
+        "tier": "flagship",
+        "model_id": "gemini-3.1-pro",
+        "api_model": "gemini-flash-latest",
+        "task_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "task_count": 3,
+        "char_span_ratio": 5.37,
+        "fit_ok": false,
+        "fixed_overhead_tokens": null,
+        "content_density_per_1k_chars": null,
+        "r2": null
+      },
+      {
+        "date": "2026-08-21",
+        "provider_id": "google",
+        "tier": "workhorse",
+        "model_id": "gemini-3-flash",
+        "api_model": "gemini-flash-latest",
+        "task_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "task_count": 3,
+        "char_span_ratio": 5.37,
+        "fit_ok": false,
+        "fixed_overhead_tokens": null,
+        "content_density_per_1k_chars": null,
+        "r2": null
+      },
+      {
+        "date": "2026-08-21",
+        "provider_id": "openai",
+        "tier": "flagship",
+        "model_id": "chat-latest",
+        "api_model": "chat-latest",
+        "task_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "task_count": 3,
+        "char_span_ratio": 5.37,
+        "fit_ok": false,
+        "fixed_overhead_tokens": null,
+        "content_density_per_1k_chars": null,
+        "r2": null
+      },
+      {
+        "date": "2026-08-21",
+        "provider_id": "openai",
+        "tier": "workhorse",
+        "model_id": "gpt-5.6-luna",
+        "api_model": "gpt-5.6-luna",
+        "task_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "task_count": 3,
+        "char_span_ratio": 5.37,
+        "fit_ok": false,
+        "fixed_overhead_tokens": null,
+        "content_density_per_1k_chars": null,
+        "r2": null
+      },
+      {
+        "date": "2026-08-21",
+        "provider_id": "qwen",
+        "tier": "flagship",
+        "model_id": "qwen3.7-max",
+        "api_model": "qwen-max",
+        "task_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "task_count": 3,
+        "char_span_ratio": 5.37,
+        "fit_ok": false,
+        "fixed_overhead_tokens": null,
+        "content_density_per_1k_chars": null,
+        "r2": null
+      },
+      {
+        "date": "2026-08-21",
+        "provider_id": "qwen",
+        "tier": "workhorse",
+        "model_id": "qwen-flash",
+        "api_model": "qwen-turbo",
+        "task_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "task_count": 3,
+        "char_span_ratio": 5.37,
+        "fit_ok": false,
+        "fixed_overhead_tokens": null,
+        "content_density_per_1k_chars": null,
+        "r2": null
+      },
+      {
+        "date": "2026-08-21",
+        "provider_id": "xai",
+        "tier": "flagship",
+        "model_id": "grok-4.6",
+        "api_model": "grok-4.6",
+        "task_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "task_count": 3,
+        "char_span_ratio": 5.37,
+        "fit_ok": false,
+        "fixed_overhead_tokens": null,
+        "content_density_per_1k_chars": null,
+        "r2": null
+      },
+      {
+        "date": "2026-08-21",
+        "provider_id": "xai",
+        "tier": "workhorse",
+        "model_id": "grok-build-0.1",
+        "api_model": "grok-build-0.1",
+        "task_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "task_count": 3,
+        "char_span_ratio": 5.37,
+        "fit_ok": false,
+        "fixed_overhead_tokens": null,
+        "content_density_per_1k_chars": null,
+        "r2": null
+      },
+      {
+        "date": "2026-08-22",
+        "provider_id": "anthropic",
+        "tier": "flagship",
+        "model_id": "claude-opus-5",
+        "api_model": "claude-opus-5",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 21.8,
+        "content_density_per_1k_chars": 280.822,
+        "r2": 0.999996
+      },
+      {
+        "date": "2026-08-22",
+        "provider_id": "anthropic",
+        "tier": "workhorse",
+        "model_id": "claude-haiku-4.5",
+        "api_model": "claude-haiku-4-5-20251001",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 32.1,
+        "content_density_per_1k_chars": 155.622,
+        "r2": 0.999964
+      },
+      {
+        "date": "2026-08-22",
+        "provider_id": "aws",
+        "tier": "flagship",
+        "model_id": "nova-premier",
+        "api_model": "amazon.nova-pro-v1:0",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 22.2,
+        "content_density_per_1k_chars": 155.571,
+        "r2": 0.999948
+      },
+      {
+        "date": "2026-08-22",
+        "provider_id": "aws",
+        "tier": "workhorse",
+        "model_id": "nova-micro",
+        "api_model": "amazon.nova-micro-v1:0",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 22.2,
+        "content_density_per_1k_chars": 155.571,
+        "r2": 0.999948
+      },
+      {
+        "date": "2026-08-22",
+        "provider_id": "deepseek",
+        "tier": "flagship",
+        "model_id": "deepseek-v4-pro",
+        "api_model": "deepseek-v4-pro",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 100.8,
+        "content_density_per_1k_chars": 155.743,
+        "r2": 0.999978
+      },
+      {
+        "date": "2026-08-22",
+        "provider_id": "deepseek",
+        "tier": "workhorse",
+        "model_id": "deepseek-v4-flash",
+        "api_model": "deepseek-v4-flash",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 100.8,
+        "content_density_per_1k_chars": 155.743,
+        "r2": 0.999978
+      },
+      {
+        "date": "2026-08-22",
+        "provider_id": "google",
+        "tier": "flagship",
+        "model_id": "gemini-3.1-pro",
+        "api_model": "gemini-flash-latest",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 22.2,
+        "content_density_per_1k_chars": 155.726,
+        "r2": 0.999948
+      },
+      {
+        "date": "2026-08-22",
+        "provider_id": "google",
+        "tier": "workhorse",
+        "model_id": "gemini-3-flash",
+        "api_model": "gemini-flash-latest",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 22.2,
+        "content_density_per_1k_chars": 155.726,
+        "r2": 0.999948
+      },
+      {
+        "date": "2026-08-22",
+        "provider_id": "openai",
+        "tier": "flagship",
+        "model_id": "chat-latest",
+        "api_model": "chat-latest",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 22.4,
+        "content_density_per_1k_chars": 155.794,
+        "r2": 0.999974
+      },
+      {
+        "date": "2026-08-22",
+        "provider_id": "openai",
+        "tier": "workhorse",
+        "model_id": "gpt-5.6-luna",
+        "api_model": "gpt-5.6-luna",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 22.4,
+        "content_density_per_1k_chars": 155.794,
+        "r2": 0.999974
+      },
+      {
+        "date": "2026-08-22",
+        "provider_id": "qwen",
+        "tier": "flagship",
+        "model_id": "qwen3.7-max",
+        "api_model": "qwen-max",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 27.8,
+        "content_density_per_1k_chars": 155.661,
+        "r2": 0.99996
+      },
+      {
+        "date": "2026-08-22",
+        "provider_id": "qwen",
+        "tier": "workhorse",
+        "model_id": "qwen-flash",
+        "api_model": "qwen-turbo",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 31.8,
+        "content_density_per_1k_chars": 155.661,
+        "r2": 0.99996
+      },
+      {
+        "date": "2026-08-22",
+        "provider_id": "xai",
+        "tier": "flagship",
+        "model_id": "grok-4.6",
+        "api_model": "grok-4.6",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 224.8,
+        "content_density_per_1k_chars": 155.702,
+        "r2": 0.999976
+      },
+      {
+        "date": "2026-08-22",
+        "provider_id": "xai",
+        "tier": "workhorse",
+        "model_id": "grok-build-0.1",
+        "api_model": "grok-build-0.1",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 202.1,
+        "content_density_per_1k_chars": 155.805,
+        "r2": 0.999976
+      },
+      {
+        "date": "2026-08-23",
+        "provider_id": "anthropic",
+        "tier": "flagship",
+        "model_id": "claude-opus-5",
+        "api_model": "claude-opus-5",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 21.8,
+        "content_density_per_1k_chars": 280.822,
+        "r2": 0.999996
+      },
+      {
+        "date": "2026-08-23",
+        "provider_id": "anthropic",
+        "tier": "workhorse",
+        "model_id": "claude-haiku-4.5",
+        "api_model": "claude-haiku-4-5-20251001",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 32.1,
+        "content_density_per_1k_chars": 155.622,
+        "r2": 0.999964
+      },
+      {
+        "date": "2026-08-23",
+        "provider_id": "aws",
+        "tier": "flagship",
+        "model_id": "nova-premier",
+        "api_model": "amazon.nova-pro-v1:0",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 22.2,
+        "content_density_per_1k_chars": 155.571,
+        "r2": 0.999948
+      },
+      {
+        "date": "2026-08-23",
+        "provider_id": "aws",
+        "tier": "workhorse",
+        "model_id": "nova-micro",
+        "api_model": "amazon.nova-micro-v1:0",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 22.2,
+        "content_density_per_1k_chars": 155.571,
+        "r2": 0.999948
+      },
+      {
+        "date": "2026-08-23",
+        "provider_id": "deepseek",
+        "tier": "flagship",
+        "model_id": "deepseek-v4-pro",
+        "api_model": "deepseek-v4-pro",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 100.8,
+        "content_density_per_1k_chars": 155.743,
+        "r2": 0.999978
+      },
+      {
+        "date": "2026-08-23",
+        "provider_id": "deepseek",
+        "tier": "workhorse",
+        "model_id": "deepseek-v4-flash",
+        "api_model": "deepseek-v4-flash",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 100.8,
+        "content_density_per_1k_chars": 155.743,
+        "r2": 0.999978
+      },
+      {
+        "date": "2026-08-23",
+        "provider_id": "google",
+        "tier": "flagship",
+        "model_id": "gemini-3.1-pro",
+        "api_model": "gemini-flash-latest",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 22.2,
+        "content_density_per_1k_chars": 155.726,
+        "r2": 0.999948
+      },
+      {
+        "date": "2026-08-23",
+        "provider_id": "google",
+        "tier": "workhorse",
+        "model_id": "gemini-3-flash",
+        "api_model": "gemini-flash-latest",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 22.2,
+        "content_density_per_1k_chars": 155.726,
+        "r2": 0.999948
+      },
+      {
+        "date": "2026-08-23",
+        "provider_id": "openai",
+        "tier": "flagship",
+        "model_id": "chat-latest",
+        "api_model": "chat-latest",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 22.4,
+        "content_density_per_1k_chars": 155.794,
+        "r2": 0.999974
+      },
+      {
+        "date": "2026-08-23",
+        "provider_id": "openai",
+        "tier": "workhorse",
+        "model_id": "gpt-5.6-luna",
+        "api_model": "gpt-5.6-luna",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 22.4,
+        "content_density_per_1k_chars": 155.794,
+        "r2": 0.999974
+      },
+      {
+        "date": "2026-08-23",
+        "provider_id": "qwen",
+        "tier": "flagship",
+        "model_id": "qwen3.7-max",
+        "api_model": "qwen-max",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 27.8,
+        "content_density_per_1k_chars": 155.661,
+        "r2": 0.99996
+      },
+      {
+        "date": "2026-08-23",
+        "provider_id": "qwen",
+        "tier": "workhorse",
+        "model_id": "qwen-flash",
+        "api_model": "qwen-turbo",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 31.8,
+        "content_density_per_1k_chars": 155.661,
+        "r2": 0.99996
+      },
+      {
+        "date": "2026-08-23",
+        "provider_id": "xai",
+        "tier": "flagship",
+        "model_id": "grok-4.6",
+        "api_model": "grok-4.6",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 654.8,
+        "content_density_per_1k_chars": 155.702,
+        "r2": 0.999976
+      },
+      {
+        "date": "2026-08-23",
+        "provider_id": "xai",
+        "tier": "workhorse",
+        "model_id": "grok-build-0.1",
+        "api_model": "grok-build-0.1",
+        "task_ids": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "task_count": 4,
+        "char_span_ratio": 163.97,
+        "fit_ok": true,
+        "fixed_overhead_tokens": 202.1,
+        "content_density_per_1k_chars": 155.805,
+        "r2": 0.999976
       }
     ]
   },

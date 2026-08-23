@@ -31,6 +31,37 @@ def _http_error(status: int, body: str) -> requests.HTTPError:
     return requests.HTTPError(f"{status} Client Error", response=response)
 
 
+class UncappedBodyTest(unittest.TestCase):
+    """Output policy 4.0.0 sends no cap; the count-only ledger still sends 1."""
+
+    MESSAGES = [{"role": "user", "content": "hi"}]
+
+    def test_omits_the_cap_entirely_when_none(self) -> None:
+        for base in (OPENAI_BASE_URL, "https://api.x.ai/v1"):
+            with self.subTest(base=base):
+                body = openai_compatible_body(base, "m", self.MESSAGES, None)
+                self.assertNotIn("max_tokens", body)
+                self.assertNotIn("max_completion_tokens", body)
+
+    def test_non_openai_keeps_deterministic_temperature_when_uncapped(self) -> None:
+        # Dropping the cap must not drop temperature: a stochastic run would make
+        # output length uncomparable day over day, which is the whole measurement.
+        body = openai_compatible_body("https://api.x.ai/v1", "m", self.MESSAGES, None)
+        self.assertEqual(body["temperature"], 0)
+
+    def test_an_explicit_cap_still_applies(self) -> None:
+        # The tokenizer ledger counts with a 1-token cap and must keep working.
+        self.assertEqual(
+            openai_compatible_body("https://api.x.ai/v1", "m", self.MESSAGES, 1)["max_tokens"], 1
+        )
+        self.assertEqual(
+            openai_compatible_body(OPENAI_BASE_URL, "m", self.MESSAGES, 1)[
+                "max_completion_tokens"
+            ],
+            OPENAI_MIN_OUTPUT_TOKENS,
+        )
+
+
 class NormalizeMessagesTest(unittest.TestCase):
     def test_corpus_text_turns_become_content(self) -> None:
         # CHAT_TRANSCRIPT stores {role, text}; every chat endpoint but Bedrock

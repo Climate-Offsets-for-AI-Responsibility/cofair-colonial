@@ -198,6 +198,13 @@ TIER_ORDER = ("flagship", "workhorse")
 # day over day, and the annual budget is a run's cost times the days in a year.
 DAILY_RUNS_PER_YEAR = 365
 
+# Identifiability floor for the daily overhead/content split (build_ledger_fits).
+# Two parameters need at least three tasks, and they need those tasks to differ in
+# length by an order of magnitude — otherwise the constant and the slope trade off
+# against each other and the fitted rate wanders with the task mix.
+MIN_FIT_TASKS = 3
+MIN_FIT_CHAR_SPAN = 10.0
+
 RUNS_PER_YEAR_BY_CADENCE = {
     "daily": DAILY_RUNS_PER_YEAR,
     "weekly": 52,
@@ -380,13 +387,25 @@ def _pick_tier_model(
     return None
 
 
-# Rough chars-per-token used only for the *budget* upper bound. Actual observed
+# Rough chars-per-token used only for the *budget* estimate. Actual observed
 # density is measured per provider; this constant never feeds the drift series.
 BUDGET_CHARS_PER_TOKEN = 4
 
+# Planning assumption for output length per task, used only for budgeting once the
+# output cap was removed (policy 4.0.0). It is emphatically **not** a bound: with
+# no cap there is no worst case to compute, because a model's maximum output is
+# whatever the provider decides it is on any given day. Set from observation — the
+# longest generation seen on the suite is ~4,000 on task C — and it should be
+# revised when observation moves, not defended as a limit.
+BUDGET_OUTPUT_TOKENS_PER_TASK = 4000
+
 
 def _pack_cost(models: list[dict], tasks_by_id: dict[str, dict], task_ids: list[str]) -> float:
-    """Worst-case list cost for one run: estimated input + fully-spent output cap.
+    """Planning list cost for one run: estimated input + assumed output length.
+
+    Was a worst case while every task carried an output cap. Uncapped, the honest
+    reading is an estimate: `BUDGET_OUTPUT_TOKENS_PER_TASK` stands in where a task
+    has no cap, and the result bounds nothing.
 
     Task ids with no generating spec (task E is counted, never generated) cost
     nothing here and are skipped rather than treated as missing.
@@ -402,8 +421,9 @@ def _pack_cost(models: list[dict], tasks_by_id: dict[str, dict], task_ids: list[
             output_price = model.get("latest_output", model.get("output_price"))
             if input_price is None or output_price is None:
                 continue
+            output_tokens = task.get("output_cap") or BUDGET_OUTPUT_TOKENS_PER_TASK
             total += (est_input_tokens / 1_000_000) * input_price
-            total += (task["output_cap"] / 1_000_000) * output_price
+            total += (output_tokens / 1_000_000) * output_price
     return total
 
 
@@ -492,6 +512,9 @@ def build_token_runs(run_rows: list[dict]) -> list[dict]:
         tokens_in = _median([float(r["tokens_in"]) for r in rows])
         tokens_out = _median([float(r["tokens_out"]) for r in rows])
         output_cap = rows[0].get("output_cap")
+        # Rows from policy 4.0.0 on carry the provider's own stop reason. The
+        # cap comparison is the legacy path only, for rows written when a cap
+        # was still sent; it reads as False once `output_cap` is null.
         censored = any(
             r.get("output_censored")
             if r.get("output_censored") is not None
@@ -612,6 +635,94 @@ def build_provider_health(
     return health
 
 
+def build_ledger_fits(ledger_rows: list[dict]) -> list[dict]:
+    """Split each day's ledger counts into fixed request overhead and content rate.
+
+    `tokens_in_per_1k_chars` is not a tokenizer measurement on a short task. Every
+    provider prepends a constant — chat template, system preamble, injected tool
+    schema — and dividing that constant by the task's own character count makes the
+    same overhead read as 4,248 tokens/1K chars on task A (157 chars) and 181 on
+    task D (25,743). That is why the per-task charts are near-copies of each other:
+    they are one provider constant rescaled by four divisors.
+
+    So fit `tokens_in = fixed + rate * chars` across the day's tasks and publish the
+    two parameters instead of the ratio. `rate` is the tokenizer signal, comparable
+    across tasks because it is estimated across them; `fixed` is the scaffolding
+    signal, which is where provider-side wrapper changes actually land.
+
+    Only the two fitted parameters are published, never a per-task residual density.
+    Task D carries 96% of the suite's characters, so it determines the slope, and the
+    residual at a 157-character task divided by 0.157K chars swings between 4 and 23
+    characters per token — implausible numbers that would invite exactly the
+    misreading this fit exists to remove.
+    """
+    groups: dict[tuple[str, str, str], list[dict]] = {}
+    for row in ledger_rows:
+        if row.get("run_status") != "ok":
+            continue
+        chars = row.get("input_chars")
+        tokens = row.get("tokens_in")
+        if not chars or tokens is None:
+            continue
+        key = (row.get("date") or "", row.get("provider_id") or "", row.get("tier") or "")
+        groups.setdefault(key, []).append(row)
+
+    out = []
+    for (date, provider_id, tier), rows in groups.items():
+        points = [(float(r["input_chars"]), float(r["tokens_in"])) for r in rows]
+        chars = [p[0] for p in points]
+        span = (max(chars) / min(chars)) if min(chars) else 0.0
+
+        # Two guards, both about identifiability rather than tidiness. Fewer than
+        # three tasks cannot separate a constant from a slope with any confidence,
+        # and a narrow character span cannot either: on 2026-08-21, before task D
+        # was collected, A/B/C span only 5.4x and the fitted rate lands 3% off the
+        # next day's four-task fit — a step change that is pure conditioning, not
+        # tokenization. Publishing it would manufacture the false positive this
+        # measure is meant to retire.
+        fit_ok = len(points) >= MIN_FIT_TASKS and span >= MIN_FIT_CHAR_SPAN
+        fixed = rate = r2 = None
+        if fit_ok:
+            n = len(points)
+            sum_x = sum(p[0] for p in points)
+            sum_y = sum(p[1] for p in points)
+            sum_xx = sum(p[0] * p[0] for p in points)
+            sum_xy = sum(p[0] * p[1] for p in points)
+            denom = n * sum_xx - sum_x * sum_x
+            if denom:
+                rate = (n * sum_xy - sum_x * sum_y) / denom
+                fixed = (sum_y - rate * sum_x) / n
+                mean_y = sum_y / n
+                ss_tot = sum((p[1] - mean_y) ** 2 for p in points)
+                ss_res = sum((p[1] - (fixed + rate * p[0])) ** 2 for p in points)
+                r2 = (1 - ss_res / ss_tot) if ss_tot else None
+            else:
+                fit_ok = False
+
+        out.append(
+            {
+                "date": date,
+                "provider_id": provider_id,
+                "tier": tier,
+                "model_id": rows[0].get("model_id"),
+                "api_model": rows[0].get("api_model"),
+                "task_ids": sorted({r.get("task_id") for r in rows if r.get("task_id")}),
+                "task_count": len(points),
+                "char_span_ratio": round(span, 2),
+                "fit_ok": bool(fit_ok),
+                # Tokens added regardless of payload size. The number that moved
+                # when grok-4.6 gained 430 tokens on every task at once.
+                "fixed_overhead_tokens": None if fixed is None else round(fixed, 1),
+                # Marginal tokens per 1,000 characters of actual content.
+                "content_density_per_1k_chars": None if rate is None else round(rate * 1000, 3),
+                "r2": None if r2 is None else round(r2, 6),
+            }
+        )
+
+    out.sort(key=lambda r: (r["date"] or "", r["provider_id"] or "", r["tier"] or ""))
+    return out
+
+
 def _load_json_rows(path: Path) -> list[dict]:
     if not path.exists():
         return []
@@ -679,12 +790,13 @@ def build_equivalence(
                 },
             }
 
-    # Worst case for the shipped cadence: one run of every panel row, every task
-    # spending its whole output ceiling. Derived rather than written down,
-    # because the ceiling and the rate cards both move.
+    # Planning figure for the shipped cadence: one run of every panel row at the
+    # assumed output length. There is deliberately no worst case any more — output
+    # is uncapped (policy 4.0.0), so the upper bound is whatever maximum each
+    # provider applies, which is not a number we can know in advance.
     meter_models = selected_by_mode["two"]
-    ceiling_per_run = _pack_cost(meter_models, tasks_by_id, TASK_PACKS["suiteLong"])
-    ceiling_annual = ceiling_per_run * DAILY_RUNS_PER_YEAR
+    planning_per_run = _pack_cost(meter_models, tasks_by_id, TASK_PACKS["suiteLong"])
+    planning_annual = planning_per_run * DAILY_RUNS_PER_YEAR
 
     auth = {
         provider: {
@@ -729,14 +841,20 @@ def build_equivalence(
         "selected_models": selected,
         "selected_models_by_mode": selected_by_mode,
         "budget": budgets,
-        "package_ceiling_annual_usd": ceiling_annual,
+        # No ceiling exists under output policy 4.0.0. Kept as an explicit null
+        # rather than dropped, so a reader of the artifact sees that the bound was
+        # removed on purpose instead of wondering where the field went.
+        "package_ceiling_annual_usd": None,
+        "package_planning_annual_usd": planning_annual,
         "package_cost_note": (
             "Shipped package: daily meter with flagship N=1 + workhorse N=1, daily "
             "tokenizer ledger on tasks A–D, daily task E wrapper counts on turns 1–10. "
-            f"Ceiling is ${ceiling_annual:,.0f}/yr at list — every task spending all "
-            f"{OUTPUT_CEILING:,} output tokens, every day. Observed spend runs well "
-            "under it because models stop when they are done; the ceiling only bounds a "
-            "runaway generation."
+            f"Planning figure is ${planning_annual:,.0f}/yr at list, assuming "
+            f"{BUDGET_OUTPUT_TOKENS_PER_TASK:,} output tokens per task per day. Output is "
+            "uncapped, so this bounds nothing: verbosity is the measurement, and a cap "
+            "high enough to be safe is also high enough to eventually truncate the "
+            "reading. Runs that a provider does cut short are flagged from its own stop "
+            "reason."
         ),
         "token_runs": build_token_runs(run_rows),
         "tokenizer_ledger": {
@@ -750,6 +868,10 @@ def build_equivalence(
             "row_count": len(ledger_rows),
             "ok_row_count": len(ledger_ok),
             "rows": ledger_ok,
+            # Per (date, provider, tier): the day's counts split into fixed request
+            # overhead and marginal content rate, so density can be read without
+            # the task's own length setting its scale. See build_ledger_fits.
+            "fits": build_ledger_fits(ledger_ok),
         },
         "wrapper_runs": {
             "cadence": "daily",
