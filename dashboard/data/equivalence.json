@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-27T19:03:38Z",
+  "generated_at": "2026-08-28T02:26:22Z",
   "corpus_version": "1.0.0",
   "chat_corpus_version": "1.0.0",
   "output_policy_version": "4.0.0",
@@ -263,16 +263,16 @@
     {
       "provider_id": "google",
       "tier": "workhorse",
-      "model_id": "gemini-3-flash",
-      "display_name": "Gemini 3 Flash",
-      "input_price": 0.5,
-      "output_price": 3.0,
+      "model_id": "gemini-2.0-flash",
+      "display_name": "Gemini 2.0 Flash",
+      "input_price": 0.15,
+      "output_price": 0.6,
       "currency": "USD",
       "api_candidates": [
         {
-          "model_id": "gemini-2.0-flash",
-          "input_price": 0.15,
-          "output_price": 0.6
+          "model_id": "gemini-3-flash",
+          "input_price": 0.5,
+          "output_price": 3.0
         }
       ]
     },
@@ -458,16 +458,16 @@
       {
         "provider_id": "google",
         "tier": "workhorse",
-        "model_id": "gemini-3-flash",
-        "display_name": "Gemini 3 Flash",
-        "input_price": 0.5,
-        "output_price": 3.0,
+        "model_id": "gemini-2.0-flash",
+        "display_name": "Gemini 2.0 Flash",
+        "input_price": 0.15,
+        "output_price": 0.6,
         "currency": "USD",
         "api_candidates": [
           {
-            "model_id": "gemini-2.0-flash",
-            "input_price": 0.15,
-            "output_price": 0.6
+            "model_id": "gemini-3-flash",
+            "input_price": 0.5,
+            "output_price": 3.0
           }
         ]
       },
@@ -652,16 +652,16 @@
       {
         "provider_id": "google",
         "tier": "workhorse",
-        "model_id": "gemini-3-flash",
-        "display_name": "Gemini 3 Flash",
-        "input_price": 0.5,
-        "output_price": 3.0,
+        "model_id": "gemini-2.0-flash",
+        "display_name": "Gemini 2.0 Flash",
+        "input_price": 0.15,
+        "output_price": 0.6,
         "currency": "USD",
         "api_candidates": [
           {
-            "model_id": "gemini-2.0-flash",
-            "input_price": 0.15,
-            "output_price": 0.6
+            "model_id": "gemini-3-flash",
+            "input_price": 0.5,
+            "output_price": 3.0
           }
         ]
       },
@@ -778,43 +778,43 @@
   "budget": {
     "two": {
       "qa": {
-        "per_run_usd": 0.45195463,
-        "annual_usd": 164.96343995,
+        "per_run_usd": 0.44234089249999997,
+        "annual_usd": 161.4544257625,
         "annual_usd_by_cadence": {
-          "daily": 164.96343995,
-          "weekly": 23.50164076,
-          "biweekly": 11.75082038,
-          "monthly": 5.423455560000001
+          "daily": 161.4544257625,
+          "weekly": 23.00172641,
+          "biweekly": 11.500863205,
+          "monthly": 5.30809071
         }
       },
       "summarize": {
-        "per_run_usd": 0.45647537,
-        "annual_usd": 166.61351005,
+        "per_run_usd": 0.44680160750000003,
+        "annual_usd": 163.0825867375,
         "annual_usd_by_cadence": {
-          "daily": 166.61351005,
-          "weekly": 23.73671924,
-          "biweekly": 11.86835962,
-          "monthly": 5.47770444
+          "daily": 163.0825867375,
+          "weekly": 23.233683590000002,
+          "biweekly": 11.616841795000001,
+          "monthly": 5.36161929
         }
       },
       "code": {
-        "per_run_usd": 0.45235003000000007,
-        "annual_usd": 165.10776095000003,
+        "per_run_usd": 0.44273104250000006,
+        "annual_usd": 161.59683051250002,
         "annual_usd_by_cadence": {
-          "daily": 165.10776095000003,
-          "weekly": 23.522201560000003,
-          "biweekly": 11.761100780000001,
-          "monthly": 5.428200360000001
+          "daily": 161.59683051250002,
+          "weekly": 23.022014210000002,
+          "biweekly": 11.511007105000001,
+          "monthly": 5.31277251
         }
       },
       "long": {
-        "per_run_usd": 0.62056637,
-        "annual_usd": 226.50672505,
+        "per_run_usd": 0.6087138575000001,
+        "annual_usd": 222.18055798750004,
         "annual_usd_by_cadence": {
-          "daily": 226.50672505,
-          "weekly": 32.26945124,
-          "biweekly": 16.13472562,
-          "monthly": 7.44679644
+          "daily": 222.18055798750004,
+          "weekly": 31.653120590000004,
+          "biweekly": 15.826560295000002,
+          "monthly": 7.30456629
         }
       },
       "chat": {
@@ -828,65 +828,65 @@
         }
       },
       "suite": {
-        "per_run_usd": 1.3607800300000001,
-        "annual_usd": 496.68471095000007,
+        "per_run_usd": 1.3318735425,
+        "annual_usd": 486.13384301249994,
         "annual_usd_by_cadence": {
-          "daily": 496.68471095000007,
-          "weekly": 70.76056156000001,
-          "biweekly": 35.38028078000001,
-          "monthly": 16.329360360000003
+          "daily": 486.13384301249994,
+          "weekly": 69.25742421,
+          "biweekly": 34.628712105,
+          "monthly": 15.982482509999999
         }
       },
       "suiteLong": {
-        "per_run_usd": 1.9813464,
-        "annual_usd": 723.1914360000001,
+        "per_run_usd": 1.9405873999999999,
+        "annual_usd": 708.314401,
         "annual_usd_by_cadence": {
-          "daily": 723.1914360000001,
-          "weekly": 103.03001280000001,
-          "biweekly": 51.515006400000004,
-          "monthly": 23.776156800000003
+          "daily": 708.314401,
+          "weekly": 100.9105448,
+          "biweekly": 50.4552724,
+          "monthly": 23.287048799999997
         }
       }
     },
     "three": {
       "qa": {
-        "per_run_usd": 0.45195463,
-        "annual_usd": 164.96343995,
+        "per_run_usd": 0.44234089249999997,
+        "annual_usd": 161.4544257625,
         "annual_usd_by_cadence": {
-          "daily": 164.96343995,
-          "weekly": 23.50164076,
-          "biweekly": 11.75082038,
-          "monthly": 5.423455560000001
+          "daily": 161.4544257625,
+          "weekly": 23.00172641,
+          "biweekly": 11.500863205,
+          "monthly": 5.30809071
         }
       },
       "summarize": {
-        "per_run_usd": 0.45647537,
-        "annual_usd": 166.61351005,
+        "per_run_usd": 0.44680160750000003,
+        "annual_usd": 163.0825867375,
         "annual_usd_by_cadence": {
-          "daily": 166.61351005,
-          "weekly": 23.73671924,
-          "biweekly": 11.86835962,
-          "monthly": 5.47770444
+          "daily": 163.0825867375,
+          "weekly": 23.233683590000002,
+          "biweekly": 11.616841795000001,
+          "monthly": 5.36161929
         }
       },
       "code": {
-        "per_run_usd": 0.45235003000000007,
-        "annual_usd": 165.10776095000003,
+        "per_run_usd": 0.44273104250000006,
+        "annual_usd": 161.59683051250002,
         "annual_usd_by_cadence": {
-          "daily": 165.10776095000003,
-          "weekly": 23.522201560000003,
-          "biweekly": 11.761100780000001,
-          "monthly": 5.428200360000001
+          "daily": 161.59683051250002,
+          "weekly": 23.022014210000002,
+          "biweekly": 11.511007105000001,
+          "monthly": 5.31277251
         }
       },
       "long": {
-        "per_run_usd": 0.62056637,
-        "annual_usd": 226.50672505,
+        "per_run_usd": 0.6087138575000001,
+        "annual_usd": 222.18055798750004,
         "annual_usd_by_cadence": {
-          "daily": 226.50672505,
-          "weekly": 32.26945124,
-          "biweekly": 16.13472562,
-          "monthly": 7.44679644
+          "daily": 222.18055798750004,
+          "weekly": 31.653120590000004,
+          "biweekly": 15.826560295000002,
+          "monthly": 7.30456629
         }
       },
       "chat": {
@@ -900,30 +900,30 @@
         }
       },
       "suite": {
-        "per_run_usd": 1.3607800300000001,
-        "annual_usd": 496.68471095000007,
+        "per_run_usd": 1.3318735425,
+        "annual_usd": 486.13384301249994,
         "annual_usd_by_cadence": {
-          "daily": 496.68471095000007,
-          "weekly": 70.76056156000001,
-          "biweekly": 35.38028078000001,
-          "monthly": 16.329360360000003
+          "daily": 486.13384301249994,
+          "weekly": 69.25742421,
+          "biweekly": 34.628712105,
+          "monthly": 15.982482509999999
         }
       },
       "suiteLong": {
-        "per_run_usd": 1.9813464,
-        "annual_usd": 723.1914360000001,
+        "per_run_usd": 1.9405873999999999,
+        "annual_usd": 708.314401,
         "annual_usd_by_cadence": {
-          "daily": 723.1914360000001,
-          "weekly": 103.03001280000001,
-          "biweekly": 51.515006400000004,
-          "monthly": 23.776156800000003
+          "daily": 708.314401,
+          "weekly": 100.9105448,
+          "biweekly": 50.4552724,
+          "monthly": 23.287048799999997
         }
       }
     }
   },
   "package_ceiling_annual_usd": null,
-  "package_planning_annual_usd": 723.1914360000001,
-  "package_cost_note": "Shipped package: daily meter with flagship N=1 + workhorse N=1, daily tokenizer ledger on tasks A\u2013D, daily task E wrapper counts on turns 1\u201310. Planning figure is $723/yr at list, assuming 4,000 output tokens per task per day. Output is uncapped, so this bounds nothing: verbosity is the measurement, and a cap high enough to be safe is also high enough to eventually truncate the reading. Runs that a provider does cut short are flagged from its own stop reason.",
+  "package_planning_annual_usd": 708.314401,
+  "package_cost_note": "Shipped package: daily meter with flagship N=1 + workhorse N=1, daily tokenizer ledger on tasks A\u2013D, daily task E wrapper counts on turns 1\u201310. Planning figure is $708/yr at list, assuming 4,000 output tokens per task per day. Output is uncapped, so this bounds nothing: verbosity is the measurement, and a cap high enough to be safe is also high enough to eventually truncate the reading. Runs that a provider does cut short are flagged from its own stop reason.",
   "token_runs": [
     {
       "date": "2026-08-24",
@@ -18452,7 +18452,7 @@
           "ANTHROPIC_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": true
+        "configured": false
       },
       "openai": {
         "env": [
@@ -18460,7 +18460,7 @@
           "OPENAI_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": true
+        "configured": false
       },
       "google": {
         "env": [
@@ -18469,7 +18469,7 @@
           "GOOGLE_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": true
+        "configured": false
       },
       "xai": {
         "env": [
@@ -18477,7 +18477,7 @@
           "XAI_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": true
+        "configured": false
       },
       "aws": {
         "env": [
@@ -18487,7 +18487,7 @@
           "AWS_ACCESS_KEY_ID"
         ],
         "purpose": "weekly task billing runs + tokenizer ledger (Bedrock Converse)",
-        "configured": true
+        "configured": false
       },
       "deepseek": {
         "env": [
@@ -18495,7 +18495,7 @@
           "DEEPSEEK_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": true
+        "configured": false
       },
       "qwen": {
         "env": [
@@ -18503,11 +18503,19 @@
           "QWEN_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": true
+        "configured": false
       }
     },
-    "missing_providers": [],
-    "env_visible_to_builder": true,
+    "missing_providers": [
+      "anthropic",
+      "openai",
+      "google",
+      "xai",
+      "aws",
+      "deepseek",
+      "qwen"
+    ],
+    "env_visible_to_builder": false,
     "ready_for_live_runs": true
   },
   "provider_health": {
@@ -20319,7 +20327,7 @@
   },
   "window": {
     "first_date": "2026-08-26",
-    "last_date": "2026-08-26",
-    "snapshot_count": 1
+    "last_date": "2026-08-28",
+    "snapshot_count": 2
   }
 }
