@@ -14,9 +14,18 @@ density, which *is* comparable and is what detects a silent re-tokenization.
 """
 from __future__ import annotations
 
+from corpus_long_natural import LONG_NATURAL_CONTEXT
+
 # Bump when any prompt text changes. Older run rows keep their own recorded
 # version so a corpus edit never silently rewrites history.
-CORPUS_VERSION = "1.0.0"
+#
+# 1.0.0 = tasks A-D.
+# 1.1.0 = task F added (long context, natural text). Additive on purpose: no
+#         existing prompt changed, so every A-E series continues uninterrupted and
+#         no epoch reset is needed. Only the fitted content rate changes basis,
+#         which `fit_task_ids` records per row so the discontinuity is visible
+#         rather than silent (D78).
+CORPUS_VERSION = "1.1.0"
 
 # Versioned separately from the prompt text because it governs a different
 # quantity. `max_tokens` cannot affect how a prompt tokenizes, so a cap change
@@ -81,6 +90,16 @@ TASK_PROMPTS = {
         + ("Policy review context sentence. " * 800)
         + "\n\nQuestion: Which three governance controls most reduce billing surprise?"
     ),
+    # Task D's filler is the same sentence 800 times, which is what a long-context
+    # *billing* probe needs and the opposite of what the fitted content rate needs:
+    # 800 repetitions present one merge decision, so the slope it sets is the cost
+    # of re-merging that phrase (D77). F is the same order of magnitude of text with
+    # ordinary variety, so it can anchor the fit; D keeps its own job unchanged.
+    "F": (
+        "Use the context below and answer the question in 5 bullets.\n\n"
+        "Context:\n" + LONG_NATURAL_CONTEXT + "\n\nQuestion: Which three governance "
+        "controls most reduce billing surprise?"
+    ),
 }
 
 
@@ -133,8 +152,21 @@ TASK_SPECS = {
     "D": {
         "label": "Long-context needle",
         "probes": (
-            "Repetitive long context — exposes vocabulary merge behavior and any "
-            "long-context billing surcharge."
+            "Repetitive long context — exposes long-context billing surcharges and "
+            "how much a vocabulary gains from a phrase it has already seen. Cannot "
+            "measure tokenizer density: the filler is one sentence repeated 800 "
+            "times, so its marginal cost is that phrase, not text (see task F)."
+        ),
+        "output_cap": OUTPUT_CEILING,
+        "cadence": "daily",
+    },
+    "F": {
+        "label": "Long-context prose",
+        "probes": (
+            "Long context with ordinary variety — the task that lets the fit "
+            "separate fixed request overhead from tokenizer density, because it "
+            "supplies a wide character span in text vocabularies can disagree "
+            "about."
         ),
         "output_cap": OUTPUT_CEILING,
         "cadence": "daily",
@@ -143,7 +175,7 @@ TASK_SPECS = {
 
 # The generating tasks. Task E is the frozen chat transcript below: it is counted,
 # never generated, so it has no place in a meter or ledger run.
-METER_TASK_IDS = ("A", "B", "C", "D")
+METER_TASK_IDS = ("A", "B", "C", "D", "F")
 
 TASK_PACKS = {
     "qa": ["A"],
@@ -151,9 +183,37 @@ TASK_PACKS = {
     "code": ["C"],
     "long": ["D"],
     "chat": ["E"],
+    "prose": ["F"],
     "suite": ["A", "B", "C"],
+    # Deliberately still A–E, even though task F is now collected daily. A pack
+    # total is a sum over a fixed task set, and `aggregateMeter` refuses to plot a
+    # day missing any of its tasks — correctly, because a sum over A–F is a
+    # different quantity from a sum over A–E, not a continuation of it. Adding F
+    # here would therefore have emptied the default view for every day already on
+    # the record, which is the failure D75 was about: a page that looks broken
+    # rather than one that is waiting. F is reachable on its own until it has
+    # enough history to justify promoting a combined pack.
     "suiteLong": ["A", "B", "C", "D", "E"],
 }
+
+
+# Tasks whose text cannot support a claim about tokenizer density, whatever their
+# length. `build_ledger_fits` prefers the complement of this set when it is large
+# enough to fit, so the slope is estimated on text a vocabulary can disagree about,
+# and falls back to every task — overhead only — when it is not.
+#
+# Derived rather than listed, so a corpus edit cannot leave a stale hand-written
+# set behind: task D drops out because of what it *is*, and if its filler were ever
+# replaced with varied text it would rejoin automatically.
+def degenerate_task_ids() -> frozenset[str]:
+    return frozenset(
+        task_id
+        for task_id in METER_TASK_IDS
+        if lexical_variety(task_id) < MIN_LEXICAL_VARIETY
+    )
+
+
+DEGENERATE_TASK_IDS = degenerate_task_ids()
 
 
 def task_definitions() -> list[dict]:

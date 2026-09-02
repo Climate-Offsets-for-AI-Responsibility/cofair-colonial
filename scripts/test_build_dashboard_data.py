@@ -23,7 +23,13 @@ from build_dashboard_data import (
     run_date_of,
 )
 from run_equivalence_tasks import current_run_date
-from task_corpus import MIN_LEXICAL_VARIETY, TASK_PROMPTS, lexical_variety
+from task_corpus import (
+    DEGENERATE_TASK_IDS,
+    METER_TASK_IDS,
+    MIN_LEXICAL_VARIETY,
+    TASK_PROMPTS,
+    lexical_variety,
+)
 
 # Fixture dates for anything that passes through the epoch filter are pinned to the
 # epoch rather than written down. A hard-coded date silently empties the fixture the
@@ -377,16 +383,14 @@ class LedgerFitTest(unittest.TestCase):
     """The overhead/content split, and the reason it exists."""
 
     # Real task lengths — the span between them is what makes the fit possible.
-    # "L" is a long task with natural text, which the live corpus does not have:
-    # task D is its only long task and repeats one sentence 800 times. Tests about
-    # the slope use L, because the slope is withheld whenever D is the longest
-    # task; tests about that suppression use D.
-    CHARS = {"A": 157, "B": 843, "C": 217, "D": 25_743, "L": 25_743}
-    VARIETY = {"A": 0.957, "B": 0.839, "C": 0.939, "D": 0.007, "L": 0.850}
+    # Real task lengths. "F" is the long task with natural text; "D" is the long
+    # task that repeats one sentence 800 times and cannot set a slope, so tests
+    # about the rate use F and tests about the fallback use D alone.
+    CHARS = {"A": 157, "B": 843, "C": 217, "D": 25_743, "F": 9_626}
 
     def setUp(self) -> None:
-        patcher = mock.patch.dict(
-            build_dashboard_data.TASK_LEXICAL_VARIETY, self.VARIETY, clear=True
+        patcher = mock.patch.object(
+            build_dashboard_data, "DEGENERATE_TASK_IDS", frozenset({"D"})
         )
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -407,7 +411,7 @@ class LedgerFitTest(unittest.TestCase):
             for task_id, count in tokens.items()
         ]
 
-    def synth(self, fixed: int, rate: float, long_task: str = "L") -> dict[str, int]:
+    def synth(self, fixed: int, rate: float, long_task: str = "F") -> dict[str, int]:
         tasks = ["A", "B", "C", long_task]
         return {task: round(fixed + rate * self.CHARS[task]) for task in tasks}
 
@@ -428,7 +432,7 @@ class LedgerFitTest(unittest.TestCase):
         The per-task density read that as +2,739 tokens/1K chars on task A and +17
         on task D. Content density must read it as nothing at all.
         """
-        before = {"A": 237, "B": 357, "C": 270, "L": 4233}
+        before = {"A": 237, "B": 357, "C": 270, "F": 4233}
         after = {task: count + 430 for task, count in before.items()}
 
         fits = build_ledger_fits(self.rows("2026-08-22", before) + self.rows("2026-08-23", after))
@@ -451,7 +455,7 @@ class LedgerFitTest(unittest.TestCase):
         """2026-08-21 collected A, B and C but not D — a 5.4x span. Fitting it
         yields a rate 3% off the next day's four-task fit, which would render as a
         step change caused purely by the task mix."""
-        short = {task: count for task, count in self.synth(655, 0.1557).items() if task != "L"}
+        short = {task: count for task, count in self.synth(655, 0.1557).items() if task != "F"}
         (fit,) = build_ledger_fits(self.rows("2026-08-21", short))
 
         self.assertLess(fit["char_span_ratio"], MIN_FIT_CHAR_SPAN)
@@ -486,17 +490,40 @@ class LedgerFitTest(unittest.TestCase):
         self.assertFalse(fit["density_ok"])
         self.assertIsNone(fit["content_density_per_1k_chars"])
         self.assertAlmostEqual(fit["fixed_overhead_tokens"], 655, delta=1.5)
+        # And it fell back to the full task set rather than refusing to fit: the
+        # pre-task-F record depends on that, since A/B/C alone span only 5.4x.
+        self.assertEqual(fit["fit_task_ids"], ["A", "B", "C", "D"])
 
-    def test_the_live_corpus_cannot_set_a_content_rate(self) -> None:
-        """Reads the real prompts, not the fixture, so the guard is checked against
-        the corpus that actually ships. Fails the day a natural long task lands —
-        which is the day the measure should come back."""
-        long_task = max(TASK_PROMPTS, key=lambda t: len(TASK_PROMPTS[t]))
+    def test_task_d_is_excluded_once_a_natural_long_task_is_present(self) -> None:
+        """With F available the slope must not rest on D, even though D is longer.
 
-        self.assertEqual(long_task, "D")
+        D would otherwise dominate by leverage — 25,743 characters against F's
+        9,626 — and reimpose the filler's rate on the fit it was excluded from.
+        """
+        tokens = self.synth(655, 0.1557)
+        tokens["D"] = 99_999  # A rate nothing else shares; it must not show up.
+        (fit,) = build_ledger_fits(self.rows("2026-08-23", tokens))
+
+        self.assertEqual(fit["fit_task_ids"], ["A", "B", "C", "F"])
+        self.assertEqual(fit["task_ids"], ["A", "B", "C", "D", "F"])
+        self.assertTrue(fit["density_ok"])
+        self.assertAlmostEqual(fit["content_density_per_1k_chars"], 155.7, delta=0.5)
+        self.assertAlmostEqual(fit["fixed_overhead_tokens"], 655, delta=1.5)
+
+    def test_the_live_corpus_can_now_set_a_content_rate(self) -> None:
+        """Reads the real prompts, not the fixture, so the corpus that actually
+        ships is what gets checked. Task D stays degenerate and excluded; the
+        remaining tasks have to clear both guards on their own."""
+        self.assertEqual(sorted(DEGENERATE_TASK_IDS), ["D"])
         self.assertLess(lexical_variety("D"), MIN_LEXICAL_VARIETY)
-        for task in ("A", "B", "C"):
+
+        natural = [t for t in METER_TASK_IDS if t not in DEGENERATE_TASK_IDS]
+        for task in natural:
             self.assertGreater(lexical_variety(task), MIN_LEXICAL_VARIETY)
+
+        chars = [len(TASK_PROMPTS[t]) for t in natural]
+        self.assertGreaterEqual(len(natural), MIN_FIT_TASKS)
+        self.assertGreaterEqual(max(chars) / min(chars), MIN_FIT_CHAR_SPAN)
 
     def test_failed_rows_are_excluded(self) -> None:
         rows = self.rows("2026-08-23", self.synth(655, 0.1557))

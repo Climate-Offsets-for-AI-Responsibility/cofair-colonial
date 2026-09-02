@@ -44,12 +44,11 @@ from task_corpus import (  # noqa: E402
     CHAT_TASK,
     CHAT_TRANSCRIPT,
     CORPUS_VERSION,
+    DEGENERATE_TASK_IDS,
     METER_TASK_IDS,
-    MIN_LEXICAL_VARIETY,
     OUTPUT_CEILING,
     OUTPUT_POLICY_VERSION,
     TASK_DEFINITIONS,
-    TASK_LEXICAL_VARIETY,
     TASK_PACKS,
     TASK_PROMPTS,
 )
@@ -706,40 +705,45 @@ def build_ledger_fits(ledger_rows: list[dict]) -> list[dict]:
         key = (row.get("date") or "", row.get("provider_id") or "", row.get("tier") or "")
         groups.setdefault(key, []).append(row)
 
+    def _guards(candidate: list[dict]) -> tuple[bool, float]:
+        """Whether a task set can separate a constant from a slope, and its span.
+
+        Fewer than three tasks cannot do it with any confidence, and a narrow
+        character span cannot either: on 2026-08-21, before task D was collected,
+        A/B/C span only 5.4x and the fitted rate lands 3% off the next day's
+        four-task fit — a step change that is pure conditioning, not tokenization.
+        """
+        chars = [float(r["input_chars"]) for r in candidate]
+        span = (max(chars) / min(chars)) if chars and min(chars) else 0.0
+        return (len(candidate) >= MIN_FIT_TASKS and span >= MIN_FIT_CHAR_SPAN), span
+
     out = []
     for (date, provider_id, tier), rows in groups.items():
-        points = [(float(r["input_chars"]), float(r["tokens_in"])) for r in rows]
-        chars = [p[0] for p in points]
-        span = (max(chars) / min(chars)) if min(chars) else 0.0
-
-        # Two guards, both about identifiability rather than tidiness. Fewer than
-        # three tasks cannot separate a constant from a slope with any confidence,
-        # and a narrow character span cannot either: on 2026-08-21, before task D
-        # was collected, A/B/C span only 5.4x and the fitted rate lands 3% off the
-        # next day's four-task fit — a step change that is pure conditioning, not
-        # tokenization. Publishing it would manufacture the false positive this
-        # measure is meant to retire.
-        fit_ok = len(points) >= MIN_FIT_TASKS and span >= MIN_FIT_CHAR_SPAN
-
-        # Third guard, and the one that decides whether the *slope* means anything.
-        # The two above are about arithmetic identifiability, and task D satisfies
-        # both single-handedly: it is 96% of the suite's characters, so it is the
-        # only reason any day clears 10x. But task D is one sentence repeated 800
-        # times (lexical variety 0.007), so the rate it sets is the marginal cost of
-        # re-merging a known phrase, not of tokenizing text. That is why 13 of 14
-        # model rows report 155.7 tokens/1K chars to within 0.2: the number is a
-        # property of the filler, not of the tokenizers, and publishing it as "the
-        # tokenizer measure" invents agreement between vocabularies that differ.
+        # Which tasks the slope is allowed to rest on. The guards above are about
+        # arithmetic identifiability, and task D satisfies them single-handedly: it
+        # is 96% of the suite's characters, so it was long the only reason any day
+        # cleared 10x. But task D is one sentence repeated 800 times (lexical
+        # variety 0.007), so its marginal cost is the cost of re-merging that
+        # phrase, not of tokenizing text — which is why 13 of 14 model rows read
+        # 155.7 tokens/1K chars to within 0.2 and looked like agreement between
+        # vocabularies that genuinely differ (D77).
         #
-        # The intercept survives this. Tasks A, B and C sit at 157-843 characters
-        # and anchor the fit near x=0, so a wrong slope out at 25,743 barely moves
-        # `fixed`, which is the half that has actually caught something real
-        # (grok-4.6, +430 tokens on every task at once). So suppress the rate alone
-        # and keep publishing the overhead.
-        longest = max(rows, key=lambda r: float(r["input_chars"]))
-        density_ok = bool(fit_ok) and (
-            TASK_LEXICAL_VARIETY.get(longest.get("task_id"), 0.0) >= MIN_LEXICAL_VARIETY
-        )
+        # So prefer the non-degenerate tasks, and fall back to all of them when
+        # they cannot be fitted. The fallback is not a formality: it is what the
+        # whole pre-task-F record uses, where A/B/C alone span 5.4x. There it still
+        # yields the overhead — the intercept is anchored by the short tasks, so a
+        # wrong slope far out barely moves it, and overhead is the half with a
+        # track record (grok-4.6, +430 tokens on every task at once) — while the
+        # rate is withheld.
+        natural = [r for r in rows if r.get("task_id") not in DEGENERATE_TASK_IDS]
+        density_ok, natural_span = _guards(natural)
+        if density_ok:
+            fit_rows, span = natural, natural_span
+        else:
+            fit_rows, span = rows, _guards(rows)[1]
+
+        points = [(float(r["input_chars"]), float(r["tokens_in"])) for r in fit_rows]
+        fit_ok = _guards(fit_rows)[0]
 
         fixed = rate = r2 = None
         if fit_ok:
@@ -767,12 +771,21 @@ def build_ledger_fits(ledger_rows: list[dict]) -> list[dict]:
                 "model_id": rows[0].get("model_id"),
                 "api_model": rows[0].get("api_model"),
                 "task_ids": sorted({r.get("task_id") for r in rows if r.get("task_id")}),
+                # Which tasks the two parameters were actually estimated from. Not
+                # cosmetic: the basis changed when task F arrived, and an intercept
+                # estimated with task D is not strictly the same quantity as one
+                # estimated without it. Carrying it per row lets the chart break the
+                # line where the basis changes, the way it already does for a model
+                # change, instead of drawing the switch as provider drift.
+                "fit_task_ids": sorted(
+                    {r.get("task_id") for r in fit_rows if r.get("task_id")}
+                ),
                 "task_count": len(points),
                 "char_span_ratio": round(span, 2),
                 "fit_ok": bool(fit_ok),
-                # Whether the day's longest task is natural enough for its slope to
-                # be a tokenizer reading. False on the whole record while task D is
-                # the only long task.
+                # Whether the slope rests on text a vocabulary can disagree about.
+                # False for the whole pre-task-F record, where task D was the only
+                # long task.
                 "density_ok": bool(density_ok),
                 # Tokens added regardless of payload size. The number that moved
                 # when grok-4.6 gained 430 tokens on every task at once.

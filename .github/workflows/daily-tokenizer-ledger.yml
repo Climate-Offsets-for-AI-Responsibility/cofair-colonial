@@ -39,7 +39,7 @@ jobs:
           TRACKER_AMAZON_API_KEY: ${{ secrets.TRACKER_AMAZON_API_KEY }}
           AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
         run: |
-          python scripts/run_tokenizer_ledger.py --tasks ABCD --mode two
+          python scripts/run_tokenizer_ledger.py --tasks all --mode two
       # Keys are passed here too: the builder records which provider
       # credentials are visible, and without them that field reads "none
       # configured" on a run whose collection actually worked.

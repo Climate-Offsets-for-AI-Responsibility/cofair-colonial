@@ -108,14 +108,13 @@ const METRICS = {
     axis: "tokens / 1K chars (content only)",
     source: "fit",
     note:
-      "Each day's counts are fitted as tokens = fixed overhead + rate × characters " +
-      "across tasks A–D; this is the rate. Estimated across tasks rather than within " +
-      "one, so it does not change when you change the task pack, and it ignores the " +
-      "constant every provider prepends. Currently withheld: the only task long " +
-      "enough to set this slope is task D, which is one sentence repeated 800 times, " +
-      "so the rate measures that phrase and not the tokenizers — which is why it read " +
-      "the same for almost every model. It returns when a long task with natural text " +
-      "joins the suite. Fixed request overhead is unaffected and still published.",
+      "Each day's counts are fitted as tokens = fixed overhead + rate × characters; " +
+      "this is the rate. Estimated across tasks rather than within one, so it does " +
+      "not change when you change the task pack, and it ignores the constant every " +
+      "provider prepends. Fitted on A, B, C and F — task D is excluded because its " +
+      "context is one sentence repeated 800 times, so its marginal cost is that " +
+      "phrase rather than text, which is why the rate used to read the same for " +
+      "almost every model. It moves only on a real re-tokenization.",
     decimals: 1,
     // Twelve of fourteen rows sit within 0.2 tokens/1K chars of each other; a zero
     // baseline would render that as one line and hide the only real outlier.
@@ -422,6 +421,10 @@ function aggregateFit() {
       tier: fit.tier,
       model_id: fit.model_id,
       api_model: fit.api_model,
+      // Which tasks produced these two parameters. An intercept estimated with
+      // task D is not strictly the same quantity as one estimated without it, so
+      // the chart breaks the line where this changes.
+      fit_basis: (fit.fit_task_ids || []).join(","),
       ledger_content_density: fit.content_density_per_1k_chars,
       ledger_fixed_overhead: fit.fixed_overhead_tokens,
     }))
@@ -763,11 +766,11 @@ function emptyChartReason() {
   }
   if (source === "fit") {
     // Two different empty states share this source, and they mean opposite things.
-    // Content density is withheld on every day by design while task D is the only
-    // long task, so "not enough spread in task length" would be simply false —
-    // there is plenty of spread, and that is the problem.
+    // Content density is withheld on every day before task F, so "not enough
+    // spread in task length" would be simply false — task D gave the record
+    // plenty of spread, and that was the problem.
     if (state.metric === "ledger_content_density") {
-      return "Content density is withheld. Task D is the only task long enough to set the rate, and it is one sentence repeated 800 times, so the slope measures that phrase rather than the tokenizers. Fixed request overhead is measured from the same fit and is unaffected.";
+      return densityWithheldReason();
     }
     // The fit spans the day's whole task set by design, so an empty chart here is
     // never about the pack — it is a day that could not be fitted at all.
@@ -779,8 +782,68 @@ function emptyChartReason() {
     // which carry tasks A–D. Name the measure that does show it.
     return "Task E is counted, never generated: its replies are frozen text, so it has prompt tokens but no output, and no meter or ledger row. Choose “Wrapper overhead” to see it.";
   }
+  // A task can be in the published corpus before it has been run once: it is
+  // added to `task_corpus.py`, and the first collection happens on the next daily
+  // schedule. "No completed runs yet" is true of that but reads as a broken
+  // pipeline, which is the D75 mistake — a page that is waiting must not look
+  // like a page that is failing. Distinguish by whether the pack's tasks appear
+  // anywhere in the record, not by naming the task, so this holds for the next
+  // one too.
+  const awaited = awaitingTaskReason();
+  if (awaited) return awaited;
   if (!state.providerMode.size) return awaitingEpochReason() || "No completed runs yet.";
   return "Every provider is hidden. Click a provider pill to bring it back.";
+}
+
+/**
+ * Why a pack is empty when its tasks have never been collected.
+ *
+ * Returns null unless *every* generating task in the pack is absent from the
+ * whole record — the signature of a task that was just added to the corpus, as
+ * opposed to a provider that went dark or a window with no rows. Naming the tasks
+ * rather than the date keeps it correct whichever task is next.
+ */
+function awaitingTaskReason() {
+  const taskIds = meterTaskIds();
+  if (!taskIds.length) return null;
+
+  const collected = new Set((state.eq?.token_runs || []).map((row) => row.task_id));
+  if (taskIds.some((id) => collected.has(id))) return null;
+
+  const byId = new Map((state.eq?.tasks || []).map((task) => [task.task_id, task]));
+  const names = taskIds.map((id) => `${id} · ${byId.get(id)?.label || id}`).join(", ");
+  const plural = taskIds.length > 1;
+  return `${names} ${plural ? "are" : "is"} in the corpus but ${
+    plural ? "have" : "has"
+  } not been collected yet — the first run lands on the next daily schedule. Nothing is wrong with the pipeline.`;
+}
+
+/**
+ * Why content density has nothing to draw, distinguishing two unlike causes.
+ *
+ * Before task F, no day could set a slope at all: task D supplied the whole
+ * character span and is one sentence repeated 800 times, so the record is
+ * permanently withheld and saying "waiting" would be wrong. Once task F is in the
+ * corpus the same emptiness means the opposite — the fit is sound and the first
+ * run simply has not landed — and saying "withheld" would be wrong. Read from the
+ * artifact rather than hard-coded, so the message flips itself on the day the data
+ * arrives instead of needing an edit nobody will remember to make.
+ */
+function densityWithheldReason() {
+  const tasks = state.eq?.tasks || [];
+  const hasProseTask = tasks.some((task) => task.task_id === "F");
+  const fits = state.eq?.tokenizer_ledger?.fits || [];
+  const everFitted = fits.some((fit) => fit.density_ok);
+
+  if (hasProseTask && !everFitted) {
+    return "Content density returns with the first run that includes task F · Long context (prose). Until then the only long task is D, whose context is one sentence repeated 800 times, so its slope measures that phrase rather than the tokenizers. Fixed request overhead comes from the same fit and is unaffected.";
+  }
+  if (!hasProseTask) {
+    return "Content density is withheld. Task D is the only task long enough to set the rate, and it is one sentence repeated 800 times, so the slope measures that phrase rather than the tokenizers. Fixed request overhead is measured from the same fit and is unaffected.";
+  }
+  // Task F exists and has fitted before, so an empty chart is an ordinary
+  // filter/window emptiness — not a claim about the corpus.
+  return "No fitted day in this window. Fixed request overhead is measured from the same fit if you need a reading for these days.";
 }
 
 /**
@@ -868,6 +931,10 @@ function showNodeTooltip(chart, hit) {
   // on the model's real length, not a measurement of it.
   const notes = [];
   if (point.newModel) notes.push("new model");
+  // Named separately from a model change: the model is the same, what changed is
+  // which tasks the fit was estimated from, and a reader comparing this point to
+  // yesterday's needs to know it is not quite the same quantity.
+  if (point.newBasis) notes.push("fit basis changed");
   if (point.censored) notes.push("cut short by provider");
   const suffix = notes.length ? ` · ${notes.join(" · ")}` : "";
   meta.textContent = `${fmtDate(pointDate(point))} · ${fmtMetric(point.y, state.metric)}${suffix}`;
@@ -1028,6 +1095,15 @@ function renderChart(points) {
     // line is broken at it below.
     const modelAt = ordered.map((p) => p.api_model || p.model_id || "");
     const newModelAt = modelAt.map((m, i) => i > 0 && m !== modelAt[i - 1]);
+    // The same argument applies to the fit's own basis. When task F joined the
+    // suite the fitted parameters stopped being estimated from task D, and an
+    // intercept estimated without a high-leverage degenerate point is not the
+    // same quantity as one estimated with it. Drawing that switch as a continuous
+    // line would read as provider drift on the exact measure whose job is to
+    // detect provider drift.
+    const basisAt = ordered.map((p) => p.fit_basis || "");
+    const newBasisAt = basisAt.map((b, i) => i > 0 && b !== basisAt[i - 1] && Boolean(b));
+    const breakAt = newModelAt.map((changed, i) => changed || newBasisAt[i]);
     datasets.push({
       label: `${providerLabel(providerId)} · ${tier}`,
       data: ordered.map((p, i) => ({
@@ -1038,6 +1114,8 @@ function renderChart(points) {
         // produced the reading being pointed at, which the newest model is not.
         model: modelAt[i],
         newModel: newModelAt[i],
+        newBasis: newBasisAt[i],
+        basis: basisAt[i],
       })),
       borderColor: color,
       backgroundColor: color,
@@ -1053,7 +1131,7 @@ function renderChart(points) {
       // things being measured, so the gap has to come from here rather than from
       // the data having a hole in it.
       segment: {
-        borderColor: (ctx) => (newModelAt[ctx.p1DataIndex] ? "transparent" : undefined),
+        borderColor: (ctx) => (breakAt[ctx.p1DataIndex] ? "transparent" : undefined),
       },
       // A truncated point is the provider's limit, not the model's length, so it
       // must not be drawn as though the model chose to stop there. Marked with a
@@ -1063,14 +1141,14 @@ function renderChart(points) {
       // and truncation wins the marker when both land on the same point, because
       // it is the one that says the number cannot be trusted.
       pointStyle: ordered.map((p, i) =>
-        p.censored ? "crossRot" : newModelAt[i] ? "rectRot" : "circle",
+        p.censored ? "crossRot" : breakAt[i] ? "rectRot" : "circle",
       ),
       pointBackgroundColor: color,
       pointBorderColor: color,
       pointBorderWidth: ordered.map((p) => (p.censored ? 1.5 : 1)),
       // Same node and rollover geometry as /pricing's trend chart.
       pointRadius: ordered.map((p, i) =>
-        p.censored ? 4 : newModelAt[i] ? 3.5 : ordered.length === 1 ? 3 : 1.5,
+        p.censored ? 4 : breakAt[i] ? 3.5 : ordered.length === 1 ? 3 : 1.5,
       ),
       pointHoverRadius: 5,
       pointHitRadius: 10,

@@ -20,7 +20,12 @@ from provider_token_count import (  # noqa: E402
     count_prompt_tokens_text,
     env_for_provider,
 )
-from task_corpus import CORPUS_VERSION, TASK_PROMPTS, TASK_SPECS  # noqa: E402
+from task_corpus import (  # noqa: E402
+    CORPUS_VERSION,
+    METER_TASK_IDS,
+    TASK_PROMPTS,
+    TASK_SPECS,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SHARED_ENV = REPO_ROOT.parent / "cofair" / ".env" / ".env.cofair"
@@ -32,10 +37,16 @@ DATA_DIR = REPO_ROOT / "dashboard" / "data"
 EQUIVALENCE_FILE = DATA_DIR / "equivalence.json"
 LEDGER_FILE = DATA_DIR / "tokenizer_ledger.json"
 
+# The literal sets are kept for ad-hoc runs, but `all` is derived, and the daily
+# workflow uses it. A hard-coded "ABCD" in a workflow file is how a task can be
+# added to the corpus, published on the dashboard, and then never collected —
+# which for task F would have left content density withheld forever, with nothing
+# failing anywhere to say why.
 TASK_SETS = {
     "ABC": ["A", "B", "C"],
     "D": ["D"],
     "ABCD": ["A", "B", "C", "D"],
+    "all": list(METER_TASK_IDS),
 }
 
 
@@ -153,18 +164,25 @@ def main() -> int:
     ]
     merged = keep + new_rows
     merged.sort(key=lambda r: (r.get("date") or "", r.get("provider_id") or "", r.get("tier") or "", r.get("task_id") or ""))
-    save_ledger(merged)
+    # A dry run must not touch the ledger. It calls no provider, so every row it
+    # builds carries `run_status: dry_run` — and because rows are replaced by
+    # (date, provider, tier, task), writing them *deletes the real counts already
+    # collected for today* and substitutes placeholders. Checking which tasks a
+    # flag selects is exactly what a dry run is for, and doing it cost a day of
+    # collected data before this guard existed.
+    if not args.dry_run:
+        save_ledger(merged)
 
     ok = sum(1 for row in new_rows if row["run_status"] == "ok")
     print(
         json.dumps(
             {
-                "event": "tokenizer_ledger_written",
+                "event": "tokenizer_ledger_written" if not args.dry_run else "tokenizer_ledger_dry_run",
                 "date": obs_date,
                 "tasks": task_ids,
                 "rows_written": len(new_rows),
                 "ok_rows": ok,
-                "output_file": str(LEDGER_FILE),
+                "output_file": None if args.dry_run else str(LEDGER_FILE),
             }
         )
     )
