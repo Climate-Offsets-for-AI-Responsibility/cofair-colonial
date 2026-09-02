@@ -45,9 +45,11 @@ from task_corpus import (  # noqa: E402
     CHAT_TRANSCRIPT,
     CORPUS_VERSION,
     METER_TASK_IDS,
+    MIN_LEXICAL_VARIETY,
     OUTPUT_CEILING,
     OUTPUT_POLICY_VERSION,
     TASK_DEFINITIONS,
+    TASK_LEXICAL_VARIETY,
     TASK_PACKS,
     TASK_PROMPTS,
 )
@@ -719,6 +721,26 @@ def build_ledger_fits(ledger_rows: list[dict]) -> list[dict]:
         # measure is meant to retire.
         fit_ok = len(points) >= MIN_FIT_TASKS and span >= MIN_FIT_CHAR_SPAN
 
+        # Third guard, and the one that decides whether the *slope* means anything.
+        # The two above are about arithmetic identifiability, and task D satisfies
+        # both single-handedly: it is 96% of the suite's characters, so it is the
+        # only reason any day clears 10x. But task D is one sentence repeated 800
+        # times (lexical variety 0.007), so the rate it sets is the marginal cost of
+        # re-merging a known phrase, not of tokenizing text. That is why 13 of 14
+        # model rows report 155.7 tokens/1K chars to within 0.2: the number is a
+        # property of the filler, not of the tokenizers, and publishing it as "the
+        # tokenizer measure" invents agreement between vocabularies that differ.
+        #
+        # The intercept survives this. Tasks A, B and C sit at 157-843 characters
+        # and anchor the fit near x=0, so a wrong slope out at 25,743 barely moves
+        # `fixed`, which is the half that has actually caught something real
+        # (grok-4.6, +430 tokens on every task at once). So suppress the rate alone
+        # and keep publishing the overhead.
+        longest = max(rows, key=lambda r: float(r["input_chars"]))
+        density_ok = bool(fit_ok) and (
+            TASK_LEXICAL_VARIETY.get(longest.get("task_id"), 0.0) >= MIN_LEXICAL_VARIETY
+        )
+
         fixed = rate = r2 = None
         if fit_ok:
             n = len(points)
@@ -748,11 +770,17 @@ def build_ledger_fits(ledger_rows: list[dict]) -> list[dict]:
                 "task_count": len(points),
                 "char_span_ratio": round(span, 2),
                 "fit_ok": bool(fit_ok),
+                # Whether the day's longest task is natural enough for its slope to
+                # be a tokenizer reading. False on the whole record while task D is
+                # the only long task.
+                "density_ok": bool(density_ok),
                 # Tokens added regardless of payload size. The number that moved
                 # when grok-4.6 gained 430 tokens on every task at once.
                 "fixed_overhead_tokens": None if fixed is None else round(fixed, 1),
                 # Marginal tokens per 1,000 characters of actual content.
-                "content_density_per_1k_chars": None if rate is None else round(rate * 1000, 3),
+                "content_density_per_1k_chars": (
+                    None if (rate is None or not density_ok) else round(rate * 1000, 3)
+                ),
                 "r2": None if r2 is None else round(r2, 6),
             }
         )

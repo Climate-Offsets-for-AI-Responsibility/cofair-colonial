@@ -113,7 +113,12 @@ def main() -> int:
                 status, tokens_in, error = "missing_key", None, "provider API key missing"
             else:
                 status, tokens_in, error, api_model = count_prompt_tokens_text(
-                    model["provider_id"], api_model, prompt, api_key, candidates
+                    model["provider_id"],
+                    api_model,
+                    prompt,
+                    api_key,
+                    candidates,
+                    tier=model["tier"],
                 )
 
             density = None

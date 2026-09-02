@@ -113,7 +113,12 @@ def main() -> int:
                 status, tokens, error = "missing_key", None, "provider API key missing"
             else:
                 status, tokens, error, api_model = count_prompt_tokens_messages(
-                    model["provider_id"], api_model, messages, api_key, candidates
+                    model["provider_id"],
+                    api_model,
+                    messages,
+                    api_key,
+                    candidates,
+                    tier=model["tier"],
                 )
 
             row = {

@@ -257,14 +257,28 @@ OPENAI_COMPATIBLE_BASES = {
 }
 
 
-def _count_one(provider_id: str, api_model: str, payload: Any, api_key: str, is_messages: bool):
+def _count_one(
+    provider_id: str,
+    api_model: str,
+    payload: Any,
+    api_key: str,
+    is_messages: bool,
+    tier: str | None = None,
+):
     if provider_id == "anthropic":
         counter = _anthropic_count_messages if is_messages else _anthropic_count_text
         return counter(api_model, payload, api_key), api_model
     if provider_id == "google":
+        # Gemini is the one provider whose callable id has to be discovered at
+        # runtime: the panel pins ids from the price catalog (gemini-3.1-pro) that
+        # `/v1beta/models` does not serve, so the preferred id misses and the tier
+        # hint alone decides what we fall back to. Hard-coding it here — workhorse
+        # for text, flagship for messages — meant the caller's tier was ignored,
+        # and google flagship was counted on gemini-flash-latest for the whole
+        # ledger: the workhorse model reported under both tiers.
         if is_messages:
-            return _gemini_count_messages(api_model, payload, api_key)
-        return _gemini_count_text(api_model, payload, api_key, tier_hint="workhorse")
+            return _gemini_count_messages(api_model, payload, api_key, tier_hint=tier or "flagship")
+        return _gemini_count_text(api_model, payload, api_key, tier_hint=tier or "workhorse")
     if provider_id in OPENAI_COMPATIBLE_BASES:
         base = OPENAI_COMPATIBLE_BASES[provider_id]
         counter = _openai_compat_count_messages if is_messages else _openai_compat_count_text
@@ -282,6 +296,7 @@ def _count(
     api_key: str,
     is_messages: bool,
     candidates: list[str] | None,
+    tier: str | None = None,
 ) -> tuple[str, int | None, str | None, str]:
     attempts = [api_model, *[c for c in (candidates or []) if c != api_model]]
     last_error: str | None = None
@@ -289,7 +304,9 @@ def _count(
     for candidate in attempts:
         used = candidate
         try:
-            tokens, used = _count_one(provider_id, candidate, payload, api_key, is_messages)
+            tokens, used = _count_one(
+                provider_id, candidate, payload, api_key, is_messages, tier=tier
+            )
         except LookupError as exc:
             return "unsupported_provider", None, str(exc), candidate
         except requests.HTTPError as exc:
@@ -309,9 +326,23 @@ def count_prompt_tokens_text(
     text: str,
     api_key: str,
     candidates: list[str] | None = None,
+    tier: str | None = None,
 ) -> tuple[str, int | None, str | None, str]:
-    """Count tokens for a single user-text prompt. Returns status, tokens, error, model."""
-    return _count(provider_id, api_model, text, api_key, is_messages=False, candidates=candidates)
+    """Count tokens for a single user-text prompt. Returns status, tokens, error, model.
+
+    Pass `tier` wherever the caller knows it: Gemini resolves its callable id from
+    the live model list, and without the tier it cannot tell a flagship row from a
+    workhorse one.
+    """
+    return _count(
+        provider_id,
+        api_model,
+        text,
+        api_key,
+        is_messages=False,
+        candidates=candidates,
+        tier=tier,
+    )
 
 
 def count_prompt_tokens_messages(
@@ -320,6 +351,7 @@ def count_prompt_tokens_messages(
     messages: list[dict[str, Any]],
     api_key: str,
     candidates: list[str] | None = None,
+    tier: str | None = None,
 ) -> tuple[str, int | None, str | None, str]:
     """Count tokens for a chat-message prefix (Test 4)."""
     return _count(
@@ -329,6 +361,7 @@ def count_prompt_tokens_messages(
         api_key,
         is_messages=True,
         candidates=candidates,
+        tier=tier,
     )
 
 
@@ -488,12 +521,14 @@ def _gemini_count_text(
     raise RuntimeError("No callable Gemini model for countTokens")
 
 
-def _gemini_count_messages(model: str, messages: list[dict[str, str]], api_key: str) -> tuple[int, str]:
+def _gemini_count_messages(
+    model: str, messages: list[dict[str, str]], api_key: str, tier_hint: str = "flagship"
+) -> tuple[int, str]:
     contents = []
     for turn in normalize_messages(messages):
         role = "user" if turn["role"] == "user" else "model"
         contents.append({"role": role, "parts": [{"text": turn["content"]}]})
-    candidates = _gemini_candidates(api_key, "flagship", preferred=model)
+    candidates = _gemini_candidates(api_key, tier_hint, preferred=model)
     last_error: Exception | None = None
     for candidate in candidates:
         try:

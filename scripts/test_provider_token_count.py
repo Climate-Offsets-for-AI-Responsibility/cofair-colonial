@@ -10,6 +10,7 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import requests
 
@@ -177,6 +178,73 @@ class ProviderFaultsTest(unittest.TestCase):
         body = '{"error":{"code":"billing_not_active","message":"Your account is not active"}}'
         self.assertEqual(classify_provider_error(429, body), "account")
         self.assertEqual(run_status_for_http(429, body), "provider_unavailable")
+
+
+class GeminiTierResolutionTest(unittest.TestCase):
+    """Gemini must count a flagship row on a flagship model.
+
+    Gemini is the only provider whose callable id is discovered at runtime. The
+    panel pins ids from the price catalog — `gemini-3.1-pro` — that
+    `/v1beta/models` does not serve, so the preferred id misses and the tier hint
+    is the only thing left to choose with. `_count_one` used to hard-code that
+    hint per payload shape (workhorse for text, flagship for messages), which
+    silently counted google flagship on gemini-flash-latest for the entire
+    tokenizer ledger: one model reported under two tiers, and a fabricated
+    agreement between them.
+    """
+
+    LIVE = ["gemini-pro-latest", "gemini-flash-latest"]
+
+    def _resolved(self, tier: str | None, is_messages: bool = False) -> str:
+        import provider_token_count as ptc
+
+        seen: dict[str, str] = {}
+
+        def fake_candidates(api_key, tier_hint, preferred):
+            seen["tier_hint"] = tier_hint
+            ordered = []
+            if preferred in self.LIVE:
+                ordered.append(preferred)
+            if tier_hint == "flagship":
+                ordered += [n for n in self.LIVE if "pro" in n and n not in ordered]
+            ordered += [n for n in self.LIVE if "flash" in n and n not in ordered]
+            return ordered
+
+        with (
+            mock.patch.object(ptc, "_gemini_candidates", fake_candidates),
+            mock.patch.object(ptc, "_gemini_count_tokens", return_value=4031),
+        ):
+            payload = [{"role": "user", "content": "hi"}] if is_messages else "hi"
+            status, tokens, error, used = ptc._count(
+                "google",
+                "gemini-3.1-pro",
+                payload,
+                "key",
+                is_messages=is_messages,
+                candidates=None,
+                tier=tier,
+            )
+        self.assertEqual(status, "ok", error)
+        self.assertEqual(tokens, 4031)
+        return used
+
+    def test_flagship_text_resolves_to_a_pro_model(self) -> None:
+        self.assertEqual(self._resolved("flagship"), "gemini-pro-latest")
+
+    def test_workhorse_text_resolves_to_a_flash_model(self) -> None:
+        self.assertEqual(self._resolved("workhorse"), "gemini-flash-latest")
+
+    def test_the_two_tiers_do_not_collapse_onto_one_model(self) -> None:
+        """The shape of the bug: both tiers reporting gemini-flash-latest."""
+        self.assertNotEqual(self._resolved("flagship"), self._resolved("workhorse"))
+
+    def test_flagship_messages_resolve_to_a_pro_model(self) -> None:
+        self.assertEqual(self._resolved("flagship", is_messages=True), "gemini-pro-latest")
+
+    def test_omitted_tier_keeps_the_prior_default(self) -> None:
+        """`tier` is optional, so callers that never passed it are unchanged."""
+        self.assertEqual(self._resolved(None), "gemini-flash-latest")
+        self.assertEqual(self._resolved(None, is_messages=True), "gemini-pro-latest")
 
 
 if __name__ == "__main__":

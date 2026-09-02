@@ -83,6 +83,25 @@ TASK_PROMPTS = {
     ),
 }
 
+
+# Share of a prompt's words that are distinct. A tokenizer comparison needs text
+# whose vocabulary the tokenizers can actually disagree about: BPE merges diverge
+# on rare words, casing, punctuation and digits, and a phrase repeated 800 times
+# offers exactly one merge decision amortized over 25,743 characters. Tasks A, B
+# and C score 0.84-0.96 here; task D scores 0.007.
+def lexical_variety(task_id: str) -> float:
+    words = TASK_PROMPTS[task_id].split()
+    return (len(set(words)) / len(words)) if words else 0.0
+
+
+# Floor for text allowed to set the fitted content rate in `build_ledger_fits`.
+# Well below the 0.84 that ordinary prose reaches and far above task D, so it
+# separates "natural language" from "one sentence on a loop" without being a knob
+# that ordinary corpus edits can trip.
+MIN_LEXICAL_VARIETY = 0.15
+
+TASK_LEXICAL_VARIETY = {task_id: lexical_variety(task_id) for task_id in TASK_PROMPTS}
+
 # Every task shares `OUTPUT_CEILING`, which is now `None` — uncapped. Per-task caps
 # were tuned to the answer each prompt "should" need, which meant the cap, not the
 # model, decided the observed length; a single shared ceiling had the same defect at
