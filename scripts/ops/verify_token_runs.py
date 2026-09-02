@@ -7,18 +7,28 @@ to a healthy one — the job reported success, Slack said success, and `/tokens`
 simply drew fewer lines. This reads the rebuilt `equivalence.json` and fails
 when a panel row collected nothing from a source that was supposed to run.
 
+Account-level faults (billing, revoked keys) are quarantined: the job exits 0 as
+`degraded`, writes `ops/token_run_report.json`, and surfaces an action-required
+alert instead of a daily red X.
+
 Usage: verify_token_runs.py --sources ledger [--sources ...] [--json]
 """
 from __future__ import annotations
 
 import argparse
 import json
+import re
+import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EQUIVALENCE_FILE = REPO_ROOT / "dashboard" / "data" / "equivalence.json"
+TOKEN_RUN_REPORT = REPO_ROOT / "ops" / "token_run_report.json"
 
 SOURCES = ("meter", "ledger", "wrapper")
+
+sys.path.insert(0, str(REPO_ROOT / "scripts" / "ops"))
+from provider_faults import remedy_for_error  # noqa: E402
 
 
 def verify_token_runs(sources: list[str], path: Path = EQUIVALENCE_FILE) -> dict:
@@ -29,7 +39,7 @@ def verify_token_runs(sources: list[str], path: Path = EQUIVALENCE_FILE) -> dict
 
     if not path.exists():
         add("equivalence_exists", False, f"{path} missing")
-        return {"passed": False, "checks": checks}
+        return {"passed": False, "status": "failed", "checks": checks, "unavailable": []}
 
     payload = json.loads(path.read_text())
     health = (payload.get("provider_health") or {}).get("panel")
@@ -39,13 +49,16 @@ def verify_token_runs(sources: list[str], path: Path = EQUIVALENCE_FILE) -> dict
             False,
             "equivalence.json has no provider_health — rebuild with build_dashboard_data.py",
         )
-        return {"passed": False, "checks": checks}
+        return {"passed": False, "status": "failed", "checks": checks, "unavailable": []}
 
     add("provider_health_present", True, f"{len(health)} panel rows")
+
+    unavailable_entries: list[dict] = []
 
     for source in sources:
         dark = []
         silent = []
+        unavailable = []
         for item in health:
             stats = (item.get("sources") or {}).get(source) or {}
             label = f"{item['provider_id']}·{item['tier']}"
@@ -53,6 +66,19 @@ def verify_token_runs(sources: list[str], path: Path = EQUIVALENCE_FILE) -> dict
                 continue
             if stats.get("error_count"):
                 dark.append(f"{label} ({stats.get('last_error_model')}): {stats.get('last_error')}")
+            elif stats.get("unavailable_count"):
+                remedy = remedy_for_error(stats.get("last_error") or "", item["provider_id"])
+                unavailable.append(f"{label}: {remedy}")
+                unavailable_entries.append(
+                    {
+                        "provider_id": item["provider_id"],
+                        "tier": item["tier"],
+                        "source": source,
+                        "signature": "ProviderAccountFault",
+                        "remedy": remedy,
+                        "error": stats.get("last_error"),
+                    }
+                )
             else:
                 silent.append(label)
         add(
@@ -65,8 +91,89 @@ def verify_token_runs(sources: list[str], path: Path = EQUIVALENCE_FILE) -> dict
             not silent,
             ", ".join(silent) if silent else "every panel row was attempted",
         )
+        add(
+            f"{source}_account_faults_quarantined",
+            True,
+            "; ".join(unavailable) if unavailable else "no account-level provider faults",
+        )
 
-    return {"passed": all(check["passed"] for check in checks), "checks": checks}
+    hard_failed = any(
+        not check["passed"]
+        for check in checks
+        if check["name"].endswith("_no_dark_providers") or check["name"].endswith("_no_silent_providers")
+    )
+    has_unavailable = bool(unavailable_entries)
+    if hard_failed:
+        status = "failed"
+        passed = False
+    elif has_unavailable:
+        status = "degraded"
+        passed = True
+    else:
+        status = "success"
+        passed = True
+
+    return {
+        "passed": passed,
+        "status": status,
+        "checks": checks,
+        "unavailable": unavailable_entries,
+    }
+
+
+def _retry_targets_from_checks(checks: list[dict]) -> list[dict]:
+    targets: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    for check in checks:
+        if check.get("passed", True) or not check["name"].endswith("_no_dark_providers"):
+            continue
+        source = check["name"].replace("_no_dark_providers", "")
+        for part in (check.get("detail") or "").split(";"):
+            part = part.strip()
+            if not part or part.startswith("every panel"):
+                continue
+            match = re.match(r"([^·]+)·([^\s(]+)", part)
+            if not match:
+                continue
+            key = (match.group(1), source)
+            if key in seen:
+                continue
+            seen.add(key)
+            targets.append({"provider_id": match.group(1), "source": source})
+    return targets
+
+
+def write_token_run_report(result: dict, run_id: str | None = None) -> Path:
+    TOKEN_RUN_REPORT.parent.mkdir(parents=True, exist_ok=True)
+    unavailable = result.get("unavailable") or []
+    signatures = sorted({entry.get("signature") for entry in unavailable if entry.get("signature")})
+    primary_signature = signatures[0] if len(signatures) == 1 else "ProviderAccountFault"
+    report = {
+        "status": result.get("status", "failed"),
+        "passed": result.get("passed", False),
+        "signature": primary_signature if result.get("status") == "degraded" else "TransientProviderFault",
+        "unavailable": unavailable,
+        "checks": result.get("checks", []),
+        "run_id": run_id,
+    }
+    if result.get("status") == "failed":
+        failed = [
+            check["name"]
+            for check in result.get("checks", [])
+            if not check["passed"]
+            and (
+                check["name"].endswith("_no_dark_providers")
+                or check["name"].endswith("_no_silent_providers")
+            )
+        ]
+        report["signature"] = "TransientProviderFault" if failed else "UnknownError"
+        report["error"] = ", ".join(failed)
+        report["retry_targets"] = _retry_targets_from_checks(result.get("checks", []))
+    elif result.get("status") == "degraded":
+        remedies = [entry.get("remedy") for entry in unavailable if entry.get("remedy")]
+        report["error"] = "; ".join(dict.fromkeys(remedies)) if remedies else "provider account fault"
+    TOKEN_RUN_REPORT.write_text(json.dumps(report, indent=2) + "\n")
+    return TOKEN_RUN_REPORT
 
 
 def main() -> int:
@@ -77,14 +184,31 @@ def main() -> int:
         choices=SOURCES,
         help="Source to gate on; repeatable. Defaults to all three.",
     )
+    ap.add_argument("--json", action="store_true", help="Print full result JSON only.")
+    ap.add_argument("--run-id", default=None, help="Workflow run id for the token run report.")
     args = ap.parse_args()
 
     result = verify_token_runs(args.sources or list(SOURCES))
-    print(json.dumps(result, indent=2))
+    if result["status"] in ("degraded", "failed"):
+        write_token_run_report(result, run_id=args.run_id)
+
+    if args.json:
+        print(json.dumps(result, indent=2))
+    else:
+        print(json.dumps(result, indent=2))
+
     if not result["passed"]:
         failed = [check["name"] for check in result["checks"] if not check["passed"]]
         print(f"::error::token run verification failed: {', '.join(failed)}")
-    return 0 if result["passed"] else 1
+        return 1
+
+    if result["status"] == "degraded":
+        unavailable = result.get("unavailable") or []
+        summary = "; ".join(
+            f"{entry['provider_id']}·{entry['tier']} ({entry['source']})" for entry in unavailable
+        )
+        print(f"::warning::token run verification degraded (action required): {summary}")
+    return 0
 
 
 if __name__ == "__main__":

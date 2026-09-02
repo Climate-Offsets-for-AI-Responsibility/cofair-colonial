@@ -25,8 +25,17 @@ def classify_error(message: str) -> tuple[str, str]:
         return f"KeyError:{key_match.group(1)}", "parse"
     if re.search(r"sanity check failed", text, re.I):
         return "SanityCheckFailed", "parse"
+    if re.search(
+        r"billing_not_active|account is not active|insufficient_quota|invalid_api_key|"
+        r"credit balance is too low|payment required|ProviderAccountFault",
+        text,
+        re.I,
+    ):
+        return "ProviderAccountFault", "account"
     if re.search(r"auth|401|403|unauthorized|forbidden", text, re.I):
         return "AuthError", "auth"
+    if re.search(r"TransientProviderFault|overloaded_error|529", text, re.I):
+        return "TransientProviderFault", "rate_limit"
     if re.search(r"rate.?limit|429|quota", text, re.I):
         return "RateLimit", "rate_limit"
     if re.search(r"timeout|timed out", text, re.I):

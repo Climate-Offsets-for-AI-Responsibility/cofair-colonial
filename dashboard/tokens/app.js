@@ -108,11 +108,14 @@ const METRICS = {
     axis: "tokens / 1K chars (content only)",
     source: "fit",
     note:
-      "The tokenizer measure the other two are not. Each day's counts are fitted as " +
-      "tokens = fixed overhead + rate × characters across tasks A–D; this is the rate. " +
-      "Because it is estimated across the tasks rather than within one, it does not " +
-      "change when you change the task pack, and it ignores the constant every provider " +
-      "prepends. It moves only on a real re-tokenization.",
+      "Each day's counts are fitted as tokens = fixed overhead + rate × characters " +
+      "across tasks A–D; this is the rate. Estimated across tasks rather than within " +
+      "one, so it does not change when you change the task pack, and it ignores the " +
+      "constant every provider prepends. Currently withheld: the only task long " +
+      "enough to set this slope is task D, which is one sentence repeated 800 times, " +
+      "so the rate measures that phrase and not the tokenizers — which is why it read " +
+      "the same for almost every model. It returns when a long task with natural text " +
+      "joins the suite. Fixed request overhead is unaffected and still published.",
     decimals: 1,
     // Twelve of fourteen rows sit within 0.2 tokens/1K chars of each other; a zero
     // baseline would render that as one line and hide the only real outlier.
@@ -570,6 +573,14 @@ function darkPanelRows() {
   });
 }
 
+function unavailablePanelRows() {
+  const source = METRICS[state.metric].source || "meter";
+  return (state.eq?.provider_health?.panel || []).filter((item) => {
+    const stats = item.sources?.[source];
+    return stats && !stats.ok_count && !stats.error_count && stats.unavailable_count;
+  });
+}
+
 function fillProviderChips(elementId) {
   const el = document.getElementById(elementId);
   if (!el) return;
@@ -677,35 +688,65 @@ function syncProviderChips() {
 
 function renderHealth() {
   const dark = darkPanelRows();
+  const unavailable = unavailablePanelRows();
   const byProvider = new Map();
   dark.forEach((item) => {
-    if (!byProvider.has(item.provider_id)) byProvider.set(item.provider_id, []);
-    byProvider.get(item.provider_id).push(item);
+    if (!byProvider.has(item.provider_id)) byProvider.set(item.provider_id, { dark: [], unavailable: [] });
+    byProvider.get(item.provider_id).dark.push(item);
+  });
+  unavailable.forEach((item) => {
+    if (!byProvider.has(item.provider_id)) byProvider.set(item.provider_id, { dark: [], unavailable: [] });
+    byProvider.get(item.provider_id).unavailable.push(item);
   });
 
   document.querySelectorAll(".chip[data-provider]").forEach((chip) => {
-    const rows = byProvider.get(chip.dataset.provider);
-    if (!rows) {
+    const entry = byProvider.get(chip.dataset.provider);
+    if (!entry) {
       delete chip.dataset.dark;
+      delete chip.dataset.unavailable;
       chip.removeAttribute("title");
       return;
     }
-    chip.dataset.dark = "true";
-    chip.title = rows
-      .map((row) => {
-        const stats = row.sources[METRICS[state.metric].source || "meter"];
-        return `${row.tier}: ${stats.last_error_model || "?"} — ${String(stats.last_error || "").slice(0, 140)}`;
-      })
-      .join("\n");
+    delete chip.dataset.dark;
+    delete chip.dataset.unavailable;
+    chip.removeAttribute("title");
+    if (entry.dark.length) {
+      chip.dataset.dark = "true";
+      chip.title = entry.dark
+        .map((row) => {
+          const stats = row.sources[METRICS[state.metric].source || "meter"];
+          return `${row.tier}: ${stats.last_error_model || "?"} — ${String(stats.last_error || "").slice(0, 140)}`;
+        })
+        .join("\n");
+    } else if (entry.unavailable.length) {
+      chip.dataset.unavailable = "true";
+      chip.title = entry.unavailable
+        .map((row) => {
+          const stats = row.sources[METRICS[state.metric].source || "meter"];
+          return `${row.tier}: ${stats.last_unavailable_remedy || stats.last_error || "provider account inactive"}`;
+        })
+        .join("\n");
+    }
   });
 
   const note = document.getElementById("healthNote");
-  note.hidden = dark.length === 0;
-  note.textContent = dark.length
-    ? `Not collecting for this measure: ${dark
+  const messages = [];
+  if (dark.length) {
+    messages.push(
+      `Not collecting for this measure: ${dark
         .map((item) => `${providerLabel(item.provider_id)} · ${item.tier}`)
-        .join(", ")}. The last attempt returned an error, so these are missing rather than flat.`
-    : "";
+        .join(", ")}. The last attempt returned an error, so these are missing rather than flat.`,
+    );
+  }
+  if (unavailable.length) {
+    messages.push(
+      `Provider account inactive (not a collection failure): ${unavailable
+        .map((item) => `${providerLabel(item.provider_id)} · ${item.tier}`)
+        .join(", ")}.`,
+    );
+  }
+  note.hidden = messages.length === 0;
+  note.textContent = messages.join(" ");
 }
 
 /**
@@ -721,6 +762,13 @@ function emptyChartReason() {
     return "Wrapper overhead is measured on task E only. Choose the full suite or E · Chat transcript.";
   }
   if (source === "fit") {
+    // Two different empty states share this source, and they mean opposite things.
+    // Content density is withheld on every day by design while task D is the only
+    // long task, so "not enough spread in task length" would be simply false —
+    // there is plenty of spread, and that is the problem.
+    if (state.metric === "ledger_content_density") {
+      return "Content density is withheld. Task D is the only task long enough to set the rate, and it is one sentence repeated 800 times, so the slope measures that phrase rather than the tokenizers. Fixed request overhead is measured from the same fit and is unaffected.";
+    }
     // The fit spans the day's whole task set by design, so an empty chart here is
     // never about the pack — it is a day that could not be fitted at all.
     return "No day in the window has enough of a spread in task length to separate fixed overhead from content rate. Needs at least three tasks spanning 10× in characters.";

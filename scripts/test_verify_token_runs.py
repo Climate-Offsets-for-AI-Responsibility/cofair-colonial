@@ -24,7 +24,10 @@ PANEL = [
 
 
 def _ledger(
-    provider_id: str, status: str, error: str | None = None, date: str = "2026-08-21"
+    provider_id: str,
+    status: str,
+    error: str | None = None,
+    date: str = "2026-08-21",
 ) -> dict:
     return {
         "provider_id": provider_id,
@@ -47,6 +50,27 @@ class BuildProviderHealthTest(unittest.TestCase):
         self.assertFalse(by_id["openai"]["reporting"])
         self.assertEqual(by_id["openai"]["dark_sources"], ["ledger"])
         self.assertEqual(by_id["openai"]["sources"]["ledger"]["last_error"], "400 bad param")
+
+    def test_account_fault_is_quarantined_not_dark(self) -> None:
+        health = build_provider_health(
+            PANEL,
+            [],
+            [
+                _ledger("google", "ok"),
+                _ledger(
+                    "openai",
+                    "provider_unavailable",
+                    '429 billing_not_active :: {"error":{"code":"billing_not_active"}}',
+                ),
+            ],
+            [],
+        )
+        openai = next(item for item in health if item["provider_id"] == "openai")
+        self.assertFalse(openai["reporting"])
+        self.assertEqual(openai["dark_sources"], [])
+        self.assertEqual(openai["unavailable_sources"], ["ledger"])
+        self.assertEqual(openai["sources"]["ledger"]["unavailable_count"], 1)
+        self.assertEqual(openai["sources"]["ledger"]["error_count"], 0)
 
     def test_partial_success_still_counts_as_reporting(self) -> None:
         health = build_provider_health(
@@ -102,9 +126,30 @@ class VerifyTokenRunsTest(unittest.TestCase):
         )
         result = verify_token_runs(["ledger"], path)
         self.assertFalse(result["passed"])
+        self.assertEqual(result["status"], "failed")
         dark = next(c for c in result["checks"] if c["name"] == "ledger_no_dark_providers")
         self.assertIn("openai", dark["detail"])
         self.assertIn("404 no model", dark["detail"])
+
+    def test_account_fault_only_exits_degraded(self) -> None:
+        path = self._write(
+            self._payload(
+                [
+                    _ledger("google", "ok"),
+                    _ledger(
+                        "openai",
+                        "provider_unavailable",
+                        'billing_not_active :: {"error":{"code":"billing_not_active"}}',
+                    ),
+                ]
+            )
+        )
+        result = verify_token_runs(["ledger"], path)
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["status"], "degraded")
+        dark = next(c for c in result["checks"] if c["name"] == "ledger_no_dark_providers")
+        self.assertTrue(dark["passed"])
+        self.assertEqual(len(result["unavailable"]), 1)
 
     def test_provider_that_never_ran_fails_the_gate(self) -> None:
         path = self._write(self._payload([_ledger("google", "ok")]))

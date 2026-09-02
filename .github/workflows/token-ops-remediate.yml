@@ -1,0 +1,104 @@
+name: Token ops remediate
+
+permissions:
+  contents: write
+
+on:
+  workflow_run:
+    workflows: ["Daily Tokenizer Ledger", "Daily Token Equivalence"]
+    types: [completed]
+
+concurrency:
+  group: dashboard-data-write
+  cancel-in-progress: false
+
+jobs:
+  remediate:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download token run report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: token-run-report
+          path: .
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Classify and remediate
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+          COFAIR_OPS_SOURCE: colonial-token-ops-remediate
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_WORKFLOW: token-ops-remediate.yml
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          TRACKER_AMAZON_API_KEY: ${{ secrets.TRACKER_AMAZON_API_KEY }}
+          AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
+        run: |
+          set -euo pipefail
+          if [ ! -f ops/token_run_report.json ]; then
+            echo "No ops/token_run_report.json in artifact"
+            exit 1
+          fi
+          STATUS=$(python -c "import json; print(json.load(open('ops/token_run_report.json')).get('status','failed'))")
+          SIGNATURE=$(python -c "import json; print(json.load(open('ops/token_run_report.json')).get('signature','UnknownError'))")
+          if [ "$STATUS" = "degraded" ] || [ "$SIGNATURE" = "ProviderAccountFault" ]; then
+            echo "Account-level provider fault — skipping automatic remediation"
+            python scripts/ops/emit_pipeline_incident.py \
+              --pipeline colonial-token-ops-remediate \
+              --status escalated \
+              --error "ACTION REQUIRED: $(python -c "import json; print(json.load(open('ops/token_run_report.json')).get('error','provider account fault'))")" \
+              --run-id "${{ github.event.workflow_run.id }}"
+            exit 0
+          fi
+          RUN_ID=$(python -c "import json; print(json.load(open('ops/token_run_report.json')).get('run_id','${{ github.event.workflow_run.id }}'))")
+          ERROR=$(python -c "import json; print(json.load(open('ops/token_run_report.json')).get('error','unknown'))")
+          python scripts/ops/gha_ops.py remediate \
+            --pipeline colonial-token-ops-remediate \
+            --signature "$SIGNATURE" \
+            --run-id "$RUN_ID" \
+            --error-message "$ERROR" || REMED_FAILED=1
+          if [ "${REMED_FAILED:-0}" = "1" ]; then
+            python scripts/ops/emit_pipeline_incident.py \
+              --pipeline colonial-token-ops-remediate \
+              --status escalated \
+              --error "token auto-remediation failed: $ERROR" \
+              --run-id "$RUN_ID"
+            exit 1
+          fi
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add dashboard/data/
+          git commit -m "Auto-remediate token collection (${SIGNATURE})" || echo "No changes to commit"
+          git push
+
+      - name: Upload remediated incident
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: colonial-token-ops-incident-remediated
+          path: ops/incidents/latest.json
+          if-no-files-found: ignore

@@ -21,11 +21,13 @@ if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 from provider_token_count import (  # noqa: E402
     _is_model_unavailable,
+    _status_for_http_error,
     api_model_candidates,
     bedrock_region,
     env_for_provider,
     openai_compatible_body,
 )
+from provider_http import request_with_retry
 from task_corpus import (  # noqa: E402
     CORPUS_VERSION,
     METER_TASK_IDS,
@@ -46,6 +48,11 @@ RUNS_FILE = DATA_DIR / "equivalence_runs.json"
 TIMEOUT_SECONDS = 90
 
 _GOOGLE_MODELS_CACHE: list[str] | None = None
+
+
+def _http_request(method: str, url: str, **kwargs):
+    """Thin wrapper so unit tests can patch HTTP without touching provider_http."""
+    return _http_request(method, url, **kwargs)
 
 
 def now_iso_z() -> str:
@@ -119,7 +126,8 @@ _ANTHROPIC_LIMIT_RE = re.compile(r"max_tokens:\s*\d+\s*>\s*(\d+)")
 
 
 def _anthropic_call(model: str, prompt: str, max_tokens: int, api_key: str):
-    return requests.post(
+    return _http_request(
+        "POST",
         "https://api.anthropic.com/v1/messages",
         headers={
             "x-api-key": api_key,
@@ -259,7 +267,8 @@ def run_openai_compatible(
     max_tokens: int | None,
     api_key: str,
 ) -> Usage:
-    response = requests.post(
+    response = _http_request(
+        "POST",
         f"{base_url}/chat/completions",
         headers={
             "Authorization": f"Bearer {api_key}",
@@ -270,7 +279,8 @@ def run_openai_compatible(
         ),
         timeout=TIMEOUT_SECONDS,
     )
-    response.raise_for_status()
+    if not response.ok:
+        response.raise_for_status()
     payload = response.json()
     usage = payload.get("usage", {})
     choices = payload.get("choices") or [{}]
@@ -287,7 +297,8 @@ def run_gemini(model: str, prompt: str, max_tokens: int | None, api_key: str) ->
     # Omitted entirely when uncapped, so the model applies its own maximum.
     if max_tokens is not None:
         generation_config["maxOutputTokens"] = max_tokens
-    response = requests.post(
+    response = _http_request(
+        "POST",
         f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
         headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
         json={
@@ -296,7 +307,8 @@ def run_gemini(model: str, prompt: str, max_tokens: int | None, api_key: str) ->
         },
         timeout=TIMEOUT_SECONDS,
     )
-    response.raise_for_status()
+    if not response.ok:
+        response.raise_for_status()
     payload = response.json()
     usage = payload.get("usageMetadata", {})
     candidates = payload.get("candidates") or [{}]
@@ -313,7 +325,8 @@ def run_bedrock(model: str, prompt: str, max_tokens: int | None, api_key: str) -
     inference_config: dict = {"temperature": 0}
     if max_tokens is not None:
         inference_config["maxTokens"] = max_tokens
-    response = requests.post(
+    response = _http_request(
+        "POST",
         f"https://bedrock-runtime.{region}.amazonaws.com/model/{model}/converse",
         headers={
             "Authorization": f"Bearer {api_key}",
@@ -325,7 +338,8 @@ def run_bedrock(model: str, prompt: str, max_tokens: int | None, api_key: str) -
         },
         timeout=TIMEOUT_SECONDS,
     )
-    response.raise_for_status()
+    if not response.ok:
+        response.raise_for_status()
     payload = response.json()
     usage = payload.get("usage", {})
     return Usage(
@@ -340,12 +354,14 @@ def available_google_models(api_key: str) -> list[str]:
     global _GOOGLE_MODELS_CACHE
     if _GOOGLE_MODELS_CACHE is not None:
         return _GOOGLE_MODELS_CACHE
-    response = requests.get(
+    response = _http_request(
+        "GET",
         "https://generativelanguage.googleapis.com/v1beta/models",
         headers={"x-goog-api-key": api_key},
         timeout=TIMEOUT_SECONDS,
     )
-    response.raise_for_status()
+    if not response.ok:
+        response.raise_for_status()
     payload = response.json()
     models = []
     for item in payload.get("models", []):
@@ -511,7 +527,7 @@ def run_provider_task(
             # else is a real fault and must surface on the first attempt.
             if _is_model_unavailable(exc):
                 continue
-            return TaskResult("error", None, None, last_error, candidate, *own_prices)
+            return TaskResult(_status_for_http_error(exc), None, None, last_error, candidate, *own_prices)
         except Exception as exc:  # noqa: BLE001
             return TaskResult("error", None, None, str(exc), candidate, *own_prices)
         return TaskResult(

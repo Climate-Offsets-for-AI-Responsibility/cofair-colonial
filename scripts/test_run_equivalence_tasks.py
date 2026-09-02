@@ -23,7 +23,9 @@ import run_equivalence_tasks as runner
 def _response(status: int, payload: dict | None = None, text: str = "") -> mock.Mock:
     response = mock.Mock(spec=requests.Response)
     response.status_code = status
+    response.ok = status < 400
     response.text = text
+    response.headers = {}
     response.json.return_value = payload or {}
     if status >= 400:
         response.raise_for_status.side_effect = requests.HTTPError(
@@ -76,7 +78,7 @@ class AnthropicCapDiscoveryTest(unittest.TestCase):
         # The normal path: one absurd ask, one rejection that states the real
         # maximum, one call at exactly that maximum. No rung guessing at all.
         calls = [_limit_rejection(1_000_000, 64_000), _response(200, ANTHROPIC_OK)]
-        with mock.patch.object(runner.requests, "post", side_effect=calls) as post:
+        with mock.patch.object(runner, "_http_request", side_effect=calls) as post:
             usage = runner.run_anthropic("claude-opus-5", "hi", None, "k")
 
         self.assertEqual(usage.cap_sent, 64_000)
@@ -87,7 +89,7 @@ class AnthropicCapDiscoveryTest(unittest.TestCase):
         # If a future model does allow it, the first ask simply succeeds and no
         # cap was ever in play.
         with mock.patch.object(
-            runner.requests, "post", return_value=_response(200, ANTHROPIC_OK)
+            runner, "_http_request", return_value=_response(200, ANTHROPIC_OK)
         ) as post:
             usage = runner.run_anthropic("claude-opus-6", "hi", None, "k")
 
@@ -100,7 +102,7 @@ class AnthropicCapDiscoveryTest(unittest.TestCase):
         # max_tokens without naming a maximum. Stepping down is right either way.
         vague = _response(400, text="max_tokens is too large for a non-streaming request")
         calls = [vague, vague, _response(200, ANTHROPIC_OK)]
-        with mock.patch.object(runner.requests, "post", side_effect=calls) as post:
+        with mock.patch.object(runner, "_http_request", side_effect=calls) as post:
             usage = runner.run_anthropic("claude-opus-5", "hi", None, "k")
 
         self.assertEqual(usage.cap_sent, runner.ANTHROPIC_MAX_TOKENS_LADDER[2])
@@ -110,7 +112,7 @@ class AnthropicCapDiscoveryTest(unittest.TestCase):
         """Retrying an unrelated 400 would report a smaller cap as though the
         model's limit were the problem, hiding the real fault."""
         with mock.patch.object(
-            runner.requests, "post", return_value=_response(400, text="invalid api key")
+            runner, "_http_request", return_value=_response(400, text="invalid api key")
         ) as post:
             with self.assertRaises(requests.HTTPError):
                 runner.run_anthropic("claude-opus-5", "hi", None, "k")
@@ -121,11 +123,11 @@ class AnthropicCapDiscoveryTest(unittest.TestCase):
         """A rejected request is not billed, but 56 rows of re-discovery is a lot
         of pointless round trips. Discover once per model, then reuse."""
         calls = [_limit_rejection(1_000_000, 64_000), _response(200, ANTHROPIC_OK)]
-        with mock.patch.object(runner.requests, "post", side_effect=calls):
+        with mock.patch.object(runner, "_http_request", side_effect=calls):
             first = runner.run_anthropic("claude-opus-5", "hi", None, "k")
 
         with mock.patch.object(
-            runner.requests, "post", return_value=_response(200, ANTHROPIC_OK)
+            runner, "_http_request", return_value=_response(200, ANTHROPIC_OK)
         ) as post:
             second = runner.run_anthropic("claude-opus-5", "hi", None, "k")
 
@@ -135,7 +137,7 @@ class AnthropicCapDiscoveryTest(unittest.TestCase):
     def test_an_explicit_cap_is_never_revised(self) -> None:
         # The count-only ledger's 1-token cap is an instruction, not a guess.
         with mock.patch.object(
-            runner.requests, "post", return_value=_response(200, ANTHROPIC_TRUNCATED)
+            runner, "_http_request", return_value=_response(200, ANTHROPIC_TRUNCATED)
         ) as post:
             usage = runner.run_anthropic("claude-opus-5", "hi", 512, "k")
 
@@ -161,7 +163,7 @@ class AnthropicStepUpTest(unittest.TestCase):
         # proof 8,192 is not this model's real limit.
         runner._ANTHROPIC_ACCEPTED_MAX["claude-opus-5"] = 8_192
         calls = [_response(200, ANTHROPIC_TRUNCATED), _response(200, ANTHROPIC_OK)]
-        with mock.patch.object(runner.requests, "post", side_effect=calls) as post:
+        with mock.patch.object(runner, "_http_request", side_effect=calls) as post:
             usage = runner.run_anthropic("claude-opus-5", "hi", None, "k")
 
         self.assertEqual(post.call_count, 2)
@@ -180,7 +182,7 @@ class AnthropicStepUpTest(unittest.TestCase):
             _response(200, ANTHROPIC_TRUNCATED),
             _response(200, ANTHROPIC_OK),
         ]
-        with mock.patch.object(runner.requests, "post", side_effect=calls) as post:
+        with mock.patch.object(runner, "_http_request", side_effect=calls) as post:
             usage = runner.run_anthropic("claude-opus-5", "hi", None, "k")
 
         self.assertEqual(
@@ -197,7 +199,7 @@ class AnthropicStepUpTest(unittest.TestCase):
         runner._ANTHROPIC_ACCEPTED_MAX["claude-opus-5"] = 64_000
         runner._ANTHROPIC_REJECTED_MIN["claude-opus-5"] = 64_001
         with mock.patch.object(
-            runner.requests, "post", return_value=_response(200, ANTHROPIC_TRUNCATED)
+            runner, "_http_request", return_value=_response(200, ANTHROPIC_TRUNCATED)
         ) as post:
             usage = runner.run_anthropic("claude-opus-5", "hi", None, "k")
 
@@ -212,7 +214,7 @@ class AnthropicStepUpTest(unittest.TestCase):
         for the first cap it found."""
         runner._ANTHROPIC_ACCEPTED_MAX["claude-opus-5"] = 4_096
         truncated = _response(200, ANTHROPIC_TRUNCATED)
-        with mock.patch.object(runner.requests, "post", return_value=truncated) as post:
+        with mock.patch.object(runner, "_http_request", return_value=truncated) as post:
             usage = runner.run_anthropic("claude-opus-5", "hi", None, "k")
 
         self.assertTrue(usage.truncated)
@@ -232,7 +234,7 @@ class TruncationFromStopReasonTest(unittest.TestCase):
             with self.subTest(reason=reason):
                 payload = {"usage": {"input_tokens": 1, "output_tokens": 2}, "stop_reason": reason}
                 with mock.patch.object(
-                    runner.requests, "post", return_value=_response(200, payload)
+                    runner, "_http_request", return_value=_response(200, payload)
                 ):
                     self.assertIs(
                         runner.run_anthropic("m", "hi", 10, "k").truncated, expected
@@ -246,7 +248,7 @@ class TruncationFromStopReasonTest(unittest.TestCase):
                     "choices": [{"finish_reason": reason}],
                 }
                 with mock.patch.object(
-                    runner.requests, "post", return_value=_response(200, payload)
+                    runner, "_http_request", return_value=_response(200, payload)
                 ):
                     usage = runner.run_openai_compatible(
                         "https://api.x.ai/v1", "m", "hi", None, "k"
@@ -261,7 +263,7 @@ class TruncationFromStopReasonTest(unittest.TestCase):
                     "candidates": [{"finishReason": reason}],
                 }
                 with mock.patch.object(
-                    runner.requests, "post", return_value=_response(200, payload)
+                    runner, "_http_request", return_value=_response(200, payload)
                 ):
                     self.assertIs(runner.run_gemini("m", "hi", None, "k").truncated, expected)
 
@@ -273,7 +275,7 @@ class TruncationFromStopReasonTest(unittest.TestCase):
                     "stopReason": reason,
                 }
                 with mock.patch.object(
-                    runner.requests, "post", return_value=_response(200, payload)
+                    runner, "_http_request", return_value=_response(200, payload)
                 ):
                     self.assertIs(runner.run_bedrock("m", "hi", None, "k").truncated, expected)
 
@@ -284,7 +286,7 @@ class TruncationFromStopReasonTest(unittest.TestCase):
             "usage": {"prompt_tokens": 90, "completion_tokens": 31_500},
             "choices": [{"finish_reason": "stop"}],
         }
-        with mock.patch.object(runner.requests, "post", return_value=_response(200, payload)):
+        with mock.patch.object(runner, "_http_request", return_value=_response(200, payload)):
             usage = runner.run_openai_compatible("https://api.x.ai/v1", "m", "hi", None, "k")
 
         self.assertEqual(usage.tokens_out, 31_500)
@@ -300,7 +302,7 @@ class UncappedRequestBodyTest(unittest.TestCase):
             "candidates": [{"finishReason": "STOP"}],
         }
         with mock.patch.object(
-            runner.requests, "post", return_value=_response(200, payload)
+            runner, "_http_request", return_value=_response(200, payload)
         ) as post:
             runner.run_gemini("m", "hi", None, "k")
 
@@ -311,7 +313,7 @@ class UncappedRequestBodyTest(unittest.TestCase):
     def test_bedrock_omits_max_tokens(self) -> None:
         payload = {"usage": {"inputTokens": 1, "outputTokens": 2}, "stopReason": "end_turn"}
         with mock.patch.object(
-            runner.requests, "post", return_value=_response(200, payload)
+            runner, "_http_request", return_value=_response(200, payload)
         ) as post:
             runner.run_bedrock("m", "hi", None, "k")
 

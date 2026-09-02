@@ -8,9 +8,18 @@ from __future__ import annotations
 
 import os
 import re
+import sys
+from pathlib import Path
 from typing import Any
 
 import requests
+
+_SCRIPTS = Path(__file__).resolve().parent
+if str(_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS))
+
+from ops.provider_faults import classify_provider_error, run_status_for_category
+from provider_http import request_with_retry
 
 TIMEOUT_SECONDS = 90
 
@@ -99,12 +108,14 @@ def anthropic_model_ids(api_key: str) -> list[str]:
     global _ANTHROPIC_MODEL_IDS
     if _ANTHROPIC_MODEL_IDS is not None:
         return _ANTHROPIC_MODEL_IDS
-    response = requests.get(
+    response = request_with_retry(
+        "GET",
         "https://api.anthropic.com/v1/models?limit=100",
         headers={"x-api-key": api_key, "anthropic-version": "2023-06-01"},
         timeout=TIMEOUT_SECONDS,
     )
-    response.raise_for_status()
+    if not response.ok:
+        raise _http_error_from_response(response)
     _ANTHROPIC_MODEL_IDS = [item["id"] for item in response.json().get("data", []) if item.get("id")]
     return _ANTHROPIC_MODEL_IDS
 
@@ -179,19 +190,31 @@ _MODEL_UNAVAILABLE_PATTERNS = (
 )
 
 
+def _http_error_from_response(response: requests.Response) -> requests.HTTPError:
+    exc = requests.HTTPError(f"{response.status_code} Client Error", response=response)
+    return exc
+
+
+def _status_for_http_error(exc: requests.HTTPError) -> str:
+    response = exc.response
+    if response is None:
+        return "error"
+    try:
+        body = response.text
+    except Exception:  # noqa: BLE001
+        body = ""
+    return run_status_for_http(response.status_code, body)
+
+
 def _is_model_unavailable(exc: requests.HTTPError) -> bool:
     response = exc.response
     if response is None:
         return False
-    if response.status_code in (403, 404):
-        return True
-    if response.status_code not in (400, 422):
-        return False
     try:
-        body = response.text.lower()
+        body = response.text
     except Exception:  # noqa: BLE001
-        return False
-    return "model" in body and any(p in body for p in _MODEL_UNAVAILABLE_PATTERNS)
+        body = ""
+    return classify_provider_error(response.status_code, body) == "model_unavailable"
 
 
 def _redact(msg: str) -> str:
@@ -273,7 +296,7 @@ def _count(
             last_error = _http_error_message(exc)
             if _is_model_unavailable(exc):
                 continue
-            return "error", None, last_error, candidate
+            return _status_for_http_error(exc), None, last_error, candidate
         except Exception as exc:  # noqa: BLE001
             return "error", None, str(exc), candidate
         return "ok", tokens, None, used
@@ -310,7 +333,8 @@ def count_prompt_tokens_messages(
 
 
 def _anthropic_count_text(model: str, text: str, api_key: str) -> int:
-    response = requests.post(
+    response = request_with_retry(
+        "POST",
         "https://api.anthropic.com/v1/messages",
         headers={
             "x-api-key": api_key,
@@ -324,7 +348,8 @@ def _anthropic_count_text(model: str, text: str, api_key: str) -> int:
         },
         timeout=TIMEOUT_SECONDS,
     )
-    response.raise_for_status()
+    if not response.ok:
+        raise _http_error_from_response(response)
     return int(response.json().get("usage", {}).get("input_tokens", 0))
 
 
@@ -335,7 +360,8 @@ def _anthropic_count_messages(model: str, messages: list[dict[str, str]], api_ke
     api_messages = normalize_messages(messages)
     if api_messages and api_messages[-1]["role"] == "assistant":
         api_messages = api_messages + [{"role": "user", "content": "."}]
-    response = requests.post(
+    response = request_with_retry(
+        "POST",
         "https://api.anthropic.com/v1/messages",
         headers={
             "x-api-key": api_key,
@@ -345,7 +371,8 @@ def _anthropic_count_messages(model: str, messages: list[dict[str, str]], api_ke
         json={"model": model, "max_tokens": 1, "messages": api_messages},
         timeout=TIMEOUT_SECONDS,
     )
-    response.raise_for_status()
+    if not response.ok:
+        raise _http_error_from_response(response)
     return int(response.json().get("usage", {}).get("input_tokens", 0))
 
 
@@ -384,13 +411,15 @@ def _openai_compat_count_text(base_url: str, model: str, text: str, api_key: str
 def _openai_compat_count_messages(
     base_url: str, model: str, messages: list[dict[str, str]], api_key: str
 ) -> int:
-    response = requests.post(
+    response = request_with_retry(
+        "POST",
         f"{base_url}/chat/completions",
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         json=openai_compatible_body(base_url, model, normalize_messages(messages), 1),
         timeout=TIMEOUT_SECONDS,
     )
-    response.raise_for_status()
+    if not response.ok:
+        raise _http_error_from_response(response)
     return int(response.json().get("usage", {}).get("prompt_tokens", 0))
 
 
@@ -409,7 +438,8 @@ def _bedrock_converse(
     max_tokens: int = 1,
 ) -> dict[str, Any]:
     region = bedrock_region()
-    response = requests.post(
+    response = request_with_retry(
+        "POST",
         f"https://bedrock-runtime.{region}.amazonaws.com/model/{model}/converse",
         headers={
             "Authorization": f"Bearer {api_key}",
@@ -421,7 +451,8 @@ def _bedrock_converse(
         },
         timeout=TIMEOUT_SECONDS,
     )
-    response.raise_for_status()
+    if not response.ok:
+        raise _http_error_from_response(response)
     return response.json()
 
 
@@ -477,7 +508,8 @@ def _gemini_count_messages(model: str, messages: list[dict[str, str]], api_key: 
 
 
 def _gemini_count_tokens(model: str, contents: list[dict[str, Any]], api_key: str) -> int:
-    response = requests.post(
+    response = request_with_retry(
+        "POST",
         f"https://generativelanguage.googleapis.com/v1beta/models/{model}:countTokens",
         headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
         json={"contents": contents},
@@ -485,7 +517,8 @@ def _gemini_count_tokens(model: str, contents: list[dict[str, Any]], api_key: st
     )
     if response.status_code in (404, 400):
         # Fall back to generateContent with maxOutputTokens=1.
-        gen = requests.post(
+        gen = request_with_retry(
+            "POST",
             f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
             headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
             json={
@@ -494,20 +527,24 @@ def _gemini_count_tokens(model: str, contents: list[dict[str, Any]], api_key: st
             },
             timeout=TIMEOUT_SECONDS,
         )
-        gen.raise_for_status()
+        if not gen.ok:
+            raise _http_error_from_response(gen)
         return int(gen.json().get("usageMetadata", {}).get("promptTokenCount", 0))
-    response.raise_for_status()
+    if not response.ok:
+        raise _http_error_from_response(response)
     payload = response.json()
     return int(payload.get("totalTokens") or payload.get("promptTokenCount") or 0)
 
 
 def _gemini_candidates(api_key: str, tier_hint: str, preferred: str) -> list[str]:
-    response = requests.get(
+    response = request_with_retry(
+        "GET",
         "https://generativelanguage.googleapis.com/v1beta/models",
         headers={"x-goog-api-key": api_key},
         timeout=TIMEOUT_SECONDS,
     )
-    response.raise_for_status()
+    if not response.ok:
+        raise _http_error_from_response(response)
     names = []
     for item in response.json().get("models", []):
         methods = item.get("supportedGenerationMethods", [])

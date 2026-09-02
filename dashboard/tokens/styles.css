@@ -112,6 +112,15 @@
   text-decoration-color: var(--cofair-color-warning);
 }
 
+.chip[data-unavailable="true"] .chip__swatch {
+  background: transparent;
+  border: var(--cofair-border-width-thin) dashed var(--cofair-color-text-muted);
+}
+
+.chip[data-unavailable="true"] {
+  opacity: 0.72;
+}
+
 /* ── Chart legend ──────────────────────────────────────────────────────── */
 
 .legend-swatch {

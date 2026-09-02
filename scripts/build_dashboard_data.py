@@ -37,6 +37,8 @@ from dotenv import load_dotenv
 
 if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "ops"))
+from provider_faults import remedy_for_error  # noqa: E402
 from task_corpus import (  # noqa: E402
     CHAT_CORPUS_VERSION,
     CHAT_TASK,
@@ -624,12 +626,28 @@ def build_provider_health(
             mine = [row for row in rows if (row.get("provider_id"), row.get("tier")) == key]
             current = [row for row in mine if date_of(row) == latest]
             ok_rows = [row for row in current if row.get("run_status") == "ok"]
-            failed = [row for row in current if row.get("run_status") != "ok"]
+            unavailable_rows = [
+                row for row in current if row.get("run_status") == "provider_unavailable"
+            ]
+            error_rows = [
+                row
+                for row in current
+                if row.get("run_status")
+                not in ("ok", "provider_unavailable", "dry_run", None, "missing_key")
+            ]
+            failed = unavailable_rows + error_rows
             last_error = max(failed, key=lambda r: r.get("run_at") or "", default=None)
+            last_unavailable_remedy = None
+            if last_error and last_error.get("run_status") == "provider_unavailable":
+                last_unavailable_remedy = remedy_for_error(
+                    last_error.get("error") or "",
+                    last_error.get("provider_id"),
+                )
             item["sources"][name] = {
                 "latest_observed": latest,
                 "ok_count": len(ok_rows),
-                "error_count": len(failed),
+                "error_count": len(error_rows),
+                "unavailable_count": len(unavailable_rows),
                 "last_ok": max(
                     (date_of(row) for row in mine if row.get("run_status") == "ok"),
                     default="",
@@ -637,12 +655,18 @@ def build_provider_health(
                 or None,
                 "last_error": (last_error or {}).get("error"),
                 "last_error_model": (last_error or {}).get("api_model"),
+                "last_unavailable_remedy": last_unavailable_remedy,
             }
         item["reporting"] = any(src["ok_count"] for src in item["sources"].values())
         item["dark_sources"] = sorted(
             name
             for name, src in item["sources"].items()
             if src["error_count"] and not src["ok_count"]
+        )
+        item["unavailable_sources"] = sorted(
+            name
+            for name, src in item["sources"].items()
+            if src["unavailable_count"] and not src["ok_count"] and not src["error_count"]
         )
         health.append(item)
     return health
@@ -694,6 +718,7 @@ def build_ledger_fits(ledger_rows: list[dict]) -> list[dict]:
         # tokenization. Publishing it would manufacture the false positive this
         # measure is meant to retire.
         fit_ok = len(points) >= MIN_FIT_TASKS and span >= MIN_FIT_CHAR_SPAN
+
         fixed = rate = r2 = None
         if fit_ok:
             n = len(points)

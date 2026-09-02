@@ -101,9 +101,19 @@ jobs:
       # should still publish. This step exists so a provider that collected
       # NOTHING fails the job instead of passing silently.
       - name: Verify collection health
+        id: verify
         run: |
           python scripts/ops/verify_token_runs.py \
-            --sources meter --sources ledger --sources wrapper
+            --sources meter --sources ledger --sources wrapper \
+            --run-id "${GITHUB_RUN_ID}"
+
+      - name: Upload token run report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: token-run-report
+          path: ops/token_run_report.json
+          if-no-files-found: ignore
 
       - name: Emit ops incident (success)
         if: success()
@@ -112,6 +122,18 @@ jobs:
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
           COFAIR_OPS_SOURCE: colonial-token-equivalence
         run: |
+          if [ -f ops/token_run_report.json ]; then
+            STATUS=$(python -c "import json; print(json.load(open('ops/token_run_report.json')).get('status','success'))")
+            if [ "$STATUS" = "degraded" ]; then
+              ERROR=$(python -c "import json; print('ACTION REQUIRED: ' + json.load(open('ops/token_run_report.json')).get('error','provider account fault'))")
+              python scripts/ops/emit_pipeline_incident.py \
+                --pipeline colonial-token-equivalence \
+                --status degraded \
+                --error "$ERROR" \
+                --run-id "${GITHUB_RUN_ID}"
+              exit 0
+            fi
+          fi
           python scripts/ops/emit_pipeline_incident.py \
             --pipeline colonial-token-equivalence \
             --status success \

@@ -170,5 +170,14 @@ class ModelUnavailableTest(unittest.TestCase):
         self.assertFalse(_is_model_unavailable(requests.HTTPError("boom")))
 
 
+class ProviderFaultsTest(unittest.TestCase):
+    def test_billing_not_active_is_account_not_transient(self) -> None:
+        from ops.provider_faults import classify_provider_error, run_status_for_http
+
+        body = '{"error":{"code":"billing_not_active","message":"Your account is not active"}}'
+        self.assertEqual(classify_provider_error(429, body), "account")
+        self.assertEqual(run_status_for_http(429, body), "provider_unavailable")
+
+
 if __name__ == "__main__":
     unittest.main()
