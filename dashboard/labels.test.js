@@ -8,6 +8,8 @@ import {
   prettyContext,
   formatLegendLabel,
   contextsNeedDisambiguation,
+  formatEstimatedSpend,
+  formatCostDelta,
   priceAtOrBefore,
   sortDatasetsForDate,
 } from "./labels.js";
@@ -142,5 +144,24 @@ describe("priceAtOrBefore / sortDatasetsForDate", () => {
   it("sorts by price at the hovered date; unseen series sink", () => {
     const ordered = sortDatasetsForDate([a, b, c], "2026-05-15").map((d) => d.pricingId);
     assert.deepEqual(ordered, ["a", "b", "c"]);
+  });
+});
+
+describe("cost formatters", () => {
+  it("formatEstimatedSpend adapts precision", () => {
+    assert.equal(formatEstimatedSpend(2.345), "$2.35");
+    assert.equal(formatEstimatedSpend(0.23456), "$0.2346");
+    assert.equal(formatEstimatedSpend(0.00123456), "$0.001235");
+  });
+
+  it("formatCostDelta never invents a comparison", () => {
+    assert.equal(
+      formatCostDelta({ status: "comparison_unavailable" }),
+      "Comparison unavailable",
+    );
+    assert.equal(
+      formatCostDelta({ status: "ok", delta_pct: 8.2, delta_usd: 0.0142 }),
+      "+8.2% · +$0.0142",
+    );
   });
 });

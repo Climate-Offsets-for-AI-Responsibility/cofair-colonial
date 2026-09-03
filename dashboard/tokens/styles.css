@@ -40,6 +40,10 @@
   margin: var(--cofair-space-2) 0 0;
 }
 
+.metric-note {
+  margin: var(--cofair-space-2) 0 0;
+}
+
 .measure-row {
   display: flex;
   align-items: flex-start;
@@ -56,6 +60,88 @@
   margin: 0;
   flex: 1 1 16rem;
 }
+
+/* ── Costs tab ─────────────────────────────────────────────────────────── */
+
+.cost-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--cofair-space-4);
+  margin-bottom: var(--cofair-space-4);
+}
+
+.cost-card {
+  display: grid;
+  gap: var(--cofair-space-1);
+}
+
+.cost-card__eyebrow {
+  color: var(--cofair-color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cost-card__amount {
+  font-family: var(--cofair-font-mono);
+}
+
+.cost-card__comparison {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cofair-space-2);
+  color: var(--cofair-color-text-muted);
+}
+
+.cost-card[data-cost-state="increase"] [data-cost-state] {
+  color: var(--cofair-color-warning);
+}
+
+.cost-card[data-cost-state="decrease"] [data-cost-state] {
+  color: var(--cofair-color-success);
+}
+
+#costRange {
+  margin: var(--cofair-space-2) 0;
+}
+
+.cost-expand {
+  width: 100%;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--cofair-space-2);
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cost-expand:focus-visible {
+  outline: var(--cofair-focus-ring-width, 2px) solid var(--cofair-color-primary);
+  outline-offset: var(--cofair-space-px);
+  border-radius: var(--cofair-radius-sm);
+}
+
+.cost-expand__caret {
+  width: var(--cofair-space-3);
+  color: var(--cofair-color-text-muted);
+}
+
+.cost-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cofair-space-2);
+}
+
+.cost-meta {
+  margin: var(--cofair-space-px) 0 0;
+  color: var(--cofair-color-text-muted);
+}
+
+.cost-row--task .cost-label { padding-left: var(--cofair-space-6); }
+.cost-row--detail .cost-label { padding-left: var(--cofair-space-9); }
 
 /* Ledger: fit the page width. Shared `.cofair-table` cells are nowrap, which
    forces a horizontal scroll once model ids and task labels sit side by side. */
@@ -83,15 +169,6 @@
 .ledger-col-model {
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* ── Collection health ─────────────────────────────────────────────────── */
-
-/* A provider that failed every call used to look identical to one that simply
-   has no line yet. Warning tone rather than danger: the chart is still valid
-   for the providers that did report. */
-.health-note {
-  color: var(--cofair-color-warning);
 }
 
 /* The last tier left showing cannot be removed, so the pill drops its pointer
@@ -379,4 +456,8 @@
 
 .drawer__turn {
   margin-bottom: var(--cofair-space-3);
+}
+
+@media (max-width: 40rem) {
+  .cost-cards { grid-template-columns: 1fr; }
 }

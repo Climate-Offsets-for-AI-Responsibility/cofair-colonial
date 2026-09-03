@@ -4,7 +4,13 @@
 // Provider tinting matches /pricing exactly; every color comes from a
 // --cofair-* token, nothing visual is hard-coded here (hub R13).
 
-import { hexToHsl, pointAtOrBefore, sortDatasetsForDate } from "../labels.js";
+import {
+  formatCostDelta,
+  formatEstimatedSpend,
+  hexToHsl,
+  pointAtOrBefore,
+  sortDatasetsForDate,
+} from "../labels.js";
 
 const Chart = window.Chart;
 
@@ -38,30 +44,17 @@ const state = {
   defaultHoverDate: null,
   chart: null,
   lastFocus: null,
+  costDetailIndex: null,
+  costDetailsByDate: new Map(),
+  costDate: "",
+  costExpandedRows: new Set(),
+  costExpandedTasks: new Set(),
+  costLoading: false,
 };
 
 const SERIES_COUNT = 7;
 
-/**
- * Whether to expose the measures flagged `internal` in METRICS.
- *
- * `/tokens` answers one question — how many tokens the same frozen task consumes
- * over time, which is the half of the cost equation providers control and
- * `/pricing` cannot see. What it costs *us* to operate the panel is a different
- * subject, and putting the two on one selector invites reading our infrastructure
- * spend as a finding about a provider.
- *
- * This is UI gating, not secrecy: `equivalence.json` is a public artifact and
- * still carries the cost fields, because the internal view reads the same file.
- * The point is to keep them out of the story the page tells, which is what the
- * flag achieves.
- */
-const INTERNAL_ONLY = new URLSearchParams(location.search).has("internal");
-
-// Corpus entry E is counted, never generated, so it is absent from every meter
-// and ledger row and is the only task the wrapper measure can report.
-const CHAT_TASK_ID = "E";
-const DEFAULT_METER_TASK_IDS = ["A", "B", "C", "D"];
+const DEFAULT_METER_TASK_IDS = ["A", "B", "C", "D", "E", "F"];
 
 // Same provider → series map as the pricing dashboard (../styles.css overrides 2–7).
 const PREFERRED_PROVIDER_SERIES = new Map([
@@ -79,35 +72,6 @@ const PREFERRED_PROVIDER_SERIES = new Map([
 const PROVIDER_LABELS = new Map([["aws", "amazon"]]);
 
 const METRICS = {
-  // `tokens_in_per_1k_chars` (pack-weighted meter density) and `ledger_density`
-  // (unweighted mean over A–C) were removed as measures on 2026-09-03. They were
-  // two blended figures answering the question `ledger_content_density` answers
-  // properly: both mix the provider's fixed per-request overhead into a per-
-  // character rate, so both move for two unrelated reasons and neither can say
-  // which. Offering three densities also forced the reader to pick between
-  // statistics rather than read a measurement.
-  //
-  // `tokens_in_per_1k_chars` survives as a *row field* — it is a column in the
-  // ledger table, where it is a per-task figure on a single prompt and the
-  // blending problem does not arise.
-  ledger_content_density: {
-    label: "Content density — overhead removed (ledger fit)",
-    axis: "tokens / 1K chars (content only)",
-    source: "fit",
-    note:
-      "Each day's counts are fitted as tokens = fixed overhead + rate × characters; " +
-      "this is the rate. Estimated across tasks rather than within one, so it does " +
-      "not change when you change the task pack, and it ignores the constant every " +
-      "provider prepends. Fitted on every task with natural text — which since " +
-      "3 Sep 2026 is all of them. Before that, task D was one sentence repeated " +
-      "800 times, so its marginal cost was that phrase rather than text and the " +
-      "rate read the same for almost every model; those days are withheld rather " +
-      "than restated. It moves only on a real re-tokenization.",
-    decimals: 1,
-    // Twelve of fourteen rows sit within 0.2 tokens/1K chars of each other; a zero
-    // baseline would render that as one line and hide the only real outlier.
-    beginAtZero: false,
-  },
   ledger_fixed_overhead: {
     label: "Fixed request overhead (ledger fit)",
     axis: "tokens added per request",
@@ -165,27 +129,7 @@ const METRICS = {
       "a measurement of it.",
     decimals: 0,
   },
-  usd: {
-    label: "Cost per run",
-    axis: "USD",
-    source: "meter",
-    note:
-      "What it costs us to run the suite — operating telemetry, not a reading about any " +
-      "provider. Kept off the public surface because the reader's cost question is about " +
-      "the tokens a task consumes, which is priced on /pricing.",
-    decimals: 4,
-    // Infrastructure cost. This index reports token *quantity*; what the panel
-    // costs to operate is our concern, not a finding about a provider, and mixing
-    // the two invites reading our spend as their behaviour. See INTERNAL_ONLY.
-    internal: true,
-  },
 };
-
-const MONEY_FMT = new Intl.NumberFormat(undefined, {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 4,
-});
 
 const DATE_FMT = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
@@ -233,6 +177,11 @@ function emptyRow(colspan, title, body) {
 
 function trendsPanelVisible() {
   const panel = document.getElementById("panel-trends");
+  return Boolean(panel) && !panel.hidden;
+}
+
+function costsPanelVisible() {
+  const panel = document.getElementById("panel-costs");
   return Boolean(panel) && !panel.hidden;
 }
 
@@ -292,7 +241,6 @@ function tierColor(providerId, tier) {
 
 function fmtMetric(value, metric) {
   if (value == null || Number.isNaN(value)) return "—";
-  if (metric === "usd") return MONEY_FMT.format(value);
   const decimals = METRICS[metric].decimals;
   return value.toLocaleString(undefined, {
     minimumFractionDigits: decimals,
@@ -311,17 +259,16 @@ function packTaskIds() {
 
 /** Pack members that a meter or ledger run actually generates. */
 function meterTaskIds() {
-  const generating = new Set(state.eq?.meter_task_ids || DEFAULT_METER_TASK_IDS);
+  const generating = new Set(
+    state.eq?.meter_task_ids || state.eq?.generating_task_ids || DEFAULT_METER_TASK_IDS,
+  );
+  if (!generating.size) return packTaskIds();
   return packTaskIds().filter((id) => generating.has(id));
-}
-
-function packHasChatTask() {
-  return packTaskIds().includes(CHAT_TASK_ID);
 }
 
 function packTasks() {
   const byId = new Map((state.eq?.tasks || []).map((task) => [task.task_id, task]));
-  return meterTaskIds().map((id) => byId.get(id)).filter(Boolean);
+  return packTaskIds().map((id) => byId.get(id)).filter(Boolean);
 }
 
 // ---- provider visibility ---------------------------------------------------
@@ -378,8 +325,7 @@ function cycleProviderMode(providerId) {
  * Aggregate observed rows into one point per (date, provider, tier).
  *
  * Meter: require every task in the pack; density recomputed from summed tokens.
- * Ledger: average density across selected pack tasks for that day.
- * Wrapper: turn-10 prompt tokens only.
+ * Fit: fitted overhead from daily tokenizer ledger.
  */
 function aggregate() {
   const metric = METRICS[state.metric];
@@ -410,7 +356,6 @@ function aggregateFit() {
       // task D is not strictly the same quantity as one estimated without it, so
       // the chart breaks the line where this changes.
       fit_basis: (fit.fit_task_ids || []).join(","),
-      ledger_content_density: fit.content_density_per_1k_chars,
       ledger_fixed_overhead: fit.fixed_overhead_tokens,
     }))
     .filter((point) => point[state.metric] != null)
@@ -449,7 +394,6 @@ function aggregateMeter() {
         tokens_out: 0,
         tokens_total: 0,
         input_chars: 0,
-        usd: 0,
         censored: false,
         replicate_count: row.replicate_count || 1,
       };
@@ -461,7 +405,6 @@ function aggregateMeter() {
     group.tokens_out += row.tokens_out;
     group.tokens_total += row.tokens_total;
     group.input_chars += row.input_chars;
-    group.usd += row.usd || 0;
     if (row.output_censored) group.censored = true;
     group.replicate_count = Math.max(group.replicate_count, row.replicate_count || 1);
   }
@@ -656,25 +599,6 @@ function renderHealth() {
         .join("\n");
     }
   });
-
-  const note = document.getElementById("healthNote");
-  const messages = [];
-  if (dark.length) {
-    messages.push(
-      `Not collecting for this measure: ${dark
-        .map((item) => `${providerLabel(item.provider_id)} · ${item.tier}`)
-        .join(", ")}. The last attempt returned an error, so these are missing rather than flat.`,
-    );
-  }
-  if (unavailable.length) {
-    messages.push(
-      `Provider account inactive (not a collection failure): ${unavailable
-        .map((item) => `${providerLabel(item.provider_id)} · ${item.tier}`)
-        .join(", ")}.`,
-    );
-  }
-  note.hidden = messages.length === 0;
-  note.textContent = messages.join(" ");
 }
 
 /**
@@ -686,23 +610,11 @@ function renderHealth() {
 function emptyChartReason() {
   const source = METRICS[state.metric].source || "meter";
   if (source === "fit") {
-    // Two different empty states share this source, and they mean opposite things.
-    // Content density is withheld on every day before task F, so "not enough
-    // spread in task length" would be simply false — task D gave the record
-    // plenty of spread, and that was the problem.
-    if (state.metric === "ledger_content_density") {
-      return densityWithheldReason();
-    }
     // The fit spans the day's whole task set by design, so an empty chart here is
     // never about the pack — it is a day that could not be fitted at all.
     return "No day in the window has enough of a spread in task length to separate fixed overhead from content rate. Needs at least three tasks spanning 10× in characters.";
   }
-  if (source !== "wrapper" && !meterTaskIds().length) {
-    // Not "task E has no tokens" — it has plenty, and they are billed. What it
-    // has is no *generated* output, and no row in the meter or ledger series,
-    // which carry tasks A–D. Name the measure that does show it.
-    return "Task E is counted, never generated: its replies are frozen text, so it has prompt tokens but no output, and no meter or ledger row. Choose “Wrapper overhead” to see it.";
-  }
+  if (!meterTaskIds().length) return "No generated tasks are selected for this pack.";
   // A task can be in the published corpus before it has been run once: it is
   // added to `task_corpus.py`, and the first collection happens on the next daily
   // schedule. "No completed runs yet" is true of that but reads as a broken
@@ -740,27 +652,6 @@ function awaitingTaskReason() {
 }
 
 /**
- * Why content density has nothing to draw, distinguishing two unlike causes.
- *
- * A day is withheld when nothing long enough in that day's corpus had natural
- * text: through 2 Sep 2026 the only long task was D, which was one sentence
- * repeated 800 times, so those days are permanently withheld and telling the
- * reader to wait would be wrong. From 3 Sep the corpus can set a rate, and the
- * same empty chart means the ordinary thing — this window, these filters. Read
- * from the artifact rather than hard-coded, so it stops claiming the corpus is
- * broken the moment it is not.
- */
-function densityWithheldReason() {
-  const fits = state.eq?.tokenizer_ledger?.fits || [];
-  const everFitted = fits.some((fit) => fit.density_ok);
-
-  if (!everFitted) {
-    return "Content density is not available for any collected day yet. Through 2 Sep 2026 the only task long enough to set the rate was D, whose context was one sentence repeated 800 times, so its slope measured that phrase rather than the tokenizers. Task D now uses a heterogeneous document, so the rate returns with the runs collected from 3 Sep onward. Fixed request overhead comes from the same fit and is unaffected.";
-  }
-  return "No fitted day in this window. Days before 3 Sep 2026 are withheld — the corpus had no long task with natural text, so no rate can be recovered for them, and they are left empty rather than restated. Fixed request overhead is measured from the same fit and is available for those days.";
-}
-
-/**
  * Why the page is empty when the published record has not started yet.
  *
  * "No completed runs yet" is the wrong sentence on the day the epoch moves: runs
@@ -777,28 +668,6 @@ function awaitingEpochReason() {
   // rather than a wait, and must not be excused as one.
   if (start < today) return null;
   return `The published record starts ${fmtDate(start)}. Earlier runs were collected under a different output policy, so they are held back rather than charted beside what follows. The first daily run lands that morning.`;
-}
-
-/**
- * Drop the infrastructure-cost measures from the selector unless `?internal`.
- *
- * Removes the options rather than disabling them, so the public surface offers no
- * evidence a cost measure exists; and re-points `state.metric` if a bookmarked
- * `?metric=usd`-style state would otherwise leave the select showing one measure
- * while the chart drew another.
- */
-function gateInternalMeasures() {
-  if (INTERNAL_ONLY) return;
-  const select = document.getElementById("metric");
-  if (!select) return;
-
-  for (const option of [...select.options]) {
-    if (METRICS[option.value]?.internal) option.remove();
-  }
-  if (METRICS[state.metric]?.internal) {
-    state.metric = select.options[0]?.value || "tokens_total";
-  }
-  select.value = state.metric;
 }
 
 function pointDate(point) {
@@ -1166,11 +1035,11 @@ function probeTooltip(taskId, probes) {
   </span>`;
 }
 
-function taskRowHtml({ taskId, label, probes, inputChars, inputWords, chat }) {
+function taskRowHtml({ taskId, label, probes, inputChars, inputWords }) {
   return `<tr class="cofair-table__row">
     <td class="cofair-table__td">
       <span class="task-cell">
-        <button type="button" class="task-link" ${chat ? 'data-chat="1"' : `data-task="${esc(taskId)}"`}>
+        <button type="button" class="task-link" data-task="${esc(taskId)}">
           ${esc(taskId)} · ${esc(label)}
         </button>
         ${probeTooltip(taskId, probes)}
@@ -1181,40 +1050,18 @@ function taskRowHtml({ taskId, label, probes, inputChars, inputWords, chat }) {
   </tr>`;
 }
 
-/** Corpus entry E — listed only when the selected pack includes it. */
-function chatTaskRow() {
-  const transcript = state.eq?.chat_transcript || [];
-  if (!transcript.length || !packHasChatTask()) return "";
-  const chat = state.eq?.chat_task || {};
-  const text = transcript.map((turn) => turn.text).join("\n");
-  return taskRowHtml({
-    taskId: chat.task_id || CHAT_TASK_ID,
-    label: chat.label || "Chat transcript",
-    probes:
-      chat.probes ||
-      "Chat wrapper and history-packing overhead across 10 frozen turns.",
-    inputChars: chat.input_chars ?? text.length,
-    inputWords: chat.input_words ?? text.trim().split(/\s+/).filter(Boolean).length,
-    chat: true,
-  });
-}
-
 function ledgerTaskLabels() {
-  const labels = new Map((state.eq?.tasks || []).map((task) => [task.task_id, task.label]));
-  const chat = state.eq?.chat_task || {};
-  labels.set(chat.task_id || CHAT_TASK_ID, chat.label || "Chat transcript");
-  return labels;
+  return new Map((state.eq?.tasks || []).map((task) => [task.task_id, task.label]));
 }
 
 /**
  * Every ledger observation, provider filter and tab filters not yet applied.
  *
- * Task E is counted on the frozen chat transcript rather than the A–D corpus,
- * so it lives in `wrapper_runs` and is folded in here — the ledger is meant to
- * read as one table of daily counts, not two.
+ * Task E is generated and metered daily, but the ledger remains the A/B/C/D/F
+ * probe set by design; this table mirrors that source directly.
  */
 function ledgerAllRows() {
-  const ledgerRows = (state.eq?.tokenizer_ledger?.rows || [])
+  return (state.eq?.tokenizer_ledger?.rows || [])
     .filter((row) => row.run_status === "ok")
     .map((row) => ({
       date: row.date,
@@ -1224,21 +1071,8 @@ function ledgerAllRows() {
       task_id: row.task_id,
       tokens_in: row.tokens_in,
       density: row.tokens_in_per_1k_chars,
-    }));
-
-  const chatRows = (state.eq?.wrapper_runs?.rows || [])
-    .filter((row) => row.run_status === "ok" && row.turn === 10 && row.api_prompt_tokens != null)
-    .map((row) => ({
-      date: row.run_date,
-      provider_id: row.provider_id,
-      tier: row.tier,
-      model: row.api_model || row.model_id,
-      task_id: CHAT_TASK_ID,
-      tokens_in: row.api_prompt_tokens,
-      density: row.tokens_per_1k_chars,
-    }));
-
-  return [...ledgerRows, ...chatRows].sort((a, b) => {
+    }))
+    .sort((a, b) => {
     const date = (b.date || "").localeCompare(a.date || "");
     if (date) return date;
     const provider = providerLabel(a.provider_id).localeCompare(providerLabel(b.provider_id));
@@ -1343,28 +1177,24 @@ function renderLedger() {
 
 function renderTaskTable() {
   const body = document.getElementById("taskBody");
-  const rows =
-    packTasks()
-      .map((task) =>
-        taskRowHtml({
-          taskId: task.task_id,
-          label: task.label,
-          probes: task.probes,
-          inputChars: task.input_chars,
-          inputWords: task.input_words,
-        }),
-      )
-      .join("") + chatTaskRow();
+  const rows = packTasks()
+    .map((task) =>
+      taskRowHtml({
+        taskId: task.task_id,
+        label: task.label,
+        probes: task.probes,
+        inputChars: task.input_chars,
+        inputWords: task.input_words,
+      }),
+    )
+    .join("");
 
   body.innerHTML =
     rows ||
     `<tr class="cofair-table__row"><td class="cofair-table__td" colspan="3">No tasks in this pack.</td></tr>`;
 
   body.querySelectorAll(".task-link").forEach((button) => {
-    button.addEventListener("click", () => {
-      if (button.dataset.chat) openChatDrawer(button);
-      else openDrawer(button.dataset.task, button);
-    });
+    button.addEventListener("click", () => openDrawer(button.dataset.task, button));
   });
 }
 
@@ -1447,77 +1277,359 @@ function openDrawer(taskId, trigger) {
   document.getElementById("drawerClose").focus();
 }
 
-function openChatDrawer(trigger) {
-  const transcript = state.eq.chat_transcript || [];
-  state.lastFocus = trigger || document.activeElement;
-  document.getElementById("drawerEyebrow").textContent =
-    `Test 4 · chat corpus v${state.eq.chat_corpus_version || "—"}`;
-  document.getElementById("drawerTitle").textContent = "Agent history expansion";
-
-  const latestDate = state.eq.wrapper_runs?.last_date;
-  const latest = (state.eq.wrapper_runs?.rows || []).filter(
-    (r) => r.run_date === latestDate && r.turn === 10,
-  );
-
-  const observed = latest.length
-    ? `<table class="cofair-table cofair-table--striped drawer__table">
-        <thead class="cofair-table__head">
-          <tr class="cofair-table__row">
-            <th class="cofair-table__th" scope="col">Provider · tier</th>
-            <th class="cofair-table__th cofair-table__th--num" scope="col">Turn-10 prompt tokens</th>
-          </tr>
-        </thead>
-        <tbody class="cofair-table__body">
-          ${latest
-            .map(
-              (r) => `<tr class="cofair-table__row">
-              <td class="cofair-table__td">${providerBadge(r.provider_id)} ${esc(r.tier)}</td>
-              <td class="cofair-table__td cofair-table__td--num">${Number(r.api_prompt_tokens).toLocaleString()}</td>
-            </tr>`,
-            )
-            .join("")}
-        </tbody>
-      </table>
-      <p class="cofair-text cofair-text--xs drawer__footnote">Observed ${esc(fmtDate(latestDate))}.</p>`
-    : `<p class="cofair-text cofair-text--small">No wrapper runs yet.</p>`;
-
-  const body = transcript
-    .map(
-      (turn, i) =>
-        `<div class="drawer__turn"><span class="cofair-text cofair-text--xs">${esc(turn.role)} · ${Math.floor(i / 2) + 1}</span><pre class="drawer__prompt"><code>${esc(turn.text)}</code></pre></div>`,
-    )
-    .join("");
-
-  document.getElementById("drawerBody").innerHTML = `
-    <section class="drawer__section">
-      <h3 class="cofair-text cofair-text--xs drawer__label">What it probes</h3>
-      <p class="cofair-text cofair-text--small">
-        Cumulative prompt-token counts on this frozen transcript expose chat wrappers and
-        history packing the provider injects. Assistant text is never regenerated at count time.
-      </p>
-    </section>
-    <section class="drawer__section">
-      <h3 class="cofair-text cofair-text--xs drawer__label">Frozen transcript</h3>
-      ${body}
-    </section>
-    <section class="drawer__section">
-      <h3 class="cofair-text cofair-text--xs drawer__label">Latest turn-10 counts</h3>
-      ${observed}
-    </section>`;
-
-  document.getElementById("drawerBackdrop").hidden = false;
-  const drawer = document.getElementById("taskDrawer");
-  drawer.hidden = false;
-  requestAnimationFrame(() => drawer.classList.add("drawer--open"));
-  document.getElementById("drawerClose").focus();
-}
-
 function closeDrawer() {
   const drawer = document.getElementById("taskDrawer");
   drawer.classList.remove("drawer--open");
   drawer.hidden = true;
   document.getElementById("drawerBackdrop").hidden = true;
   if (state.lastFocus) state.lastFocus.focus();
+}
+
+// ---- costs -----------------------------------------------------------------
+
+const COST_PERIODS = [
+  ["current_run", "Current Run"],
+  ["current_month", "Current Month"],
+  ["year_to_date", "Year to Date"],
+];
+let costIndexPromise = null;
+const costDetailPromises = new Map();
+
+function asNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function costComparisonState(comparison) {
+  if (!comparison) return "Comparison unavailable";
+  if (comparison.status === "new_baseline") return "New baseline";
+  if (comparison.status !== "ok") return "Comparison unavailable";
+  const delta = asNumber(comparison.delta_usd);
+  if (delta == null || delta === 0) return "No change";
+  return delta > 0 ? "Increase" : "Decrease";
+}
+
+function costComparisonTone(comparison) {
+  if (!comparison) return "unavailable";
+  if (comparison.status === "new_baseline") return "neutral";
+  if (comparison.status !== "ok") return "unavailable";
+  const delta = asNumber(comparison.delta_usd);
+  if (delta == null || delta === 0) return "neutral";
+  return delta > 0 ? "increase" : "decrease";
+}
+
+function diagnosticCount(node, field) {
+  const explicit = asNumber(node?.[`${field}_count`]);
+  if (explicit != null) return explicit;
+  const list = node?.[`${field}s`];
+  return Array.isArray(list) ? list.length : 0;
+}
+
+function costDiagnosticText(node) {
+  const parts = [];
+  const missing = diagnosticCount(node, "missing_request");
+  const duplicate = diagnosticCount(node, "duplicate_request");
+  const unexpected = diagnosticCount(node, "unexpected_request");
+  const incomplete = asNumber(node?.incomplete_event_count) || 0;
+  if (missing) parts.push(`${missing} missing scheduled request${missing === 1 ? "" : "s"}`);
+  if (duplicate) parts.push(`${duplicate} duplicate request${duplicate === 1 ? "" : "s"}`);
+  if (unexpected) parts.push(`${unexpected} unexplained charge${unexpected === 1 ? "" : "s"}`);
+  if (incomplete) parts.push(`${incomplete} unpriced request${incomplete === 1 ? "" : "s"}`);
+  return parts.join(" · ");
+}
+
+function costDetailDates() {
+  return state.costDetailIndex?.dates || [];
+}
+
+function defaultCostDate() {
+  const dates = costDetailDates();
+  if (!dates.length) return "";
+  const preferred = state.eq?.costs?.latest_complete_date;
+  if (preferred && dates.some((entry) => entry.date === preferred)) return preferred;
+  return dates[dates.length - 1]?.date || "";
+}
+
+function costDetailPath(date) {
+  const fromIndex = costDetailDates().find((entry) => entry.date === date)?.path;
+  if (fromIndex) return fromIndex;
+  return (state.eq?.costs?.daily || []).find((day) => day.date === date)?.detail_path || null;
+}
+
+async function loadCostDetailIndex() {
+  if (state.costDetailIndex) return state.costDetailIndex;
+  if (costIndexPromise) return costIndexPromise;
+  const path = state.eq?.costs?.detail_index_path;
+  if (!path) {
+    state.costDetailIndex = { dates: [] };
+    return state.costDetailIndex;
+  }
+  state.costLoading = true;
+  renderCosts();
+  costIndexPromise = fetch(`../data/${path}`)
+    .then(async (res) => {
+      if (!res.ok) throw new Error(`Cost detail index returned ${res.status}`);
+      state.costDetailIndex = await res.json();
+      return state.costDetailIndex;
+    })
+    .catch(() => {
+      state.costDetailIndex = { dates: [] };
+      return state.costDetailIndex;
+    })
+    .finally(() => {
+      costIndexPromise = null;
+      state.costLoading = false;
+      renderCosts();
+    });
+  return costIndexPromise;
+}
+
+async function loadCostDetail(date) {
+  if (!date) return null;
+  if (state.costDetailsByDate.has(date)) return state.costDetailsByDate.get(date);
+  if (costDetailPromises.has(date)) return costDetailPromises.get(date);
+
+  const path = costDetailPath(date);
+  if (!path) return null;
+
+  state.costLoading = true;
+  renderCosts();
+  const promise = fetch(`../data/${path}`)
+    .then(async (res) => {
+      if (!res.ok) throw new Error(`Cost detail returned ${res.status}`);
+      const detail = await res.json();
+      state.costDetailsByDate.set(date, detail);
+      return detail;
+    })
+    .catch(() => {
+      state.costDetailsByDate.set(date, null);
+      return null;
+    })
+    .finally(() => {
+      costDetailPromises.delete(date);
+      state.costLoading = false;
+      renderCosts();
+    });
+  costDetailPromises.set(date, promise);
+  return promise;
+}
+
+async function ensureCostsReady() {
+  await loadCostDetailIndex();
+  if (!state.costDate) state.costDate = defaultCostDate();
+  if (state.costDate) await loadCostDetail(state.costDate);
+}
+
+function costPendingMessage() {
+  const costs = state.eq?.costs;
+  if (!costs) return "Cost summary is unavailable.";
+  if (costs.status === "pending_first_complete_day") {
+    return "First fully instrumented run is pending; cards and detail publish once the first complete day lands.";
+  }
+  if (costs.latest_attempted_date && !costs.latest_complete_date) {
+    return `Latest attempted run (${fmtDate(costs.latest_attempted_date)}) is incomplete, so no detail date is published yet.`;
+  }
+  return "No published run detail is available for the selected date.";
+}
+
+function detailLabel(detail) {
+  const bits = [];
+  bits.push(detail.source === "meter" ? "meter" : detail.source || "request");
+  if (detail.turn != null) bits.push(`turn ${detail.turn}`);
+  if (detail.request_kind) bits.push(detail.request_kind);
+  if (asNumber(detail.attempt) > 1) bits.push(`attempt ${detail.attempt}`);
+  if (asNumber(detail.replicate) > 1) bits.push(`replicate ${detail.replicate}`);
+  if (detail.canonical === false) bits.push("non-canonical");
+  return bits.join(" · ");
+}
+
+function renderCostRows(detail) {
+  const tasksById = new Map((state.eq?.tasks || []).map((task) => [task.task_id, task.label]));
+  const rows = [];
+  for (const row of detail.provider_tiers || []) {
+    const rowKey = `${row.provider_id}|${row.tier}`;
+    const expanded = state.costExpandedRows.has(rowKey);
+    const notes = [];
+    if (!row.complete) notes.push("Incomplete");
+    const diagnostics = costDiagnosticText(row);
+    if (diagnostics) notes.push(diagnostics);
+    const model = row.display_name || row.model_id || "Model unavailable";
+    rows.push(`<tr class="cofair-table__row cost-row cost-row--parent">
+      <td class="cofair-table__td">
+        <button type="button" class="cost-expand" aria-expanded="${expanded}"
+                data-cost-row="${esc(rowKey)}">
+          <span class="cost-expand__caret" aria-hidden="true">${expanded ? "▾" : "▸"}</span>
+          <span class="cost-label">${providerBadge(row.provider_id)} ${esc(row.tier)}</span>
+        </button>
+        <p class="cofair-text cofair-text--xs cost-meta">${esc(model)}</p>
+        ${
+          notes.length
+            ? `<p class="cofair-text cofair-text--xs cost-meta">${esc(notes.join(" · "))}</p>`
+            : ""
+        }
+      </td>
+      <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(row.input_cost_usd))}</td>
+      <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(row.output_cost_usd))}</td>
+      <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(row.supporting_cost_usd))}</td>
+      <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(row.estimated_spend_usd))}</td>
+    </tr>`);
+    if (!expanded) continue;
+
+    for (const task of row.tasks || []) {
+      const taskKey = `${rowKey}|${task.task_id}`;
+      const detailRows = task.details || [];
+      const expandable = detailRows.length > 1;
+      const taskExpanded = expandable && state.costExpandedTasks.has(taskKey);
+      const taskNotes = [];
+      if (!task.complete) taskNotes.push("Incomplete");
+      const taskDiagnostics = costDiagnosticText(task);
+      if (taskDiagnostics) taskNotes.push(taskDiagnostics);
+      if (expandable) taskNotes.push(`${detailRows.length} requests`);
+      const label = tasksById.get(task.task_id) || task.task_id;
+      rows.push(`<tr class="cofair-table__row cost-row cost-row--task">
+        <td class="cofair-table__td">
+          ${
+            expandable
+              ? `<button type="button" class="cost-expand cost-expand--task" aria-expanded="${taskExpanded}"
+                  data-cost-task="${esc(taskKey)}">
+                <span class="cost-expand__caret" aria-hidden="true">${taskExpanded ? "▾" : "▸"}</span>
+                <span class="cost-label">${esc(task.task_id)} · ${esc(label)}</span>
+              </button>`
+              : `<span class="cost-label">${esc(task.task_id)} · ${esc(label)}</span>`
+          }
+          ${
+            taskNotes.length
+              ? `<p class="cofair-text cofair-text--xs cost-meta">${esc(taskNotes.join(" · "))}</p>`
+              : ""
+          }
+        </td>
+        <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(task.input_cost_usd))}</td>
+        <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(task.output_cost_usd))}</td>
+        <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(task.supporting_cost_usd))}</td>
+        <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(task.estimated_spend_usd))}</td>
+      </tr>`);
+      if (!taskExpanded) continue;
+
+      for (const request of detailRows) {
+        const supporting = request.source === "meter" ? 0 : request.estimated_cost_usd;
+        rows.push(`<tr class="cofair-table__row cost-row cost-row--detail">
+          <td class="cofair-table__td">
+            <span class="cost-label">${esc(detailLabel(request))}</span>
+            <p class="cofair-text cofair-text--xs cost-meta">${esc(request.api_model || "model unavailable")}</p>
+          </td>
+          <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(request.input_cost_usd))}</td>
+          <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(request.output_cost_usd))}</td>
+          <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(supporting))}</td>
+          <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(request.estimated_cost_usd))}</td>
+        </tr>`);
+      }
+    }
+  }
+  return rows.join("");
+}
+
+function renderCosts() {
+  const costs = state.eq?.costs || {};
+  const comparisons = costs.comparisons || {};
+
+  COST_PERIODS.forEach(([period]) => {
+    const card = document.querySelector(`[data-cost-period="${period}"]`);
+    if (!card) return;
+    const comparison = comparisons[period];
+    const amount = asNumber(comparison?.amount_usd);
+    const amountEl = card.querySelector("[data-cost-amount]");
+    const stateEl = card.querySelector("[data-cost-state]");
+    const deltaEl = card.querySelector("[data-cost-delta]");
+    if (amountEl) amountEl.textContent = amount == null ? "—" : formatEstimatedSpend(amount);
+    if (stateEl) stateEl.textContent = costComparisonState(comparison);
+    if (deltaEl) deltaEl.textContent = formatCostDelta(comparison);
+    card.dataset.costState = costComparisonTone(comparison);
+  });
+
+  const select = document.getElementById("costDate");
+  const detailDates = costDetailDates();
+  if (!state.costDate) state.costDate = defaultCostDate();
+  if (state.costDate && !detailDates.some((entry) => entry.date === state.costDate)) {
+    state.costDate = defaultCostDate();
+  }
+  if (select) {
+    if (!detailDates.length) {
+      select.innerHTML = `<option value="">No run dates yet</option>`;
+      select.disabled = true;
+      select.value = "";
+    } else {
+      select.disabled = false;
+      select.innerHTML = detailDates
+        .map((entry) => {
+          const status = entry.complete ? "" : " · incomplete";
+          return `<option value="${esc(entry.date)}">${esc(fmtDate(entry.date))}${esc(status)}</option>`;
+        })
+        .join("");
+      select.value = state.costDate || detailDates[detailDates.length - 1].date;
+    }
+  }
+
+  const range = document.getElementById("costRange");
+  if (range) {
+    if (detailDates.length) {
+      range.textContent = `Run dates cover ${fmtDate(detailDates[0].date)} – ${fmtDate(
+        detailDates[detailDates.length - 1].date,
+      )}.`;
+    } else {
+      range.textContent = costPendingMessage();
+    }
+  }
+
+  const tbody = document.getElementById("costBody");
+  if (!tbody) return;
+  if (!state.costDate) {
+    tbody.innerHTML = emptyRow(5, "No run detail yet", costPendingMessage());
+    return;
+  }
+
+  const detail = state.costDetailsByDate.get(state.costDate);
+  if (!detail) {
+    const title = state.costLoading ? "Loading run detail" : "Run detail unavailable";
+    const body = state.costLoading
+      ? "Fetching provider, task, and request totals for this date."
+      : "This run date did not load. Choose another date or rerun the build artifacts.";
+    tbody.innerHTML = emptyRow(5, title, body);
+    return;
+  }
+  if (!(detail.provider_tiers || []).length) {
+    tbody.innerHTML = emptyRow(
+      5,
+      "No provider totals for this date",
+      "No provider-tier cost rows were published for the selected run date.",
+    );
+    return;
+  }
+
+  tbody.innerHTML = renderCostRows(detail);
+  tbody.querySelectorAll("[data-cost-row]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const key = button.getAttribute("data-cost-row") || "";
+      if (!key) return;
+      if (state.costExpandedRows.has(key)) {
+        state.costExpandedRows.delete(key);
+        for (const taskKey of [...state.costExpandedTasks]) {
+          if (taskKey.startsWith(`${key}|`)) state.costExpandedTasks.delete(taskKey);
+        }
+      } else {
+        state.costExpandedRows.add(key);
+      }
+      renderCosts();
+    });
+  });
+  tbody.querySelectorAll("[data-cost-task]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const key = button.getAttribute("data-cost-task") || "";
+      if (!key) return;
+      if (state.costExpandedTasks.has(key)) state.costExpandedTasks.delete(key);
+      else state.costExpandedTasks.add(key);
+      renderCosts();
+    });
+  });
 }
 
 // ---- render ----------------------------------------------------------------
@@ -1529,10 +1641,12 @@ function render() {
   renderHealth();
   renderLedger();
   renderTaskTable();
+  renderCosts();
   if (trendsPanelVisible()) {
     const { points } = aggregate();
     renderChart(points);
   }
+  if (costsPanelVisible()) void ensureCostsReady();
 }
 
 /** Mirrors @cofair/ui's Tabs: roving tabindex plus arrow-key navigation. */
@@ -1552,6 +1666,7 @@ function setupTabs() {
       const { points } = aggregate();
       renderChart(points);
     }
+    if (tab.dataset.tab === "costs") void ensureCostsReady();
   };
 
   tabs.forEach((tab, i) => {
@@ -1572,7 +1687,6 @@ async function main() {
   const eq = await res.json();
   state.eq = eq;
 
-  gateInternalMeasures();
   renderProviderChips();
   setupTabs();
   setupLedgerFilters();
@@ -1588,6 +1702,13 @@ async function main() {
   document.getElementById("ledgerTo").addEventListener("change", (e) => {
     state.ledgerTo = e.target.value;
     renderLedger();
+  });
+  document.getElementById("costDate").addEventListener("change", (e) => {
+    state.costDate = e.target.value;
+    state.costExpandedRows.clear();
+    state.costExpandedTasks.clear();
+    renderCosts();
+    void loadCostDetail(state.costDate);
   });
 
   document.getElementById("pack").addEventListener("change", (e) => {

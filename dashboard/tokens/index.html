@@ -57,6 +57,9 @@
         <button type="button" role="tab" class="cofair-tabs__tab"
                 id="tab-ledger" aria-selected="false" aria-controls="panel-ledger"
                 data-tab="ledger" tabindex="-1">Ledger</button>
+        <button type="button" role="tab" class="cofair-tabs__tab"
+                id="tab-costs" aria-selected="false" aria-controls="panel-costs"
+                data-tab="costs" tabindex="-1">Costs</button>
       </div>
 
       <div class="cofair-tabs__panel" role="tabpanel" id="panel-trends"
@@ -74,36 +77,26 @@
             <div class="cofair-field control-group">
               <label class="cofair-label" for="pack">Task pack</label>
               <select class="cofair-select" id="pack">
-                <option value="suiteLong" selected>Full suite (A–E)</option>
+                <option value="suiteLong" selected>Full suite (A–F)</option>
                 <option value="qa">A · Bounded Q&amp;A</option>
                 <option value="summarize">B · Summarize</option>
                 <option value="code">C · Code</option>
                 <option value="long">D · Long context (25K packet)</option>
+                <option value="chat">E · Chat conversation</option>
                 <option value="prose">F · Long context (prose)</option>
               </select>
             </div>
             <div class="cofair-field control-group control-group--measure">
               <label class="cofair-label" for="metric">Measure</label>
-              <div class="measure-row">
-                <select class="cofair-select" id="metric" aria-describedby="metricNote">
-                  <optgroup label="What you are billed">
-                    <option value="tokens_total" selected>Total tokens billed</option>
-                    <option value="tokens_out">Output tokens</option>
-                    <option value="tokens_in">Input tokens</option>
-                    <option value="usd">Cost per run (USD)</option>
-                  </optgroup>
-                  <optgroup label="Why it moved">
-                    <option value="ledger_fixed_overhead">Fixed request overhead</option>
-                    <option value="ledger_content_density">Content density (overhead removed)</option>
-                  </optgroup>
-                </select>
-                <p class="cofair-help" id="metricNote"></p>
-              </div>
+              <select class="cofair-select" id="metric" aria-describedby="metricNote">
+                <option value="tokens_total" selected>Total tokens billed</option>
+                <option value="tokens_out">Output tokens</option>
+                <option value="tokens_in">Input tokens</option>
+                <option value="ledger_fixed_overhead">Fixed request overhead</option>
+              </select>
             </div>
           </div>
         </div>
-
-        <p class="hint cofair-text cofair-text--small health-note" id="healthNote" hidden></p>
 
         <div class="cofair-card chart-card">
           <div class="chart-card__plot">
@@ -122,6 +115,7 @@
             <ul class="chart-legend__list" id="chartLegend"></ul>
           </aside>
         </div>
+        <p class="cofair-help metric-note" id="metricNote"></p>
 
         <section>
           <h2 class="cofair-heading cofair-heading--4 section-heading">Task Corpus</h2>
@@ -186,6 +180,71 @@
             </table>
           </div>
         </div>
+      </div>
+
+      <div class="cofair-tabs__panel" role="tabpanel" id="panel-costs"
+           aria-labelledby="tab-costs" data-panel="costs" hidden>
+        <div class="cost-cards">
+          <article class="cofair-card cost-card" data-cost-period="current_run">
+            <h2 class="cofair-heading cofair-heading--4">Current Run</h2>
+            <p class="cofair-text cofair-text--xs cost-card__eyebrow">Estimated spend</p>
+            <p class="cofair-heading cofair-heading--3 cost-card__amount" data-cost-amount>—</p>
+            <p class="cofair-text cofair-text--xs cost-card__comparison">
+              <span data-cost-state>Comparison unavailable</span>
+              <span data-cost-delta>Comparison unavailable</span>
+            </p>
+          </article>
+          <article class="cofair-card cost-card" data-cost-period="current_month">
+            <h2 class="cofair-heading cofair-heading--4">Current Month</h2>
+            <p class="cofair-text cofair-text--xs cost-card__eyebrow">Estimated spend</p>
+            <p class="cofair-heading cofair-heading--3 cost-card__amount" data-cost-amount>—</p>
+            <p class="cofair-text cofair-text--xs cost-card__comparison">
+              <span data-cost-state>Comparison unavailable</span>
+              <span data-cost-delta>Comparison unavailable</span>
+            </p>
+          </article>
+          <article class="cofair-card cost-card" data-cost-period="year_to_date">
+            <h2 class="cofair-heading cofair-heading--4">Year to Date</h2>
+            <p class="cofair-text cofair-text--xs cost-card__eyebrow">Estimated spend</p>
+            <p class="cofair-heading cofair-heading--3 cost-card__amount" data-cost-amount>—</p>
+            <p class="cofair-text cofair-text--xs cost-card__comparison">
+              <span data-cost-state>Comparison unavailable</span>
+              <span data-cost-delta>Comparison unavailable</span>
+            </p>
+          </article>
+        </div>
+
+        <div class="controls">
+          <div class="cofair-field control-group">
+            <label class="cofair-label" for="costDate">Run date</label>
+            <select class="cofair-select" id="costDate">
+              <option value="">No run dates yet</option>
+            </select>
+          </div>
+        </div>
+        <p class="cofair-help" id="costRange"></p>
+
+        <div class="cofair-card">
+          <div class="cofair-table__scroll">
+            <table class="cofair-table cofair-table--striped">
+              <thead class="cofair-table__head">
+                <tr class="cofair-table__row">
+                  <th class="cofair-table__th" scope="col">Provider · tier</th>
+                  <th class="cofair-table__th cofair-table__th--num" scope="col">Input</th>
+                  <th class="cofair-table__th cofair-table__th--num" scope="col">Output</th>
+                  <th class="cofair-table__th cofair-table__th--num" scope="col">Supporting</th>
+                  <th class="cofair-table__th cofair-table__th--num" scope="col">Total</th>
+                </tr>
+              </thead>
+              <tbody class="cofair-table__body" id="costBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <p class="cofair-help">
+          Estimated spend = observed usage × the same-day published rate for the served model.
+          It may differ from provider invoices.
+        </p>
       </div>
     </div>
   </main>

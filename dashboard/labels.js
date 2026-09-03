@@ -113,3 +113,27 @@ export function sortDatasetsForDate(datasets, dateStr) {
     return pb - pa;
   });
 }
+
+export function formatEstimatedSpend(usd) {
+  const value = Number(usd);
+  if (!Number.isFinite(value)) return "—";
+  const abs = Math.abs(value);
+  const decimals = abs >= 1 ? 2 : abs >= 0.01 ? 4 : 6;
+  const formatted = abs.toLocaleString(undefined, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+  return `${value < 0 ? "-" : ""}$${formatted}`;
+}
+
+export function formatCostDelta(comparison) {
+  if (!comparison || comparison.status !== "ok") return "Comparison unavailable";
+  const deltaPct = Number(comparison.delta_pct);
+  const deltaUsd = Number(comparison.delta_usd);
+  if (!Number.isFinite(deltaPct) || !Number.isFinite(deltaUsd)) {
+    return "Comparison unavailable";
+  }
+  const pct = `${deltaPct >= 0 ? "+" : ""}${deltaPct.toFixed(1)}%`;
+  const usd = formatEstimatedSpend(deltaUsd);
+  return `${pct} · ${deltaUsd >= 0 ? "+" : ""}${usd}`;
+}
