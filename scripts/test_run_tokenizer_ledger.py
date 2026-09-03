@@ -9,7 +9,6 @@ the real ones.
 from __future__ import annotations
 
 import json
-import os
 import sys
 import unittest
 from pathlib import Path
@@ -374,6 +373,112 @@ class LedgerCostEventsTest(unittest.TestCase):
             )
         )
         self.assertTrue(any(row.get("event_id") == "keep-meter" for row in saved))
+
+    def test_replay_replaces_only_matching_ledger_event_group(self) -> None:
+        usage = SimpleNamespace(
+            tokens_in=200,
+            tokens_out=50,
+            request_kind="completion_probe",
+            billable=True,
+        )
+        existing = [
+            {
+                "event_id": "old-ledger",
+                "date": "2026-09-03",
+                "run_at": "2026-09-03T11:00:00Z",
+                "source": "ledger",
+                "provider_id": "aws",
+                "tier": "flagship",
+                "task_id": "D",
+                "turn": None,
+                "request_kind": "count_endpoint",
+                "api_model": "amazon.nova-premier-v1:0",
+                "input_tokens": 10,
+                "output_tokens": 0,
+                "input_price_per_1m": 2.5,
+                "output_price_per_1m": 12.5,
+                "input_cost_usd": 0.0,
+                "output_cost_usd": 0.0,
+                "estimated_cost_usd": 0.0,
+                "pricing_snapshot_date": "2026-09-01",
+                "corpus_version": "3.0.0",
+                "chat_corpus_version": None,
+                "run_id": "old",
+                "replicate": 1,
+                "attempt": 1,
+                "canonical": True,
+                "complete": True,
+            },
+            {
+                "event_id": "keep-ledger-other-task",
+                "date": "2026-09-03",
+                "run_at": "2026-09-03T11:00:00Z",
+                "source": "ledger",
+                "provider_id": "aws",
+                "tier": "flagship",
+                "task_id": "A",
+                "turn": None,
+                "request_kind": "count_endpoint",
+                "api_model": "amazon.nova-pro-v1:0",
+                "input_tokens": 5,
+                "output_tokens": 0,
+                "input_price_per_1m": 0.8,
+                "output_price_per_1m": 3.2,
+                "input_cost_usd": 0.0,
+                "output_cost_usd": 0.0,
+                "estimated_cost_usd": 0.0,
+                "pricing_snapshot_date": "2026-09-01",
+                "corpus_version": "3.0.0",
+                "chat_corpus_version": None,
+                "run_id": "keep",
+                "replicate": 1,
+                "attempt": 1,
+                "canonical": True,
+                "complete": True,
+            },
+            {
+                "event_id": "keep-meter",
+                "date": "2026-09-03",
+                "run_at": "2026-09-03T11:00:00Z",
+                "source": "meter",
+                "provider_id": "aws",
+                "tier": "flagship",
+                "task_id": "D",
+                "turn": None,
+                "request_kind": "generation",
+                "api_model": "amazon.nova-pro-v1:0",
+                "input_tokens": 33,
+                "output_tokens": 44,
+                "input_price_per_1m": 0.8,
+                "output_price_per_1m": 3.2,
+                "input_cost_usd": 0.0,
+                "output_cost_usd": 0.0,
+                "estimated_cost_usd": 0.0,
+                "pricing_snapshot_date": "2026-09-01",
+                "corpus_version": "3.0.0",
+                "chat_corpus_version": None,
+                "run_id": "keep",
+                "replicate": 1,
+                "attempt": 1,
+                "canonical": True,
+                "complete": True,
+            },
+        ]
+        _, saved_cost = self._run(usage, existing_cost_events=existing)
+        group = [
+            row
+            for row in saved_cost
+            if row.get("source") == "ledger"
+            and row.get("date") == "2026-09-03"
+            and row.get("provider_id") == "aws"
+            and row.get("tier") == "flagship"
+            and row.get("task_id") == "D"
+        ]
+        self.assertEqual(len(group), 1)
+        self.assertEqual(group[0]["request_kind"], "completion_probe")
+        self.assertEqual(group[0]["api_model"], "amazon.nova-pro-v1:0")
+        self.assertTrue(any(row.get("event_id") == "keep-ledger-other-task" for row in saved_cost))
+        self.assertTrue(any(row.get("event_id") == "keep-meter" for row in saved_cost))
 
 
 class GoogleLedgerCostEventsTest(unittest.TestCase):

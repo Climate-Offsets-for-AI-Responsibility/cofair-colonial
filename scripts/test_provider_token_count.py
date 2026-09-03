@@ -311,7 +311,7 @@ class HttpErrorPathTest(unittest.TestCase):
 
         body = (
             'Authorization: Bearer sk-live-secret token=abc123 key=xyz '
-            'api_key=foo x-api-key: bar sk-rawvalue '
+            'api_key=foo x-api-key: bar sk-rawvalue xai-live-secret '
             '{"api_key":"secret-1","token":"secret-2",'
             '"jwt":"eyJhbGciOiJIUzI1NiJ9.abc.def",'
             '"google":"AIzaSyD123456789012345678901234567890123",'
@@ -338,6 +338,7 @@ class HttpErrorPathTest(unittest.TestCase):
             "foo",
             "bar",
             "sk-rawvalue",
+            "xai-live-secret",
             "secret-1",
             "secret-2",
             "AIzaSyD123456789012345678901234567890123",
@@ -355,7 +356,7 @@ class HttpErrorPathTest(unittest.TestCase):
             "_count_one",
             side_effect=RuntimeError(
                 'boom {"api_key":"secret","token":"abc","jwt":"eyJhbGciOiJIUzI1NiJ9.a.b"} '
-                "Bearer sk-secret AIzaSyD123456789012345678901234567890123 AKIA1234567890ABCD12"
+                "Bearer sk-secret xai-live-secret AIzaSyD123456789012345678901234567890123 AKIA1234567890ABCD12"
             ),
         ):
             status, _, error, _ = ptc._count(
@@ -366,6 +367,7 @@ class HttpErrorPathTest(unittest.TestCase):
         self.assertNotIn("secret", redacted)
         self.assertNotIn("abc", redacted)
         self.assertNotIn("sk-secret", redacted)
+        self.assertNotIn("xai-live-secret", redacted)
         self.assertNotIn("AIzaSyD123456789012345678901234567890123", redacted)
         self.assertNotIn("AKIA1234567890ABCD12", redacted)
 

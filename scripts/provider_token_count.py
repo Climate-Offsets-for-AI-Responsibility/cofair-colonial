@@ -235,6 +235,7 @@ def _redact(msg: str) -> str:
         redacted,
     )
     redacted = re.sub(r"\bsk-[A-Za-z0-9._-]+\b", "[REDACTED]", redacted)
+    redacted = re.sub(r"\bxai-[A-Za-z0-9._-]+\b", "[REDACTED]", redacted)
     redacted = re.sub(r"\bAIza[0-9A-Za-z\-_]{20,}\b", "[REDACTED]", redacted)
     redacted = re.sub(r"\bAKIA[0-9A-Z]{16}\b", "[REDACTED]", redacted)
     redacted = re.sub(
