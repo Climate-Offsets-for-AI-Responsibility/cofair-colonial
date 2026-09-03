@@ -613,6 +613,7 @@ class MeterCostEventWiringTest(unittest.TestCase):
             "output_price": 2.0,
         }
         fake_eq = {
+            "pricing_snapshot_date": "2026-08-31",
             "tasks": [{"task_id": "E", "output_cap": None}],
             "selected_models_by_mode": {"two": [model], "three": [model]},
         }
@@ -793,7 +794,6 @@ class MeterCostEventWiringTest(unittest.TestCase):
             "output_price": 2.0,
         }
         fake_eq = {
-            "pricing_snapshot_date": "2026-08-31",
             "tasks": [{"task_id": "E", "output_cap": None}],
             "selected_models_by_mode": {"two": [model], "three": [model]},
         }
