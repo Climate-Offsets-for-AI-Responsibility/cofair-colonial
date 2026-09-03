@@ -48,6 +48,48 @@ ANTHROPIC_TRUNCATED = {
 }
 
 
+def _openai_response(assistant_text: str, tokens_in: int, tokens_out: int) -> mock.Mock:
+    return _response(
+        200,
+        {
+            "usage": {"prompt_tokens": tokens_in, "completion_tokens": tokens_out},
+            "choices": [{"finish_reason": "stop", "message": {"content": assistant_text}}],
+        },
+    )
+
+
+def _anthropic_response(assistant_text: str, tokens_in: int, tokens_out: int) -> mock.Mock:
+    return _response(
+        200,
+        {
+            "usage": {"input_tokens": tokens_in, "output_tokens": tokens_out},
+            "stop_reason": "end_turn",
+            "content": [{"type": "text", "text": assistant_text}],
+        },
+    )
+
+
+def _gemini_response(assistant_text: str, tokens_in: int, tokens_out: int) -> mock.Mock:
+    return _response(
+        200,
+        {
+            "usageMetadata": {"promptTokenCount": tokens_in, "candidatesTokenCount": tokens_out},
+            "candidates": [{"finishReason": "STOP", "content": {"parts": [{"text": assistant_text}]}}],
+        },
+    )
+
+
+def _bedrock_response(assistant_text: str, tokens_in: int, tokens_out: int) -> mock.Mock:
+    return _response(
+        200,
+        {
+            "usage": {"inputTokens": tokens_in, "outputTokens": tokens_out},
+            "stopReason": "end_turn",
+            "output": {"message": {"content": [{"text": assistant_text}]}},
+        },
+    )
+
+
 def _clear_anthropic_state() -> None:
     runner._ANTHROPIC_ACCEPTED_MAX.clear()
     runner._ANTHROPIC_REJECTED_MIN.clear()
@@ -320,6 +362,274 @@ class UncappedRequestBodyTest(unittest.TestCase):
         config = post.call_args.kwargs["json"]["inferenceConfig"]
         self.assertNotIn("maxTokens", config)
         self.assertEqual(config["temperature"], 0)
+
+
+class ConversationGenerationTest(unittest.TestCase):
+    def _entry(self, provider_id: str) -> dict:
+        return {
+            "provider_id": provider_id,
+            "model_id": f"{provider_id}-pinned",
+            "tier": "workhorse",
+            "input_price": 0.4,
+            "output_price": 1.2,
+        }
+
+    def test_openai_conversation_keeps_prior_assistant_output(self) -> None:
+        responses = [
+            _openai_response("first", 10, 20),
+            _openai_response("second", 30, 40),
+            _openai_response("third", 50, 60),
+        ]
+        entry = self._entry("openai")
+        with (
+            mock.patch.object(runner, "env_for_provider", return_value="k"),
+            mock.patch.object(
+                runner, "candidate_plan", return_value=[("gpt-live", 1.1, 2.2)]
+            ),
+            mock.patch.object(runner, "_http_request", side_effect=responses) as request,
+        ):
+            result, turns = runner.run_provider_conversation(entry, None, False)
+
+        second_messages = request.call_args_list[1].kwargs["json"]["messages"]
+        self.assertEqual(
+            second_messages,
+            [
+                {"role": "user", "content": runner.E_USER_PROMPTS[0]},
+                {"role": "assistant", "content": "first"},
+                {"role": "user", "content": runner.E_USER_PROMPTS[1]},
+            ],
+        )
+        self.assertEqual((result.tokens_in, result.tokens_out), (90, 120))
+        self.assertEqual([turn.turn for turn in turns], [1, 2, 3])
+        self.assertTrue(all(turn.input_price == 1.1 for turn in turns))
+        self.assertTrue(all(turn.output_price == 2.2 for turn in turns))
+
+    def test_anthropic_conversation_keeps_native_messages(self) -> None:
+        responses = [
+            _anthropic_response("first", 10, 20),
+            _anthropic_response("second", 30, 40),
+            _anthropic_response("third", 50, 60),
+        ]
+        entry = self._entry("anthropic")
+        with (
+            mock.patch.object(runner, "env_for_provider", return_value="k"),
+            mock.patch.object(
+                runner, "candidate_plan", return_value=[("claude-live", 1.1, 2.2)]
+            ),
+            mock.patch.object(runner, "_http_request", side_effect=responses) as request,
+        ):
+            result, turns = runner.run_provider_conversation(entry, None, False)
+
+        second_messages = request.call_args_list[1].kwargs["json"]["messages"]
+        self.assertEqual(
+            second_messages,
+            [
+                {"role": "user", "content": runner.E_USER_PROMPTS[0]},
+                {"role": "assistant", "content": "first"},
+                {"role": "user", "content": runner.E_USER_PROMPTS[1]},
+            ],
+        )
+        self.assertEqual((result.tokens_in, result.tokens_out), (90, 120))
+        self.assertEqual([turn.turn for turn in turns], [1, 2, 3])
+
+    def test_gemini_conversation_uses_user_model_content_parts(self) -> None:
+        responses = [
+            _gemini_response("first", 10, 20),
+            _gemini_response("second", 30, 40),
+            _gemini_response("third", 50, 60),
+        ]
+        entry = self._entry("google")
+        with (
+            mock.patch.object(runner, "env_for_provider", return_value="k"),
+            mock.patch.object(
+                runner, "candidate_plan", return_value=[("gemini-live", 1.1, 2.2)]
+            ),
+            mock.patch.object(runner, "_http_request", side_effect=responses) as request,
+        ):
+            result, turns = runner.run_provider_conversation(entry, None, False)
+
+        second_contents = request.call_args_list[1].kwargs["json"]["contents"]
+        self.assertEqual(
+            second_contents,
+            [
+                {"role": "user", "parts": [{"text": runner.E_USER_PROMPTS[0]}]},
+                {"role": "model", "parts": [{"text": "first"}]},
+                {"role": "user", "parts": [{"text": runner.E_USER_PROMPTS[1]}]},
+            ],
+        )
+        self.assertEqual((result.tokens_in, result.tokens_out), (90, 120))
+        self.assertEqual([turn.turn for turn in turns], [1, 2, 3])
+
+    def test_bedrock_conversation_uses_content_arrays(self) -> None:
+        responses = [
+            _bedrock_response("first", 10, 20),
+            _bedrock_response("second", 30, 40),
+            _bedrock_response("third", 50, 60),
+        ]
+        entry = self._entry("aws")
+        with (
+            mock.patch.object(runner, "env_for_provider", return_value="k"),
+            mock.patch.object(
+                runner, "candidate_plan", return_value=[("nova-live", 1.1, 2.2)]
+            ),
+            mock.patch.object(runner, "_http_request", side_effect=responses) as request,
+        ):
+            result, turns = runner.run_provider_conversation(entry, None, False)
+
+        second_messages = request.call_args_list[1].kwargs["json"]["messages"]
+        self.assertEqual(
+            second_messages,
+            [
+                {"role": "user", "content": [{"text": runner.E_USER_PROMPTS[0]}]},
+                {"role": "assistant", "content": [{"text": "first"}]},
+                {"role": "user", "content": [{"text": runner.E_USER_PROMPTS[1]}]},
+            ],
+        )
+        self.assertEqual((result.tokens_in, result.tokens_out), (90, 120))
+        self.assertEqual([turn.turn for turn in turns], [1, 2, 3])
+
+
+class MeterCostEventWiringTest(unittest.TestCase):
+    def test_dry_run_writes_neither_runs_nor_cost_events(self) -> None:
+        model = {
+            "provider_id": "openai",
+            "model_id": "gpt-pinned",
+            "tier": "workhorse",
+            "input_price": 1.0,
+            "output_price": 2.0,
+        }
+        fake_eq = {
+            "tasks": [{"task_id": "E", "output_cap": None}],
+            "selected_models_by_mode": {"two": [model], "three": [model]},
+        }
+        with (
+            mock.patch.object(
+                sys,
+                "argv",
+                [
+                    "run_equivalence_tasks.py",
+                    "--mode",
+                    "two",
+                    "--date",
+                    "2026-09-03",
+                    "--dry-run",
+                    "--workhorse-replicates",
+                    "1",
+                ],
+            ),
+            mock.patch.object(runner, "METER_TASK_IDS", ("E",)),
+            mock.patch.object(runner, "load_equivalence", return_value=fake_eq),
+            mock.patch.object(runner, "load_existing_runs", return_value=[]),
+            mock.patch.object(
+                runner,
+                "run_provider_conversation",
+                return_value=(
+                    runner.TaskResult("dry_run", None, None, None, "gpt-live", 1.0, 2.0),
+                    [],
+                ),
+            ),
+            mock.patch.object(runner, "save_runs") as save_runs,
+            mock.patch.object(runner, "save_cost_events") as save_cost_events,
+        ):
+            self.assertEqual(runner.main(), 0)
+
+        save_runs.assert_not_called()
+        save_cost_events.assert_not_called()
+
+    def test_emits_three_events_for_successful_task_e_requests(self) -> None:
+        model = {
+            "provider_id": "openai",
+            "model_id": "gpt-pinned",
+            "tier": "workhorse",
+            "input_price": 1.0,
+            "output_price": 2.0,
+        }
+        fake_eq = {
+            "tasks": [{"task_id": "E", "output_cap": None}],
+            "selected_models_by_mode": {"two": [model], "three": [model]},
+        }
+        result = runner.TaskResult("ok", 90, 120, None, "gpt-live", 1.1, 2.2, False, None)
+        turns = [
+            runner.TurnResult(
+                1,
+                runner.Usage(10, 20, False, None, "first"),
+                [{"role": "user", "content": runner.E_USER_PROMPTS[0]}],
+                1.1,
+                2.2,
+            ),
+            runner.TurnResult(
+                2,
+                runner.Usage(30, 40, False, None, "second"),
+                [
+                    {"role": "user", "content": runner.E_USER_PROMPTS[0]},
+                    {"role": "assistant", "content": "first"},
+                    {"role": "user", "content": runner.E_USER_PROMPTS[1]},
+                ],
+                1.1,
+                2.2,
+            ),
+            runner.TurnResult(
+                3,
+                runner.Usage(50, 60, False, None, "third"),
+                [
+                    {"role": "user", "content": runner.E_USER_PROMPTS[0]},
+                    {"role": "assistant", "content": "first"},
+                    {"role": "user", "content": runner.E_USER_PROMPTS[1]},
+                    {"role": "assistant", "content": "second"},
+                    {"role": "user", "content": runner.E_USER_PROMPTS[2]},
+                ],
+                1.1,
+                2.2,
+            ),
+        ]
+
+        built_rows: list[dict] = []
+        saved_rows: list[dict] = []
+
+        def _build(**kwargs):
+            built_rows.append(kwargs)
+            return dict(kwargs)
+
+        def _save(rows):
+            saved_rows.extend(rows)
+
+        with (
+            mock.patch.object(
+                sys,
+                "argv",
+                [
+                    "run_equivalence_tasks.py",
+                    "--mode",
+                    "two",
+                    "--date",
+                    "2026-09-03",
+                    "--workhorse-replicates",
+                    "1",
+                ],
+            ),
+            mock.patch.object(runner, "METER_TASK_IDS", ("E",)),
+            mock.patch.object(runner, "load_equivalence", return_value=fake_eq),
+            mock.patch.object(runner, "load_existing_runs", return_value=[]),
+            mock.patch.object(runner, "load_cost_events", return_value=[]),
+            mock.patch.object(
+                runner, "run_provider_conversation", return_value=(result, turns)
+            ),
+            mock.patch.object(runner, "build_cost_event", side_effect=_build),
+            mock.patch.object(
+                runner, "merge_cost_events", side_effect=lambda existing, incoming: incoming
+            ),
+            mock.patch.object(runner, "save_runs"),
+            mock.patch.object(runner, "save_cost_events", side_effect=_save),
+            mock.patch.object(runner, "now_iso_z", return_value="2026-09-03T12:00:00Z"),
+        ):
+            self.assertEqual(runner.main(), 0)
+
+        self.assertEqual(len(saved_rows), 3)
+        self.assertEqual([row["turn"] for row in saved_rows], [1, 2, 3])
+        self.assertTrue(all(row["request_kind"] == "generation" for row in saved_rows))
+        self.assertTrue(all(row["run_id"] == "2026-09-03:two:1" for row in saved_rows))
+        self.assertTrue(all("run_at" in row for row in built_rows))
+        self.assertTrue(all(row["chat_corpus_version"] == runner.CHAT_CORPUS_VERSION for row in saved_rows))
 
 
 if __name__ == "__main__":

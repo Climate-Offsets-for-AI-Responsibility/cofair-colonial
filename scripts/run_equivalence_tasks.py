@@ -29,11 +29,19 @@ from provider_token_count import (  # noqa: E402
 )
 from provider_http import request_with_retry
 from task_corpus import (  # noqa: E402
+    CHAT_CORPUS_VERSION,
     CORPUS_VERSION,
+    E_USER_PROMPTS,
     METER_TASK_IDS,
     OUTPUT_POLICY_VERSION,
     TASK_PROMPTS,
     TASK_SPECS,
+)
+from cost_events import (  # noqa: E402
+    build_cost_event,
+    load_cost_events,
+    merge_cost_events,
+    save_cost_events,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -84,6 +92,7 @@ class Usage(NamedTuple):
     # The cap actually sent, or None if the parameter was omitted. Recorded so a
     # row stays interpretable after the policy changes again.
     cap_sent: int | None
+    assistant_text: str = ""
 
 
 # Anthropic's Messages API requires `max_tokens`, so "uncapped" is not expressible
@@ -125,7 +134,29 @@ _ANTHROPIC_REJECTED_MIN: dict[str, int] = {}
 _ANTHROPIC_LIMIT_RE = re.compile(r"max_tokens:\s*\d+\s*>\s*(\d+)")
 
 
-def _anthropic_call(model: str, prompt: str, max_tokens: int, api_key: str):
+def _as_messages(prompt_or_messages: str | list[dict[str, str]]) -> list[dict[str, str]]:
+    if isinstance(prompt_or_messages, str):
+        return [{"role": "user", "content": prompt_or_messages}]
+    return list(prompt_or_messages)
+
+
+def _openai_assistant_text(payload: dict) -> str:
+    choices = payload.get("choices") or [{}]
+    content = choices[0].get("message", {}).get("content", "")
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict) and isinstance(block.get("text"), str):
+                parts.append(block["text"])
+        return "".join(parts)
+    return ""
+
+
+def _anthropic_call(model: str, messages: list[dict[str, str]], max_tokens: int, api_key: str):
     return _http_request(
         "POST",
         "https://api.anthropic.com/v1/messages",
@@ -137,7 +168,7 @@ def _anthropic_call(model: str, prompt: str, max_tokens: int, api_key: str):
         json={
             "model": model,
             "max_tokens": max_tokens,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": messages,
         },
         timeout=TIMEOUT_SECONDS,
     )
@@ -195,18 +226,30 @@ def _initial_cap(model: str) -> int | None:
 
 def _usage_from_anthropic(payload: dict, cap_sent: int) -> Usage:
     usage = payload.get("usage", {})
+    assistant_text = "".join(
+        block.get("text", "")
+        for block in payload.get("content", [])
+        if isinstance(block, dict) and block.get("type") == "text"
+    )
     return Usage(
         int(usage.get("input_tokens", 0)),
         int(usage.get("output_tokens", 0)),
         payload.get("stop_reason") == "max_tokens",
         cap_sent,
+        assistant_text,
     )
 
 
-def run_anthropic(model: str, prompt: str, max_tokens: int | None, api_key: str) -> Usage:
+def run_anthropic(
+    model: str,
+    prompt_or_messages: str | list[dict[str, str]],
+    max_tokens: int | None,
+    api_key: str,
+) -> Usage:
+    messages = _as_messages(prompt_or_messages)
     if max_tokens is not None:
         # An explicit cap is a caller's instruction, not a guess to be revised.
-        response = _anthropic_call(model, prompt, max_tokens, api_key)
+        response = _anthropic_call(model, messages, max_tokens, api_key)
         response.raise_for_status()
         return _usage_from_anthropic(response.json(), max_tokens)
 
@@ -216,7 +259,7 @@ def run_anthropic(model: str, prompt: str, max_tokens: int | None, api_key: str)
 
     while candidate is not None and candidate not in tried:
         tried.add(candidate)
-        last_response = response = _anthropic_call(model, prompt, candidate, api_key)
+        last_response = response = _anthropic_call(model, messages, candidate, api_key)
 
         if _is_max_tokens_rejection(response):
             stated = _anthropic_stated_limit(response)
@@ -263,10 +306,11 @@ def run_anthropic(model: str, prompt: str, max_tokens: int | None, api_key: str)
 def run_openai_compatible(
     base_url: str,
     model: str,
-    prompt: str,
+    prompt_or_messages: str | list[dict[str, str]],
     max_tokens: int | None,
     api_key: str,
 ) -> Usage:
+    messages = _as_messages(prompt_or_messages)
     response = _http_request(
         "POST",
         f"{base_url}/chat/completions",
@@ -274,9 +318,7 @@ def run_openai_compatible(
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         },
-        json=openai_compatible_body(
-            base_url, model, [{"role": "user", "content": prompt}], max_tokens
-        ),
+        json=openai_compatible_body(base_url, model, messages, max_tokens),
         timeout=TIMEOUT_SECONDS,
     )
     if not response.ok:
@@ -289,10 +331,24 @@ def run_openai_compatible(
         int(usage.get("completion_tokens", 0)),
         choices[0].get("finish_reason") == "length",
         max_tokens,
+        _openai_assistant_text(payload),
     )
 
 
-def run_gemini(model: str, prompt: str, max_tokens: int | None, api_key: str) -> Usage:
+def run_gemini(
+    model: str,
+    prompt_or_messages: str | list[dict[str, str]],
+    max_tokens: int | None,
+    api_key: str,
+) -> Usage:
+    messages = _as_messages(prompt_or_messages)
+    contents = [
+        {
+            "role": "model" if item["role"] == "assistant" else "user",
+            "parts": [{"text": item["content"]}],
+        }
+        for item in messages
+    ]
     generation_config: dict = {"temperature": 0}
     # Omitted entirely when uncapped, so the model applies its own maximum.
     if max_tokens is not None:
@@ -302,7 +358,7 @@ def run_gemini(model: str, prompt: str, max_tokens: int | None, api_key: str) ->
         f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
         headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
         json={
-            "contents": [{"parts": [{"text": prompt}]}],
+            "contents": contents,
             "generationConfig": generation_config,
         },
         timeout=TIMEOUT_SECONDS,
@@ -312,15 +368,31 @@ def run_gemini(model: str, prompt: str, max_tokens: int | None, api_key: str) ->
     payload = response.json()
     usage = payload.get("usageMetadata", {})
     candidates = payload.get("candidates") or [{}]
+    assistant_text = "".join(
+        part.get("text", "")
+        for part in candidates[0].get("content", {}).get("parts", [])
+        if isinstance(part, dict)
+    )
     return Usage(
         int(usage.get("promptTokenCount", 0)),
         int(usage.get("candidatesTokenCount", 0)),
         candidates[0].get("finishReason") == "MAX_TOKENS",
         max_tokens,
+        assistant_text,
     )
 
 
-def run_bedrock(model: str, prompt: str, max_tokens: int | None, api_key: str) -> Usage:
+def run_bedrock(
+    model: str,
+    prompt_or_messages: str | list[dict[str, str]],
+    max_tokens: int | None,
+    api_key: str,
+) -> Usage:
+    messages = _as_messages(prompt_or_messages)
+    body_messages = [
+        {"role": item["role"], "content": [{"text": item["content"]}]}
+        for item in messages
+    ]
     region = bedrock_region()
     inference_config: dict = {"temperature": 0}
     if max_tokens is not None:
@@ -333,7 +405,7 @@ def run_bedrock(model: str, prompt: str, max_tokens: int | None, api_key: str) -
             "Content-Type": "application/json",
         },
         json={
-            "messages": [{"role": "user", "content": [{"text": prompt}]}],
+            "messages": body_messages,
             "inferenceConfig": inference_config,
         },
         timeout=TIMEOUT_SECONDS,
@@ -342,11 +414,17 @@ def run_bedrock(model: str, prompt: str, max_tokens: int | None, api_key: str) -
         response.raise_for_status()
     payload = response.json()
     usage = payload.get("usage", {})
+    assistant_text = "".join(
+        block.get("text", "")
+        for block in payload.get("output", {}).get("message", {}).get("content", [])
+        if isinstance(block, dict)
+    )
     return Usage(
         int(usage.get("inputTokens", 0)),
         int(usage.get("outputTokens", 0)),
         payload.get("stopReason") == "max_tokens",
         max_tokens,
+        assistant_text,
     )
 
 
@@ -455,16 +533,32 @@ def candidate_plan(
 def _run_one(
     provider_id: str, api_model: str, prompt: str, max_tokens: int | None, api_key: str
 ) -> Usage:
+    return _run_messages(
+        provider_id,
+        api_model,
+        [{"role": "user", "content": prompt}],
+        max_tokens,
+        api_key,
+    )
+
+
+def _run_messages(
+    provider_id: str,
+    api_model: str,
+    messages: list[dict[str, str]],
+    max_tokens: int | None,
+    api_key: str,
+) -> Usage:
     if provider_id == "anthropic":
-        return run_anthropic(api_model, prompt, max_tokens, api_key)
+        return run_anthropic(api_model, messages, max_tokens, api_key)
     if provider_id == "google":
-        return run_gemini(api_model, prompt, max_tokens, api_key)
+        return run_gemini(api_model, messages, max_tokens, api_key)
     if provider_id in OPENAI_COMPATIBLE_BASES:
         return run_openai_compatible(
-            OPENAI_COMPATIBLE_BASES[provider_id], api_model, prompt, max_tokens, api_key
+            OPENAI_COMPATIBLE_BASES[provider_id], api_model, messages, max_tokens, api_key
         )
     if provider_id == "aws":
-        return run_bedrock(api_model, prompt, max_tokens, api_key)
+        return run_bedrock(api_model, messages, max_tokens, api_key)
     raise LookupError(f"provider {provider_id} not implemented")
 
 
@@ -479,6 +573,28 @@ class TaskResult(NamedTuple):
     # From the provider's stop reason, not from comparing against a cap.
     truncated: bool = False
     cap_sent: int | None = None
+
+
+class TurnResult(NamedTuple):
+    turn: int
+    usage: Usage
+    messages: list[dict[str, str]]
+    input_price: float | None
+    output_price: float | None
+
+
+def _http_error_detail(exc: requests.HTTPError) -> str:
+    detail = None
+    if exc.response is not None:
+        try:
+            detail = exc.response.text[:500]
+        except Exception:  # noqa: BLE001
+            detail = None
+    return re.sub(
+        r"(key=)[^&\s]+",
+        r"\1[REDACTED]",
+        f"{exc} :: {detail}" if detail else f"{exc}",
+    )
 
 
 def run_provider_task(
@@ -513,15 +629,7 @@ def run_provider_task(
                 "unsupported_provider", None, None, str(exc), candidate, *own_prices
             )
         except requests.HTTPError as exc:
-            detail = None
-            if exc.response is not None:
-                try:
-                    detail = exc.response.text[:500]
-                except Exception:  # noqa: BLE001
-                    detail = None
-            last_error = re.sub(
-                r"(key=)[^&\s]+", r"\1[REDACTED]", f"{exc} :: {detail}" if detail else f"{exc}"
-            )
+            last_error = _http_error_detail(exc)
             # A pinned id can be absent from the catalog, Legacy on this key, or
             # missing in the region; those justify the next candidate. Anything
             # else is a real fault and must surface on the first attempt.
@@ -549,6 +657,102 @@ def run_provider_task(
         last_error or "no callable model candidate",
         api_model,
         *own_prices,
+    )
+
+
+def run_provider_conversation(
+    entry: dict, max_tokens: int | None, dry_run: bool
+) -> tuple[TaskResult, list[TurnResult]]:
+    provider_id = entry["provider_id"]
+    model_id = entry["model_id"]
+    tier = entry["tier"]
+    own_prices = (entry.get("input_price"), entry.get("output_price"))
+
+    if dry_run:
+        api_model = resolve_api_model(provider_id, model_id, tier, api_key=None)
+        return TaskResult("dry_run", None, None, None, api_model, *own_prices), []
+
+    api_key = env_for_provider(provider_id)
+    if not api_key:
+        api_model = resolve_api_model(provider_id, model_id, tier, api_key=None)
+        return (
+            TaskResult(
+                "missing_key", None, None, "provider API key missing", api_model, *own_prices
+            ),
+            [],
+        )
+
+    plan = candidate_plan(provider_id, tier, entry, api_key)
+    api_model = plan[0][0] if plan else model_id
+    last_error: str | None = None
+    for candidate, input_price, output_price in plan:
+        api_model = candidate
+        conversation: list[dict[str, str]] = []
+        turns: list[TurnResult] = []
+        total_in = 0
+        total_out = 0
+        truncated = False
+        cap_sent = max_tokens
+        try:
+            for turn_index, prompt in enumerate(E_USER_PROMPTS, start=1):
+                conversation.append({"role": "user", "content": prompt})
+                usage = _run_messages(provider_id, candidate, conversation, max_tokens, api_key)
+                turns.append(
+                    TurnResult(turn_index, usage, list(conversation), input_price, output_price)
+                )
+                conversation.append({"role": "assistant", "content": usage.assistant_text})
+                total_in += usage.tokens_in
+                total_out += usage.tokens_out
+                truncated = truncated or usage.truncated
+                cap_sent = usage.cap_sent
+        except LookupError as exc:
+            return (
+                TaskResult("unsupported_provider", None, None, str(exc), candidate, *own_prices),
+                [],
+            )
+        except requests.HTTPError as exc:
+            last_error = _http_error_detail(exc)
+            if _is_model_unavailable(exc):
+                continue
+            return (
+                TaskResult(
+                    _status_for_http_error(exc),
+                    None,
+                    None,
+                    last_error,
+                    candidate,
+                    *own_prices,
+                ),
+                [],
+            )
+        except Exception as exc:  # noqa: BLE001
+            return TaskResult("error", None, None, str(exc), candidate, *own_prices), []
+
+        return (
+            TaskResult(
+                "ok",
+                total_in,
+                total_out,
+                None,
+                candidate,
+                input_price,
+                output_price,
+                truncated,
+                cap_sent,
+            ),
+            turns,
+        )
+
+    return (
+        TaskResult(
+            "error",
+            None,
+            None,
+            last_error or "no callable model candidate",
+            api_model,
+            *own_prices,
+        ),
+        [],
     )
 
 
@@ -626,6 +830,7 @@ def main() -> int:
     wh_reps = max(1, args.workhorse_replicates)
 
     new_rows = []
+    incoming_cost_events: list[dict] = []
     for model in models:
         replicates = wh_reps if model["tier"] == "workhorse" else 1
         for replicate in range(1, replicates + 1):
@@ -637,13 +842,19 @@ def main() -> int:
                 if requested_cap is None:
                     requested_cap = task.get("output_tokens")
                 output_cap = None if requested_cap is None else int(requested_cap)
-                result = run_provider_task(model, task_id, output_cap, args.dry_run)
+                if task_id == "E":
+                    result, turns = run_provider_conversation(model, output_cap, args.dry_run)
+                else:
+                    result = run_provider_task(model, task_id, output_cap, args.dry_run)
+                    turns = []
                 status = result.status
                 tokens_in, tokens_out = result.tokens_in, result.tokens_out
                 error, used_model = result.error, result.api_model
                 usd = usd_value(tokens_in, tokens_out, result.input_price, result.output_price)
                 implied = implied_per_million(tokens_in, tokens_out, usd)
                 input_chars = len(TASK_PROMPTS[task_id])
+                run_at = now_iso_z()
+                run_id = f"{run_date}:{args.mode}:{replicate}"
 
                 row = {
                     "run_date": run_date,
@@ -672,9 +883,59 @@ def main() -> int:
                     "output_price": result.output_price,
                     "usd_value_same_day": usd,
                     "implied_cost_per_1m": implied,
-                    "run_at": now_iso_z(),
+                    "run_at": run_at,
+                    "run_id": run_id,
+                    "chat_corpus_version": CHAT_CORPUS_VERSION if task_id == "E" else None,
                 }
                 new_rows.append(row)
+                if status == "ok":
+                    if task_id == "E":
+                        for turn in turns:
+                            incoming_cost_events.append(
+                                build_cost_event(
+                                    date=run_date,
+                                    run_at=run_at,
+                                    source="meter",
+                                    provider_id=model["provider_id"],
+                                    tier=model["tier"],
+                                    task_id=task_id,
+                                    turn=turn.turn,
+                                    request_kind="generation",
+                                    api_model=used_model,
+                                    input_tokens=turn.usage.tokens_in,
+                                    output_tokens=turn.usage.tokens_out,
+                                    input_price_per_1m=turn.input_price,
+                                    output_price_per_1m=turn.output_price,
+                                    pricing_snapshot_date=run_date,
+                                    corpus_version=CORPUS_VERSION,
+                                    chat_corpus_version=CHAT_CORPUS_VERSION,
+                                    run_id=run_id,
+                                    replicate=replicate,
+                                )
+                            )
+                    else:
+                        incoming_cost_events.append(
+                            build_cost_event(
+                                date=run_date,
+                                run_at=run_at,
+                                source="meter",
+                                provider_id=model["provider_id"],
+                                tier=model["tier"],
+                                task_id=task_id,
+                                turn=None,
+                                request_kind="generation",
+                                api_model=used_model,
+                                input_tokens=tokens_in,
+                                output_tokens=tokens_out,
+                                input_price_per_1m=result.input_price,
+                                output_price_per_1m=result.output_price,
+                                pricing_snapshot_date=run_date,
+                                corpus_version=CORPUS_VERSION,
+                                chat_corpus_version=CHAT_CORPUS_VERSION,
+                                run_id=run_id,
+                                replicate=replicate,
+                            )
+                        )
                 replace_keys.add(
                     (run_date, args.mode, task_id, model["provider_id"], model["tier"], replicate)
                 )
@@ -702,20 +963,24 @@ def main() -> int:
             r["task_id"],
         )
     )
-    save_runs(merged)
+    if not args.dry_run:
+        save_runs(merged)
+        merged_cost_events = merge_cost_events(load_cost_events(), incoming_cost_events)
+        save_cost_events(merged_cost_events)
 
     ok = sum(1 for row in new_rows if row["run_status"] == "ok")
     print(
         json.dumps(
             {
-                "event": "equivalence_runs_written",
+                "event": "equivalence_runs_written" if not args.dry_run else "equivalence_runs_dry_run",
                 "run_date": run_date,
                 "mode": args.mode,
                 "workhorse_replicates": wh_reps,
                 "dry_run": args.dry_run,
                 "rows_written": len(new_rows),
                 "ok_rows": ok,
-                "output_file": str(RUNS_FILE),
+                "cost_events_written": len(incoming_cost_events),
+                "output_file": None if args.dry_run else str(RUNS_FILE),
             }
         )
     )
