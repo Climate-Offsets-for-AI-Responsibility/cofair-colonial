@@ -114,26 +114,62 @@ export function sortDatasetsForDate(datasets, dateStr) {
   });
 }
 
+export function parseOptionalNumber(value) {
+  if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export function formatEstimatedSpend(usd) {
-  const value = Number(usd);
-  if (!Number.isFinite(value)) return "—";
+  const value = parseOptionalNumber(usd);
+  if (value == null) return "—";
   const abs = Math.abs(value);
-  const decimals = abs >= 1 ? 2 : abs >= 0.01 ? 4 : 6;
-  const formatted = abs.toLocaleString(undefined, {
+  const decimals = value === 0 ? 2 : abs >= 1 ? 2 : abs >= 0.01 ? 4 : 6;
+  const formatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
-  return `${value < 0 ? "-" : ""}$${formatted}`;
+  return formatter.format(value);
 }
 
 export function formatCostDelta(comparison) {
-  if (!comparison || comparison.status !== "ok") return "Comparison unavailable";
-  const deltaPct = Number(comparison.delta_pct);
-  const deltaUsd = Number(comparison.delta_usd);
-  if (!Number.isFinite(deltaPct) || !Number.isFinite(deltaUsd)) {
+  if (!comparison) return "Comparison unavailable";
+  if (comparison.status === "new_baseline") return "New baseline";
+  if (comparison.status !== "ok") return "Comparison unavailable";
+
+  const deltaPct = parseOptionalNumber(comparison.delta_pct);
+  const deltaUsd = parseOptionalNumber(comparison.delta_usd);
+  if (deltaUsd == null) return "Comparison unavailable";
+  if (deltaUsd === 0) return `No change · ${formatEstimatedSpend(0)}`;
+  if (deltaPct == null) {
     return "Comparison unavailable";
   }
-  const pct = `${deltaPct >= 0 ? "+" : ""}${deltaPct.toFixed(1)}%`;
-  const usd = formatEstimatedSpend(deltaUsd);
-  return `${pct} · ${deltaUsd >= 0 ? "+" : ""}${usd}`;
+  const sign = deltaUsd > 0 ? "+" : "-";
+  const pct = `${sign}${Math.abs(deltaPct).toFixed(1)}%`;
+  const usd = `${sign}${formatEstimatedSpend(Math.abs(deltaUsd))}`;
+  return `${pct} · ${usd}`;
+}
+
+export function splitLeafCostColumns(detail) {
+  const total = parseOptionalNumber(detail?.estimated_cost_usd);
+  if (detail?.source === "ledger") {
+    return { input: null, output: null, supporting: total, total };
+  }
+  if (detail?.source === "meter") {
+    return {
+      input: parseOptionalNumber(detail?.input_cost_usd),
+      output: parseOptionalNumber(detail?.output_cost_usd),
+      supporting: null,
+      total,
+    };
+  }
+  return {
+    input: parseOptionalNumber(detail?.input_cost_usd),
+    output: parseOptionalNumber(detail?.output_cost_usd),
+    supporting: parseOptionalNumber(detail?.supporting_cost_usd),
+    total,
+  };
 }

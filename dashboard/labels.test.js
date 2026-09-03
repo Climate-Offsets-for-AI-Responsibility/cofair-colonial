@@ -10,6 +10,8 @@ import {
   contextsNeedDisambiguation,
   formatEstimatedSpend,
   formatCostDelta,
+  parseOptionalNumber,
+  splitLeafCostColumns,
   priceAtOrBefore,
   sortDatasetsForDate,
 } from "./labels.js";
@@ -154,6 +156,25 @@ describe("cost formatters", () => {
     assert.equal(formatEstimatedSpend(0.00123456), "$0.001235");
   });
 
+  it("formatEstimatedSpend returns em dash for missing values", () => {
+    assert.equal(formatEstimatedSpend(null), "—");
+    assert.equal(formatEstimatedSpend(undefined), "—");
+    assert.equal(formatEstimatedSpend(""), "—");
+  });
+
+  it("formatEstimatedSpend is locale-stable en-US and keeps exact zero", () => {
+    assert.equal(formatEstimatedSpend(0), "$0.00");
+    assert.equal(formatEstimatedSpend("1234.5"), "$1,234.50");
+  });
+
+  it("parseOptionalNumber rejects empty and nullable values", () => {
+    assert.equal(parseOptionalNumber(null), null);
+    assert.equal(parseOptionalNumber(undefined), null);
+    assert.equal(parseOptionalNumber(""), null);
+    assert.equal(parseOptionalNumber("  "), null);
+    assert.equal(parseOptionalNumber("0"), 0);
+  });
+
   it("formatCostDelta never invents a comparison", () => {
     assert.equal(
       formatCostDelta({ status: "comparison_unavailable" }),
@@ -162,6 +183,59 @@ describe("cost formatters", () => {
     assert.equal(
       formatCostDelta({ status: "ok", delta_pct: 8.2, delta_usd: 0.0142 }),
       "+8.2% · +$0.0142",
+    );
+  });
+
+  it("formatCostDelta handles negative, zero, and baseline states", () => {
+    assert.equal(
+      formatCostDelta({ status: "ok", delta_pct: -2.4, delta_usd: -0.0142 }),
+      "-2.4% · -$0.0142",
+    );
+    assert.equal(
+      formatCostDelta({ status: "ok", delta_pct: 0, delta_usd: 0 }),
+      "No change · $0.00",
+    );
+    assert.equal(
+      formatCostDelta({ status: "new_baseline", reason: "no_comparable_prior_period" }),
+      "New baseline",
+    );
+  });
+});
+
+describe("cost leaf splits", () => {
+  it("splits meter leaves into input/output only", () => {
+    assert.deepEqual(
+      splitLeafCostColumns({
+        source: "meter",
+        input_cost_usd: 0.0012,
+        output_cost_usd: 0.0024,
+        estimated_cost_usd: 0.0036,
+      }),
+      { input: 0.0012, output: 0.0024, supporting: null, total: 0.0036 },
+    );
+  });
+
+  it("splits ledger leaves into supporting only", () => {
+    assert.deepEqual(
+      splitLeafCostColumns({
+        source: "ledger",
+        input_cost_usd: 99,
+        output_cost_usd: 99,
+        estimated_cost_usd: 0.0008,
+      }),
+      { input: null, output: null, supporting: 0.0008, total: 0.0008 },
+    );
+  });
+
+  it("keeps missing leaf totals as null", () => {
+    assert.deepEqual(
+      splitLeafCostColumns({
+        source: "meter",
+        input_cost_usd: null,
+        output_cost_usd: undefined,
+        estimated_cost_usd: "",
+      }),
+      { input: null, output: null, supporting: null, total: null },
     );
   });
 });

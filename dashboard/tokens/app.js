@@ -8,7 +8,9 @@ import {
   formatCostDelta,
   formatEstimatedSpend,
   hexToHsl,
+  parseOptionalNumber,
   pointAtOrBefore,
+  splitLeafCostColumns,
   sortDatasetsForDate,
 } from "../labels.js";
 
@@ -46,10 +48,15 @@ const state = {
   lastFocus: null,
   costDetailIndex: null,
   costDetailsByDate: new Map(),
+  costDetailErrors: new Map(),
   costDate: "",
   costExpandedRows: new Set(),
   costExpandedTasks: new Set(),
-  costLoading: false,
+  costInFlightDates: new Set(),
+  costIndexLoading: false,
+  costIndexError: null,
+  costLastStatus: "",
+  costFocusTarget: null,
 };
 
 const SERIES_COUNT = 7;
@@ -1295,31 +1302,17 @@ const COST_PERIODS = [
 let costIndexPromise = null;
 const costDetailPromises = new Map();
 
-function asNumber(value) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function costComparisonState(comparison) {
-  if (!comparison) return "Comparison unavailable";
-  if (comparison.status === "new_baseline") return "New baseline";
-  if (comparison.status !== "ok") return "Comparison unavailable";
-  const delta = asNumber(comparison.delta_usd);
-  if (delta == null || delta === 0) return "No change";
-  return delta > 0 ? "Increase" : "Decrease";
-}
-
 function costComparisonTone(comparison) {
   if (!comparison) return "unavailable";
   if (comparison.status === "new_baseline") return "neutral";
   if (comparison.status !== "ok") return "unavailable";
-  const delta = asNumber(comparison.delta_usd);
+  const delta = parseOptionalNumber(comparison.delta_usd);
   if (delta == null || delta === 0) return "neutral";
   return delta > 0 ? "increase" : "decrease";
 }
 
 function diagnosticCount(node, field) {
-  const explicit = asNumber(node?.[`${field}_count`]);
+  const explicit = parseOptionalNumber(node?.[`${field}_count`]);
   if (explicit != null) return explicit;
   const list = node?.[`${field}s`];
   return Array.isArray(list) ? list.length : 0;
@@ -1330,7 +1323,7 @@ function costDiagnosticText(node) {
   const missing = diagnosticCount(node, "missing_request");
   const duplicate = diagnosticCount(node, "duplicate_request");
   const unexpected = diagnosticCount(node, "unexpected_request");
-  const incomplete = asNumber(node?.incomplete_event_count) || 0;
+  const incomplete = parseOptionalNumber(node?.incomplete_event_count) || 0;
   if (missing) parts.push(`${missing} missing scheduled request${missing === 1 ? "" : "s"}`);
   if (duplicate) parts.push(`${duplicate} duplicate request${duplicate === 1 ? "" : "s"}`);
   if (unexpected) parts.push(`${unexpected} unexplained charge${unexpected === 1 ? "" : "s"}`);
@@ -1364,7 +1357,9 @@ async function loadCostDetailIndex() {
     state.costDetailIndex = { dates: [] };
     return state.costDetailIndex;
   }
-  state.costLoading = true;
+  state.costIndexLoading = true;
+  state.costIndexError = null;
+  renderCostsStatus();
   renderCosts();
   costIndexPromise = fetch(`../data/${path}`)
     .then(async (res) => {
@@ -1372,13 +1367,15 @@ async function loadCostDetailIndex() {
       state.costDetailIndex = await res.json();
       return state.costDetailIndex;
     })
-    .catch(() => {
+    .catch((error) => {
+      console.error("Unable to load cost detail index", error);
       state.costDetailIndex = { dates: [] };
+      state.costIndexError = "Unable to load run-date index.";
       return state.costDetailIndex;
     })
     .finally(() => {
       costIndexPromise = null;
-      state.costLoading = false;
+      state.costIndexLoading = false;
       renderCosts();
     });
   return costIndexPromise;
@@ -1390,9 +1387,15 @@ async function loadCostDetail(date) {
   if (costDetailPromises.has(date)) return costDetailPromises.get(date);
 
   const path = costDetailPath(date);
-  if (!path) return null;
+  if (!path) {
+    state.costDetailErrors.set(date, "No detail path published for this run date.");
+    renderCosts();
+    return null;
+  }
 
-  state.costLoading = true;
+  state.costInFlightDates.add(date);
+  state.costDetailErrors.delete(date);
+  renderCostsStatus();
   renderCosts();
   const promise = fetch(`../data/${path}`)
     .then(async (res) => {
@@ -1401,13 +1404,15 @@ async function loadCostDetail(date) {
       state.costDetailsByDate.set(date, detail);
       return detail;
     })
-    .catch(() => {
-      state.costDetailsByDate.set(date, null);
+    .catch((error) => {
+      console.error(`Unable to load cost detail for ${date}`, error);
+      state.costDetailsByDate.delete(date);
+      state.costDetailErrors.set(date, "Unable to load run detail.");
       return null;
     })
     .finally(() => {
       costDetailPromises.delete(date);
-      state.costLoading = false;
+      state.costInFlightDates.delete(date);
       renderCosts();
     });
   costDetailPromises.set(date, promise);
@@ -1423,11 +1428,17 @@ async function ensureCostsReady() {
 function costPendingMessage() {
   const costs = state.eq?.costs;
   if (!costs) return "Cost summary is unavailable.";
-  if (costs.status === "pending_first_complete_day") {
-    return "First fully instrumented run is pending; cards and detail publish once the first complete day lands.";
-  }
-  if (costs.latest_attempted_date && !costs.latest_complete_date) {
+  const daily = costs.daily || [];
+  const runReason = costs.comparisons?.current_run?.reason;
+  if (
+    costs.latest_attempted_date &&
+    !costs.latest_complete_date &&
+    (daily.length > 0 || runReason === "current_window_incomplete")
+  ) {
     return `Latest attempted run (${fmtDate(costs.latest_attempted_date)}) is incomplete, so no detail date is published yet.`;
+  }
+  if (runReason === "no_record_yet" || costs.status === "pending_first_complete_day") {
+    return "First fully instrumented run is pending; cards and detail publish once the first complete day lands.";
   }
   return "No published run detail is available for the selected date.";
 }
@@ -1437,10 +1448,33 @@ function detailLabel(detail) {
   bits.push(detail.source === "meter" ? "meter" : detail.source || "request");
   if (detail.turn != null) bits.push(`turn ${detail.turn}`);
   if (detail.request_kind) bits.push(detail.request_kind);
-  if (asNumber(detail.attempt) > 1) bits.push(`attempt ${detail.attempt}`);
-  if (asNumber(detail.replicate) > 1) bits.push(`replicate ${detail.replicate}`);
+  if (parseOptionalNumber(detail.attempt) > 1) bits.push(`attempt ${detail.attempt}`);
+  if (parseOptionalNumber(detail.replicate) > 1) bits.push(`replicate ${detail.replicate}`);
   if (detail.canonical === false) bits.push("non-canonical");
   return bits.join(" · ");
+}
+
+function renderCostsStatus(statusText) {
+  if (!costsPanelVisible()) return;
+  const status = document.getElementById("costStatus");
+  if (!status) return;
+  const next = statusText ?? "";
+  if (next === state.costLastStatus) return;
+  status.textContent = next;
+  state.costLastStatus = next;
+}
+
+function rememberCostFocus(kind, key) {
+  state.costFocusTarget = { kind, key };
+}
+
+function restoreCostFocus() {
+  if (!state.costFocusTarget) return;
+  const { kind, key } = state.costFocusTarget;
+  const selector = kind === "row" ? `[data-cost-row="${CSS.escape(key)}"]` : `[data-cost-task="${CSS.escape(key)}"]`;
+  const target = document.querySelector(selector);
+  if (target) target.focus();
+  state.costFocusTarget = null;
 }
 
 function renderCostRows(detail) {
@@ -1457,6 +1491,7 @@ function renderCostRows(detail) {
     rows.push(`<tr class="cofair-table__row cost-row cost-row--parent">
       <td class="cofair-table__td">
         <button type="button" class="cost-expand" aria-expanded="${expanded}"
+                aria-controls="costBody"
                 data-cost-row="${esc(rowKey)}">
           <span class="cost-expand__caret" aria-hidden="true">${expanded ? "▾" : "▸"}</span>
           <span class="cost-label">${providerBadge(row.provider_id)} ${esc(row.tier)}</span>
@@ -1491,6 +1526,7 @@ function renderCostRows(detail) {
           ${
             expandable
               ? `<button type="button" class="cost-expand cost-expand--task" aria-expanded="${taskExpanded}"
+                  aria-controls="costBody"
                   data-cost-task="${esc(taskKey)}">
                 <span class="cost-expand__caret" aria-hidden="true">${taskExpanded ? "▾" : "▸"}</span>
                 <span class="cost-label">${esc(task.task_id)} · ${esc(label)}</span>
@@ -1511,16 +1547,16 @@ function renderCostRows(detail) {
       if (!taskExpanded) continue;
 
       for (const request of detailRows) {
-        const supporting = request.source === "meter" ? 0 : request.estimated_cost_usd;
+        const costs = splitLeafCostColumns(request);
         rows.push(`<tr class="cofair-table__row cost-row cost-row--detail">
           <td class="cofair-table__td">
             <span class="cost-label">${esc(detailLabel(request))}</span>
             <p class="cofair-text cofair-text--xs cost-meta">${esc(request.api_model || "model unavailable")}</p>
           </td>
-          <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(request.input_cost_usd))}</td>
-          <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(request.output_cost_usd))}</td>
-          <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(supporting))}</td>
-          <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(request.estimated_cost_usd))}</td>
+          <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(costs.input))}</td>
+          <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(costs.output))}</td>
+          <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(costs.supporting))}</td>
+          <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(costs.total))}</td>
         </tr>`);
       }
     }
@@ -1529,20 +1565,20 @@ function renderCostRows(detail) {
 }
 
 function renderCosts() {
+  if (!costsPanelVisible()) return;
   const costs = state.eq?.costs || {};
   const comparisons = costs.comparisons || {};
+  let statusText = "";
 
   COST_PERIODS.forEach(([period]) => {
     const card = document.querySelector(`[data-cost-period="${period}"]`);
     if (!card) return;
     const comparison = comparisons[period];
-    const amount = asNumber(comparison?.amount_usd);
+    const amount = parseOptionalNumber(comparison?.amount_usd);
     const amountEl = card.querySelector("[data-cost-amount]");
-    const stateEl = card.querySelector("[data-cost-state]");
-    const deltaEl = card.querySelector("[data-cost-delta]");
+    const comparisonEl = card.querySelector("[data-cost-comparison]");
     if (amountEl) amountEl.textContent = amount == null ? "—" : formatEstimatedSpend(amount);
-    if (stateEl) stateEl.textContent = costComparisonState(comparison);
-    if (deltaEl) deltaEl.textContent = formatCostDelta(comparison);
+    if (comparisonEl) comparisonEl.textContent = formatCostDelta(comparison);
     card.dataset.costState = costComparisonTone(comparison);
   });
 
@@ -1579,21 +1615,35 @@ function renderCosts() {
       range.textContent = costPendingMessage();
     }
   }
+  if (!detailDates.length) statusText = costPendingMessage();
+  if (state.costIndexLoading) statusText = "Loading run-date index…";
+  if (state.costIndexError) statusText = state.costIndexError;
 
   const tbody = document.getElementById("costBody");
   if (!tbody) return;
   if (!state.costDate) {
     tbody.innerHTML = emptyRow(5, "No run detail yet", costPendingMessage());
+    renderCostsStatus(statusText || "No run detail yet.");
+    return;
+  }
+
+  if (state.costInFlightDates.has(state.costDate)) {
+    tbody.innerHTML = emptyRow(5, "Loading run detail", "Fetching provider, task, and request totals for this date.");
+    renderCostsStatus("Loading selected run detail…");
+    return;
+  }
+
+  const detailError = state.costDetailErrors.get(state.costDate);
+  if (detailError) {
+    tbody.innerHTML = emptyRow(5, "Unable to load run detail", detailError);
+    renderCostsStatus(detailError);
     return;
   }
 
   const detail = state.costDetailsByDate.get(state.costDate);
   if (!detail) {
-    const title = state.costLoading ? "Loading run detail" : "Run detail unavailable";
-    const body = state.costLoading
-      ? "Fetching provider, task, and request totals for this date."
-      : "This run date did not load. Choose another date or rerun the build artifacts.";
-    tbody.innerHTML = emptyRow(5, title, body);
+    tbody.innerHTML = emptyRow(5, "Run detail unavailable", "This run date has no loaded detail yet.");
+    renderCostsStatus(statusText || "Run detail unavailable.");
     return;
   }
   if (!(detail.provider_tiers || []).length) {
@@ -1602,6 +1652,7 @@ function renderCosts() {
       "No provider totals for this date",
       "No provider-tier cost rows were published for the selected run date.",
     );
+    renderCostsStatus("No provider totals for selected run date.");
     return;
   }
 
@@ -1610,6 +1661,7 @@ function renderCosts() {
     button.addEventListener("click", () => {
       const key = button.getAttribute("data-cost-row") || "";
       if (!key) return;
+      rememberCostFocus("row", key);
       if (state.costExpandedRows.has(key)) {
         state.costExpandedRows.delete(key);
         for (const taskKey of [...state.costExpandedTasks]) {
@@ -1625,11 +1677,14 @@ function renderCosts() {
     button.addEventListener("click", () => {
       const key = button.getAttribute("data-cost-task") || "";
       if (!key) return;
+      rememberCostFocus("task", key);
       if (state.costExpandedTasks.has(key)) state.costExpandedTasks.delete(key);
       else state.costExpandedTasks.add(key);
       renderCosts();
     });
   });
+  renderCostsStatus(statusText || "");
+  restoreCostFocus();
 }
 
 // ---- render ----------------------------------------------------------------
@@ -1641,7 +1696,7 @@ function render() {
   renderHealth();
   renderLedger();
   renderTaskTable();
-  renderCosts();
+  if (costsPanelVisible()) renderCosts();
   if (trendsPanelVisible()) {
     const { points } = aggregate();
     renderChart(points);
@@ -1707,6 +1762,8 @@ async function main() {
     state.costDate = e.target.value;
     state.costExpandedRows.clear();
     state.costExpandedTasks.clear();
+    state.costDetailErrors.delete(state.costDate);
+    if (state.costDate) state.costInFlightDates.add(state.costDate);
     renderCosts();
     void loadCostDetail(state.costDate);
   });

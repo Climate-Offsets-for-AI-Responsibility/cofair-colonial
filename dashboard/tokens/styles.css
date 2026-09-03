@@ -44,23 +44,6 @@
   margin: var(--cofair-space-2) 0 0;
 }
 
-.measure-row {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--cofair-space-4);
-}
-
-.measure-row .cofair-select {
-  width: auto;
-  flex: 0 1 22rem;
-  min-width: 14rem;
-}
-
-.measure-row .cofair-help {
-  margin: 0;
-  flex: 1 1 16rem;
-}
-
 /* ── Costs tab ─────────────────────────────────────────────────────────── */
 
 .cost-cards {
@@ -78,7 +61,6 @@
 .cost-card__eyebrow {
   color: var(--cofair-color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .cost-card__amount {
@@ -92,11 +74,11 @@
   color: var(--cofair-color-text-muted);
 }
 
-.cost-card[data-cost-state="increase"] [data-cost-state] {
+.cost-card[data-cost-state="increase"] .cost-card__comparison {
   color: var(--cofair-color-warning);
 }
 
-.cost-card[data-cost-state="decrease"] [data-cost-state] {
+.cost-card[data-cost-state="decrease"] .cost-card__comparison {
   color: var(--cofair-color-success);
 }
 
@@ -140,8 +122,10 @@
   color: var(--cofair-color-text-muted);
 }
 
+.cost-expand--task { padding-left: var(--cofair-space-6); }
+.cost-expand--task .cost-label { padding-left: 0; }
 .cost-row--task .cost-label { padding-left: var(--cofair-space-6); }
-.cost-row--detail .cost-label { padding-left: var(--cofair-space-9); }
+.cost-row--detail .cost-label { padding-left: var(--cofair-space-8); }
 
 /* Ledger: fit the page width. Shared `.cofair-table` cells are nowrap, which
    forces a horizontal scroll once model ids and task labels sit side by side. */
@@ -395,7 +379,6 @@
 .drawer__eyebrow {
   color: var(--cofair-color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .drawer__body {
@@ -411,7 +394,6 @@
 .drawer__label {
   color: var(--cofair-color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
   margin-bottom: var(--cofair-space-2);
 }
 

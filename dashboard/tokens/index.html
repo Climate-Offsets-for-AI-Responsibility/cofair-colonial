@@ -189,28 +189,19 @@
             <h2 class="cofair-heading cofair-heading--4">Current Run</h2>
             <p class="cofair-text cofair-text--xs cost-card__eyebrow">Estimated spend</p>
             <p class="cofair-heading cofair-heading--3 cost-card__amount" data-cost-amount>—</p>
-            <p class="cofair-text cofair-text--xs cost-card__comparison">
-              <span data-cost-state>Comparison unavailable</span>
-              <span data-cost-delta>Comparison unavailable</span>
-            </p>
+            <p class="cofair-text cofair-text--xs cost-card__comparison" data-cost-comparison>Comparison unavailable</p>
           </article>
           <article class="cofair-card cost-card" data-cost-period="current_month">
             <h2 class="cofair-heading cofair-heading--4">Current Month</h2>
             <p class="cofair-text cofair-text--xs cost-card__eyebrow">Estimated spend</p>
             <p class="cofair-heading cofair-heading--3 cost-card__amount" data-cost-amount>—</p>
-            <p class="cofair-text cofair-text--xs cost-card__comparison">
-              <span data-cost-state>Comparison unavailable</span>
-              <span data-cost-delta>Comparison unavailable</span>
-            </p>
+            <p class="cofair-text cofair-text--xs cost-card__comparison" data-cost-comparison>Comparison unavailable</p>
           </article>
           <article class="cofair-card cost-card" data-cost-period="year_to_date">
             <h2 class="cofair-heading cofair-heading--4">Year to Date</h2>
             <p class="cofair-text cofair-text--xs cost-card__eyebrow">Estimated spend</p>
             <p class="cofair-heading cofair-heading--3 cost-card__amount" data-cost-amount>—</p>
-            <p class="cofair-text cofair-text--xs cost-card__comparison">
-              <span data-cost-state>Comparison unavailable</span>
-              <span data-cost-delta>Comparison unavailable</span>
-            </p>
+            <p class="cofair-text cofair-text--xs cost-card__comparison" data-cost-comparison>Comparison unavailable</p>
           </article>
         </div>
 
@@ -222,7 +213,8 @@
             </select>
           </div>
         </div>
-        <p class="cofair-help" id="costRange"></p>
+        <p class="cofair-help" id="costRange" aria-live="polite"></p>
+        <p class="cofair-help" id="costStatus" aria-live="polite"></p>
 
         <div class="cofair-card">
           <div class="cofair-table__scroll">
