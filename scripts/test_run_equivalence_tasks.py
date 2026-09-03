@@ -188,6 +188,19 @@ class AnthropicCapDiscoveryTest(unittest.TestCase):
         self.assertEqual(post.call_count, 1)
         self.assertEqual(post.call_args.kwargs["json"]["max_tokens"], 512)
 
+    def test_message_array_ladder_preserves_full_history(self) -> None:
+        messages = [
+            {"role": "user", "content": "first user"},
+            {"role": "assistant", "content": "first assistant"},
+            {"role": "user", "content": "second user"},
+        ]
+        calls = [_limit_rejection(1_000_000, 64_000), _response(200, ANTHROPIC_OK)]
+        with mock.patch.object(runner, "_http_request", side_effect=calls) as post:
+            runner.run_anthropic("claude-opus-5", messages, None, "k")
+
+        self.assertEqual(post.call_args_list[0].kwargs["json"]["messages"], messages)
+        self.assertEqual(post.call_args_list[1].kwargs["json"]["messages"], messages)
+
 
 class AnthropicStepUpTest(unittest.TestCase):
     """Stepping down for safety must not be a one-way ratchet.
@@ -365,6 +378,9 @@ class UncappedRequestBodyTest(unittest.TestCase):
 
 
 class ConversationGenerationTest(unittest.TestCase):
+    def setUp(self) -> None:
+        _clear_anthropic_state()
+
     def _entry(self, provider_id: str) -> dict:
         return {
             "provider_id": provider_id,
@@ -401,6 +417,54 @@ class ConversationGenerationTest(unittest.TestCase):
         )
         self.assertEqual((result.tokens_in, result.tokens_out), (90, 120))
         self.assertEqual([turn.turn for turn in turns], [1, 2, 3])
+
+    def test_mid_conversation_model_unavailable_fallback_preserves_successful_turns(self) -> None:
+        responses = [
+            _openai_response("old-first", 10, 20),
+            _response(404, text='{"error":"model not found"}'),
+            _openai_response("new-first", 11, 21),
+            _openai_response("new-second", 31, 41),
+            _openai_response("new-third", 51, 61),
+        ]
+        entry = self._entry("openai")
+        with (
+            mock.patch.object(runner, "env_for_provider", return_value="k"),
+            mock.patch.object(
+                runner,
+                "candidate_plan",
+                return_value=[("old-model", 0.5, 1.5), ("new-model", 1.1, 2.2)],
+            ),
+            mock.patch.object(runner, "_http_request", side_effect=responses) as request,
+        ):
+            result, turns = runner.run_provider_conversation(entry, None, False)
+
+        self.assertEqual(result.status, "ok")
+        self.assertEqual(result.api_model, "new-model")
+        self.assertEqual((result.tokens_in, result.tokens_out), (93, 123))
+        self.assertEqual(len(turns), 4)
+        self.assertEqual([turn.api_model for turn in turns], ["old-model", "new-model", "new-model", "new-model"])
+        self.assertEqual(
+            request.call_args_list[2].kwargs["json"]["messages"],
+            [{"role": "user", "content": runner.E_USER_PROMPTS[0]}],
+        )
+
+    def test_empty_assistant_output_stops_conversation_without_next_request(self) -> None:
+        entry = self._entry("openai")
+        with (
+            mock.patch.object(runner, "env_for_provider", return_value="k"),
+            mock.patch.object(
+                runner, "candidate_plan", return_value=[("gpt-live", 1.1, 2.2)]
+            ),
+            mock.patch.object(
+                runner, "_http_request", side_effect=[_openai_response("", 10, 20)]
+            ) as request,
+        ):
+            result, turns = runner.run_provider_conversation(entry, None, False)
+
+        self.assertEqual(result.status, "error")
+        self.assertIn("empty assistant output", (result.error or "").lower())
+        self.assertEqual(request.call_count, 1)
+        self.assertEqual(len(turns), 1)
         self.assertTrue(all(turn.input_price == 1.1 for turn in turns))
         self.assertTrue(all(turn.output_price == 2.2 for turn in turns))
 
@@ -490,6 +554,9 @@ class ConversationGenerationTest(unittest.TestCase):
 
 
 class MeterCostEventWiringTest(unittest.TestCase):
+    def setUp(self) -> None:
+        _clear_anthropic_state()
+
     def test_dry_run_writes_neither_runs_nor_cost_events(self) -> None:
         model = {
             "provider_id": "openai",
@@ -499,6 +566,7 @@ class MeterCostEventWiringTest(unittest.TestCase):
             "output_price": 2.0,
         }
         fake_eq = {
+            "pricing_snapshot_date": "2026-08-31",
             "tasks": [{"task_id": "E", "output_cap": None}],
             "selected_models_by_mode": {"two": [model], "three": [model]},
         }
@@ -536,7 +604,7 @@ class MeterCostEventWiringTest(unittest.TestCase):
         save_runs.assert_not_called()
         save_cost_events.assert_not_called()
 
-    def test_emits_three_events_for_successful_task_e_requests(self) -> None:
+    def test_emits_real_events_for_successful_task_e_requests(self) -> None:
         model = {
             "provider_id": "openai",
             "model_id": "gpt-pinned",
@@ -556,6 +624,7 @@ class MeterCostEventWiringTest(unittest.TestCase):
                 [{"role": "user", "content": runner.E_USER_PROMPTS[0]}],
                 1.1,
                 2.2,
+                "gpt-live",
             ),
             runner.TurnResult(
                 2,
@@ -567,6 +636,7 @@ class MeterCostEventWiringTest(unittest.TestCase):
                 ],
                 1.1,
                 2.2,
+                "gpt-live",
             ),
             runner.TurnResult(
                 3,
@@ -580,18 +650,18 @@ class MeterCostEventWiringTest(unittest.TestCase):
                 ],
                 1.1,
                 2.2,
+                "gpt-live",
             ),
         ]
 
-        built_rows: list[dict] = []
         saved_rows: list[dict] = []
-
-        def _build(**kwargs):
-            built_rows.append(kwargs)
-            return dict(kwargs)
+        saved_runs: list[dict] = []
 
         def _save(rows):
             saved_rows.extend(rows)
+
+        def _save_runs(rows):
+            saved_runs.extend(rows)
 
         with (
             mock.patch.object(
@@ -614,22 +684,328 @@ class MeterCostEventWiringTest(unittest.TestCase):
             mock.patch.object(
                 runner, "run_provider_conversation", return_value=(result, turns)
             ),
-            mock.patch.object(runner, "build_cost_event", side_effect=_build),
-            mock.patch.object(
-                runner, "merge_cost_events", side_effect=lambda existing, incoming: incoming
-            ),
-            mock.patch.object(runner, "save_runs"),
+            mock.patch.object(runner, "save_runs", side_effect=_save_runs),
             mock.patch.object(runner, "save_cost_events", side_effect=_save),
             mock.patch.object(runner, "now_iso_z", return_value="2026-09-03T12:00:00Z"),
         ):
             self.assertEqual(runner.main(), 0)
 
         self.assertEqual(len(saved_rows), 3)
+        self.assertEqual(saved_rows[0]["event_id"], "2026-09-03:meter:openai:workhorse:E:1:generation:2026-09-03:two:1:e1:1")
         self.assertEqual([row["turn"] for row in saved_rows], [1, 2, 3])
         self.assertTrue(all(row["request_kind"] == "generation" for row in saved_rows))
-        self.assertTrue(all(row["run_id"] == "2026-09-03:two:1" for row in saved_rows))
-        self.assertTrue(all("run_at" in row for row in built_rows))
+        self.assertEqual(
+            [row["run_id"] for row in saved_rows],
+            ["2026-09-03:two:1:e1", "2026-09-03:two:1:e2", "2026-09-03:two:1:e3"],
+        )
         self.assertTrue(all(row["chat_corpus_version"] == runner.CHAT_CORPUS_VERSION for row in saved_rows))
+        self.assertAlmostEqual(saved_rows[0]["estimated_cost_usd"], 10 / 1_000_000 * 1.1 + 20 / 1_000_000 * 2.2)
+        self.assertEqual(len(saved_runs), 1)
+        expected_input_chars = sum(
+            len(block["content"])
+            for turn in turns
+            for block in turn.messages
+            if isinstance(block.get("content"), str)
+        )
+        self.assertEqual(saved_runs[0]["input_chars"], expected_input_chars)
+
+    def test_non_e_single_turn_success_emits_turn_none_and_null_chat_corpus(self) -> None:
+        model = {
+            "provider_id": "openai",
+            "model_id": "gpt-pinned",
+            "tier": "flagship",
+            "input_price": 1.0,
+            "output_price": 2.0,
+        }
+        fake_eq = {
+            "pricing_snapshot_date": "2026-08-31",
+            "tasks": [{"task_id": "A", "output_cap": None}],
+            "selected_models_by_mode": {"two": [model], "three": [model]},
+        }
+        saved_rows: list[dict] = []
+        with (
+            mock.patch.object(
+                sys,
+                "argv",
+                ["run_equivalence_tasks.py", "--mode", "two", "--date", "2026-09-03"],
+            ),
+            mock.patch.object(runner, "METER_TASK_IDS", ("A",)),
+            mock.patch.object(runner, "load_equivalence", return_value=fake_eq),
+            mock.patch.object(runner, "load_existing_runs", return_value=[]),
+            mock.patch.object(runner, "load_cost_events", return_value=[]),
+            mock.patch.object(
+                runner,
+                "run_provider_task",
+                return_value=runner.TaskResult("ok", 12, 34, None, "gpt-live", 1.1, 2.2),
+            ),
+            mock.patch.object(runner, "save_runs"),
+            mock.patch.object(runner, "save_cost_events", side_effect=lambda rows: saved_rows.extend(rows)),
+            mock.patch.object(runner, "now_iso_z", return_value="2026-09-03T12:00:00Z"),
+        ):
+            self.assertEqual(runner.main(), 0)
+
+        self.assertEqual(len(saved_rows), 1)
+        self.assertIsNone(saved_rows[0]["turn"])
+        self.assertIsNone(saved_rows[0]["chat_corpus_version"])
+        self.assertEqual(saved_rows[0]["pricing_snapshot_date"], "2026-08-31")
+
+    def test_failed_non_e_task_emits_no_events(self) -> None:
+        model = {
+            "provider_id": "openai",
+            "model_id": "gpt-pinned",
+            "tier": "flagship",
+            "input_price": 1.0,
+            "output_price": 2.0,
+        }
+        fake_eq = {
+            "tasks": [{"task_id": "A", "output_cap": None}],
+            "selected_models_by_mode": {"two": [model], "three": [model]},
+        }
+        saved_rows: list[dict] = []
+        with (
+            mock.patch.object(
+                sys,
+                "argv",
+                ["run_equivalence_tasks.py", "--mode", "two", "--date", "2026-09-03"],
+            ),
+            mock.patch.object(runner, "METER_TASK_IDS", ("A",)),
+            mock.patch.object(runner, "load_equivalence", return_value=fake_eq),
+            mock.patch.object(runner, "load_existing_runs", return_value=[]),
+            mock.patch.object(runner, "load_cost_events", return_value=[]),
+            mock.patch.object(
+                runner,
+                "run_provider_task",
+                return_value=runner.TaskResult("error", None, None, "boom", "gpt-live", 1.1, 2.2),
+            ),
+            mock.patch.object(runner, "save_runs"),
+            mock.patch.object(runner, "save_cost_events", side_effect=lambda rows: saved_rows.extend(rows)),
+            mock.patch.object(runner, "now_iso_z", return_value="2026-09-03T12:00:00Z"),
+        ):
+            self.assertEqual(runner.main(), 0)
+        self.assertEqual(saved_rows, [])
+
+    def test_failed_e_task_still_emits_partial_successful_turns(self) -> None:
+        model = {
+            "provider_id": "openai",
+            "model_id": "gpt-pinned",
+            "tier": "workhorse",
+            "input_price": 1.0,
+            "output_price": 2.0,
+        }
+        fake_eq = {
+            "pricing_snapshot_date": "2026-08-31",
+            "tasks": [{"task_id": "E", "output_cap": None}],
+            "selected_models_by_mode": {"two": [model], "three": [model]},
+        }
+        partial_turns = [
+            runner.TurnResult(
+                1,
+                runner.Usage(10, 20, False, None, "first"),
+                [{"role": "user", "content": runner.E_USER_PROMPTS[0]}],
+                0.7,
+                1.7,
+                "old-model",
+            )
+        ]
+        saved_rows: list[dict] = []
+        with (
+            mock.patch.object(
+                sys,
+                "argv",
+                [
+                    "run_equivalence_tasks.py",
+                    "--mode",
+                    "two",
+                    "--date",
+                    "2026-09-03",
+                    "--workhorse-replicates",
+                    "1",
+                ],
+            ),
+            mock.patch.object(runner, "METER_TASK_IDS", ("E",)),
+            mock.patch.object(runner, "load_equivalence", return_value=fake_eq),
+            mock.patch.object(runner, "load_existing_runs", return_value=[]),
+            mock.patch.object(runner, "load_cost_events", return_value=[]),
+            mock.patch.object(
+                runner,
+                "run_provider_conversation",
+                return_value=(
+                    runner.TaskResult("error", None, None, "mid-turn failure", "new-model", 1.1, 2.2),
+                    partial_turns,
+                ),
+            ),
+            mock.patch.object(runner, "save_runs"),
+            mock.patch.object(runner, "save_cost_events", side_effect=lambda rows: saved_rows.extend(rows)),
+            mock.patch.object(runner, "now_iso_z", return_value="2026-09-03T12:00:00Z"),
+        ):
+            self.assertEqual(runner.main(), 0)
+
+        self.assertEqual(len(saved_rows), 1)
+        self.assertEqual(saved_rows[0]["api_model"], "old-model")
+        self.assertIsNone(saved_rows[0]["estimated_cost_usd"])
+        self.assertFalse(saved_rows[0]["complete"])
+        self.assertIsNone(saved_rows[0]["pricing_snapshot_date"])
+
+    def test_failed_e_task_without_partial_success_emits_no_events(self) -> None:
+        model = {
+            "provider_id": "openai",
+            "model_id": "gpt-pinned",
+            "tier": "workhorse",
+            "input_price": 1.0,
+            "output_price": 2.0,
+        }
+        fake_eq = {
+            "pricing_snapshot_date": "2026-08-31",
+            "tasks": [{"task_id": "E", "output_cap": None}],
+            "selected_models_by_mode": {"two": [model], "three": [model]},
+        }
+        saved_rows: list[dict] = []
+        with (
+            mock.patch.object(
+                sys,
+                "argv",
+                [
+                    "run_equivalence_tasks.py",
+                    "--mode",
+                    "two",
+                    "--date",
+                    "2026-09-03",
+                    "--workhorse-replicates",
+                    "1",
+                ],
+            ),
+            mock.patch.object(runner, "METER_TASK_IDS", ("E",)),
+            mock.patch.object(runner, "load_equivalence", return_value=fake_eq),
+            mock.patch.object(runner, "load_existing_runs", return_value=[]),
+            mock.patch.object(runner, "load_cost_events", return_value=[]),
+            mock.patch.object(
+                runner,
+                "run_provider_conversation",
+                return_value=(
+                    runner.TaskResult("error", None, None, "fail", "new-model", 1.1, 2.2),
+                    [],
+                ),
+            ),
+            mock.patch.object(runner, "save_runs"),
+            mock.patch.object(runner, "save_cost_events", side_effect=lambda rows: saved_rows.extend(rows)),
+            mock.patch.object(runner, "now_iso_z", return_value="2026-09-03T12:00:00Z"),
+        ):
+            self.assertEqual(runner.main(), 0)
+        self.assertEqual(saved_rows, [])
+
+    def test_fallback_turn_events_keep_original_candidate_prices(self) -> None:
+        model = {
+            "provider_id": "openai",
+            "model_id": "gpt-pinned",
+            "tier": "workhorse",
+            "input_price": 1.0,
+            "output_price": 2.0,
+        }
+        fake_eq = {
+            "pricing_snapshot_date": "2026-08-31",
+            "tasks": [{"task_id": "E", "output_cap": None}],
+            "selected_models_by_mode": {"two": [model], "three": [model]},
+        }
+        partial_and_final = [
+            runner.TurnResult(
+                1,
+                runner.Usage(10, 20, False, None, "old-1"),
+                [{"role": "user", "content": runner.E_USER_PROMPTS[0]}],
+                0.5,
+                1.5,
+                "old-model",
+            ),
+            runner.TurnResult(
+                1,
+                runner.Usage(11, 21, False, None, "new-1"),
+                [{"role": "user", "content": runner.E_USER_PROMPTS[0]}],
+                1.1,
+                2.2,
+                "new-model",
+            ),
+            runner.TurnResult(
+                2,
+                runner.Usage(31, 41, False, None, "new-2"),
+                [
+                    {"role": "user", "content": runner.E_USER_PROMPTS[0]},
+                    {"role": "assistant", "content": "new-1"},
+                    {"role": "user", "content": runner.E_USER_PROMPTS[1]},
+                ],
+                1.1,
+                2.2,
+                "new-model",
+            ),
+            runner.TurnResult(
+                3,
+                runner.Usage(51, 61, False, None, "new-3"),
+                [
+                    {"role": "user", "content": runner.E_USER_PROMPTS[0]},
+                    {"role": "assistant", "content": "new-1"},
+                    {"role": "user", "content": runner.E_USER_PROMPTS[1]},
+                    {"role": "assistant", "content": "new-2"},
+                    {"role": "user", "content": runner.E_USER_PROMPTS[2]},
+                ],
+                1.1,
+                2.2,
+                "new-model",
+            ),
+        ]
+        saved_rows: list[dict] = []
+        with (
+            mock.patch.object(
+                sys,
+                "argv",
+                [
+                    "run_equivalence_tasks.py",
+                    "--mode",
+                    "two",
+                    "--date",
+                    "2026-09-03",
+                    "--workhorse-replicates",
+                    "1",
+                ],
+            ),
+            mock.patch.object(runner, "METER_TASK_IDS", ("E",)),
+            mock.patch.object(runner, "load_equivalence", return_value=fake_eq),
+            mock.patch.object(runner, "load_existing_runs", return_value=[]),
+            mock.patch.object(runner, "load_cost_events", return_value=[]),
+            mock.patch.object(
+                runner,
+                "run_provider_conversation",
+                return_value=(
+                    runner.TaskResult("ok", 93, 123, None, "new-model", 1.1, 2.2),
+                    partial_and_final,
+                ),
+            ),
+            mock.patch.object(runner, "save_runs"),
+            mock.patch.object(runner, "save_cost_events", side_effect=lambda rows: saved_rows.extend(rows)),
+            mock.patch.object(runner, "now_iso_z", return_value="2026-09-03T12:00:00Z"),
+        ):
+            self.assertEqual(runner.main(), 0)
+
+        self.assertEqual(len(saved_rows), 4)
+        self.assertEqual([row["api_model"] for row in saved_rows], ["old-model", "new-model", "new-model", "new-model"])
+        self.assertAlmostEqual(saved_rows[0]["estimated_cost_usd"], 10 / 1_000_000 * 0.5 + 20 / 1_000_000 * 1.5)
+
+
+class ErrorRedactionTest(unittest.TestCase):
+    def test_redacts_bearer_and_common_token_patterns(self) -> None:
+        response = _response(
+            401,
+            text=(
+                "Authorization: Bearer sk-live-secret token=abc123 key=xyz "
+                "api_key=foo x-api-key: bar sk-rawvalue"
+            ),
+        )
+        exc = requests.HTTPError("401 Client Error", response=response)
+        message = runner._http_error_detail(exc)
+        self.assertNotIn("sk-live-secret", message)
+        self.assertNotIn("abc123", message)
+        self.assertNotIn("xyz", message)
+        self.assertNotIn("foo", message)
+        self.assertNotIn("bar", message)
+        self.assertNotIn("sk-rawvalue", message)
+        self.assertIn("Bearer [REDACTED]", message)
 
 
 if __name__ == "__main__":

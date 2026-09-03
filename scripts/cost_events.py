@@ -11,6 +11,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = REPO_ROOT / "dashboard" / "data"
 COST_EVENTS_FILE = DATA_DIR / "cost_events.json"
+_FORBIDDEN_SAVE_KEYS = frozenset({"error", "api_key", "secret", "credential", "password", "token"})
 
 _ALLOWED_BUILD_KWARGS = frozenset(
     {
@@ -56,9 +57,9 @@ class CostEventInput:
     output_tokens: int | None
     input_price_per_1m: float | None
     output_price_per_1m: float | None
-    pricing_snapshot_date: str
+    pricing_snapshot_date: str | None
     corpus_version: str
-    chat_corpus_version: str
+    chat_corpus_version: str | None
     run_id: str
     billable: bool = True
     replicate: int = 1
@@ -156,7 +157,7 @@ def build_cost_event(
     output_tokens = fields.get("output_tokens")
     input_price_per_1m = fields.get("input_price_per_1m")
     output_price_per_1m = fields.get("output_price_per_1m")
-    pricing_snapshot_date = fields["pricing_snapshot_date"]
+    pricing_snapshot_date = fields.get("pricing_snapshot_date")
     corpus_version = fields["corpus_version"]
     chat_corpus_version = fields["chat_corpus_version"]
     run_id = fields["run_id"]
@@ -168,12 +169,17 @@ def build_cost_event(
         and output_tokens is not None
         and input_price_per_1m is not None
         and output_price_per_1m is not None
+        and pricing_snapshot_date is not None
     )
     if not billable:
-        input_cost: float | None = 0.0
-        output_cost: float | None = 0.0
-        total: float | None = 0.0
-        complete = True
+        if input_tokens is not None and output_tokens is not None and pricing_snapshot_date is not None:
+            input_cost = 0.0
+            output_cost = 0.0
+            total = 0.0
+            complete = True
+        else:
+            input_cost = output_cost = total = None
+            complete = False
     elif complete:
         input_cost = input_tokens / 1_000_000 * input_price_per_1m
         output_cost = output_tokens / 1_000_000 * output_price_per_1m
@@ -236,6 +242,11 @@ def load_cost_events(path: Path = COST_EVENTS_FILE) -> list[dict]:
 
 
 def save_cost_events(rows: list[dict], path: Path = COST_EVENTS_FILE) -> None:
+    for row in rows:
+        lowered = {str(key).lower() for key in row}
+        forbidden = sorted(key for key in lowered if key in _FORBIDDEN_SAVE_KEYS)
+        if forbidden:
+            raise ValueError(f"forbidden keys in cost event: {forbidden}")
     sorted_rows = sorted(rows, key=_sort_key)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(

@@ -12,7 +12,7 @@ import re
 import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 import requests
 from dotenv import load_dotenv
@@ -140,6 +140,25 @@ def _as_messages(prompt_or_messages: str | list[dict[str, str]]) -> list[dict[st
     return list(prompt_or_messages)
 
 
+def _messages_for_provider(
+    provider_id: str, messages: list[dict[str, str]]
+) -> list[dict[str, Any]]:
+    if provider_id == "google":
+        return [
+            {
+                "role": "model" if item["role"] == "assistant" else "user",
+                "parts": [{"text": item["content"]}],
+            }
+            for item in messages
+        ]
+    if provider_id == "aws":
+        return [
+            {"role": item["role"], "content": [{"text": item["content"]}]}
+            for item in messages
+        ]
+    return [dict(item) for item in messages]
+
+
 def _openai_assistant_text(payload: dict) -> str:
     choices = payload.get("choices") or [{}]
     content = choices[0].get("message", {}).get("content", "")
@@ -154,6 +173,18 @@ def _openai_assistant_text(payload: dict) -> str:
                 parts.append(block["text"])
         return "".join(parts)
     return ""
+
+
+def _redact_secrets(text: str) -> str:
+    redacted = re.sub(r"(?i)(bearer\s+)[^\s,;]+", r"\1[REDACTED]", text)
+    redacted = re.sub(r"(?i)(x-api-key\s*[:=]\s*)[^\s,;]+", r"\1[REDACTED]", redacted)
+    redacted = re.sub(
+        r"(?i)\b(api[_-]?key|token|key)\s*[:=]\s*[^\s,;]+",
+        lambda m: f"{m.group(1)}=[REDACTED]",
+        redacted,
+    )
+    redacted = re.sub(r"\bsk-[A-Za-z0-9._-]+\b", "[REDACTED]", redacted)
+    return redacted
 
 
 def _anthropic_call(model: str, messages: list[dict[str, str]], max_tokens: int, api_key: str):
@@ -342,13 +373,7 @@ def run_gemini(
     api_key: str,
 ) -> Usage:
     messages = _as_messages(prompt_or_messages)
-    contents = [
-        {
-            "role": "model" if item["role"] == "assistant" else "user",
-            "parts": [{"text": item["content"]}],
-        }
-        for item in messages
-    ]
+    contents = _messages_for_provider("google", messages)
     generation_config: dict = {"temperature": 0}
     # Omitted entirely when uncapped, so the model applies its own maximum.
     if max_tokens is not None:
@@ -389,10 +414,7 @@ def run_bedrock(
     api_key: str,
 ) -> Usage:
     messages = _as_messages(prompt_or_messages)
-    body_messages = [
-        {"role": item["role"], "content": [{"text": item["content"]}]}
-        for item in messages
-    ]
+    body_messages = _messages_for_provider("aws", messages)
     region = bedrock_region()
     inference_config: dict = {"temperature": 0}
     if max_tokens is not None:
@@ -578,9 +600,10 @@ class TaskResult(NamedTuple):
 class TurnResult(NamedTuple):
     turn: int
     usage: Usage
-    messages: list[dict[str, str]]
+    messages: list[dict[str, Any]]
     input_price: float | None
     output_price: float | None
+    api_model: str
 
 
 def _http_error_detail(exc: requests.HTTPError) -> str:
@@ -590,11 +613,7 @@ def _http_error_detail(exc: requests.HTTPError) -> str:
             detail = exc.response.text[:500]
         except Exception:  # noqa: BLE001
             detail = None
-    return re.sub(
-        r"(key=)[^&\s]+",
-        r"\1[REDACTED]",
-        f"{exc} :: {detail}" if detail else f"{exc}",
-    )
+    return _redact_secrets(f"{exc} :: {detail}" if detail else f"{exc}")
 
 
 def run_provider_task(
@@ -685,10 +704,11 @@ def run_provider_conversation(
     plan = candidate_plan(provider_id, tier, entry, api_key)
     api_model = plan[0][0] if plan else model_id
     last_error: str | None = None
+    successful_turns: list[TurnResult] = []
     for candidate, input_price, output_price in plan:
         api_model = candidate
         conversation: list[dict[str, str]] = []
-        turns: list[TurnResult] = []
+        candidate_turns: list[TurnResult] = []
         total_in = 0
         total_out = 0
         truncated = False
@@ -697,18 +717,28 @@ def run_provider_conversation(
             for turn_index, prompt in enumerate(E_USER_PROMPTS, start=1):
                 conversation.append({"role": "user", "content": prompt})
                 usage = _run_messages(provider_id, candidate, conversation, max_tokens, api_key)
-                turns.append(
-                    TurnResult(turn_index, usage, list(conversation), input_price, output_price)
+                sent_messages = _messages_for_provider(provider_id, conversation)
+                turn_result = TurnResult(
+                    turn_index,
+                    usage,
+                    sent_messages,
+                    input_price,
+                    output_price,
+                    candidate,
                 )
-                conversation.append({"role": "assistant", "content": usage.assistant_text})
+                candidate_turns.append(turn_result)
+                successful_turns.append(turn_result)
                 total_in += usage.tokens_in
                 total_out += usage.tokens_out
                 truncated = truncated or usage.truncated
                 cap_sent = usage.cap_sent
+                if usage.assistant_text.strip() == "":
+                    raise ValueError("empty assistant output")
+                conversation.append({"role": "assistant", "content": usage.assistant_text})
         except LookupError as exc:
             return (
                 TaskResult("unsupported_provider", None, None, str(exc), candidate, *own_prices),
-                [],
+                successful_turns,
             )
         except requests.HTTPError as exc:
             last_error = _http_error_detail(exc)
@@ -723,10 +753,10 @@ def run_provider_conversation(
                     candidate,
                     *own_prices,
                 ),
-                [],
+                successful_turns,
             )
         except Exception as exc:  # noqa: BLE001
-            return TaskResult("error", None, None, str(exc), candidate, *own_prices), []
+            return TaskResult("error", None, None, str(exc), candidate, *own_prices), successful_turns
 
         return (
             TaskResult(
@@ -740,7 +770,7 @@ def run_provider_conversation(
                 truncated,
                 cap_sent,
             ),
-            turns,
+            successful_turns,
         )
 
     return (
@@ -752,7 +782,7 @@ def run_provider_conversation(
             api_model,
             *own_prices,
         ),
-        [],
+        successful_turns,
     )
 
 
@@ -769,6 +799,27 @@ def implied_per_million(tokens_in: int | None, tokens_out: int | None, usd: floa
     if total <= 0:
         return None
     return usd * (1_000_000 / total)
+
+
+def _text_chars(value: Any) -> int:
+    if isinstance(value, str):
+        return len(value)
+    if isinstance(value, list):
+        return sum(_text_chars(item) for item in value)
+    if isinstance(value, dict):
+        if isinstance(value.get("text"), str):
+            return len(value["text"])
+        total = 0
+        if "content" in value:
+            total += _text_chars(value["content"])
+        if "parts" in value:
+            total += _text_chars(value["parts"])
+        return total
+    return 0
+
+
+def _turn_message_chars(messages: list[dict[str, Any]]) -> int:
+    return sum(_text_chars(message) for message in messages)
 
 
 def load_equivalence() -> dict:
@@ -817,6 +868,7 @@ def main() -> int:
 
     eq = load_equivalence()
     tasks = {task["task_id"]: task for task in eq["tasks"]}
+    pricing_snapshot_date = eq.get("pricing_snapshot_date")
     models = list(eq["selected_models_by_mode"][args.mode])
     if args.provider:
         models = [model for model in models if model["provider_id"] == args.provider]
@@ -852,7 +904,11 @@ def main() -> int:
                 error, used_model = result.error, result.api_model
                 usd = usd_value(tokens_in, tokens_out, result.input_price, result.output_price)
                 implied = implied_per_million(tokens_in, tokens_out, usd)
-                input_chars = len(TASK_PROMPTS[task_id])
+                if task_id == "E" and turns:
+                    row_turns = turns[-len(E_USER_PROMPTS) :] if status == "ok" else turns
+                    input_chars = sum(_turn_message_chars(turn.messages) for turn in row_turns)
+                else:
+                    input_chars = len(TASK_PROMPTS[task_id])
                 run_at = now_iso_z()
                 run_id = f"{run_date}:{args.mode}:{replicate}"
 
@@ -888,32 +944,9 @@ def main() -> int:
                     "chat_corpus_version": CHAT_CORPUS_VERSION if task_id == "E" else None,
                 }
                 new_rows.append(row)
-                if status == "ok":
-                    if task_id == "E":
-                        for turn in turns:
-                            incoming_cost_events.append(
-                                build_cost_event(
-                                    date=run_date,
-                                    run_at=run_at,
-                                    source="meter",
-                                    provider_id=model["provider_id"],
-                                    tier=model["tier"],
-                                    task_id=task_id,
-                                    turn=turn.turn,
-                                    request_kind="generation",
-                                    api_model=used_model,
-                                    input_tokens=turn.usage.tokens_in,
-                                    output_tokens=turn.usage.tokens_out,
-                                    input_price_per_1m=turn.input_price,
-                                    output_price_per_1m=turn.output_price,
-                                    pricing_snapshot_date=run_date,
-                                    corpus_version=CORPUS_VERSION,
-                                    chat_corpus_version=CHAT_CORPUS_VERSION,
-                                    run_id=run_id,
-                                    replicate=replicate,
-                                )
-                            )
-                    else:
+                if task_id == "E":
+                    for event_index, turn in enumerate(turns, start=1):
+                        turn_run_id = f"{run_id}:e{event_index}"
                         incoming_cost_events.append(
                             build_cost_event(
                                 date=run_date,
@@ -922,20 +955,43 @@ def main() -> int:
                                 provider_id=model["provider_id"],
                                 tier=model["tier"],
                                 task_id=task_id,
-                                turn=None,
+                                turn=turn.turn,
                                 request_kind="generation",
-                                api_model=used_model,
-                                input_tokens=tokens_in,
-                                output_tokens=tokens_out,
-                                input_price_per_1m=result.input_price,
-                                output_price_per_1m=result.output_price,
-                                pricing_snapshot_date=run_date,
+                                api_model=turn.api_model,
+                                input_tokens=turn.usage.tokens_in,
+                                output_tokens=turn.usage.tokens_out,
+                                input_price_per_1m=turn.input_price,
+                                output_price_per_1m=turn.output_price,
+                                pricing_snapshot_date=pricing_snapshot_date,
                                 corpus_version=CORPUS_VERSION,
                                 chat_corpus_version=CHAT_CORPUS_VERSION,
-                                run_id=run_id,
+                                run_id=turn_run_id,
                                 replicate=replicate,
                             )
                         )
+                elif status == "ok":
+                    incoming_cost_events.append(
+                        build_cost_event(
+                            date=run_date,
+                            run_at=run_at,
+                            source="meter",
+                            provider_id=model["provider_id"],
+                            tier=model["tier"],
+                            task_id=task_id,
+                            turn=None,
+                            request_kind="generation",
+                            api_model=used_model,
+                            input_tokens=tokens_in,
+                            output_tokens=tokens_out,
+                            input_price_per_1m=result.input_price,
+                            output_price_per_1m=result.output_price,
+                            pricing_snapshot_date=pricing_snapshot_date,
+                            corpus_version=CORPUS_VERSION,
+                            chat_corpus_version=None,
+                            run_id=run_id,
+                            replicate=replicate,
+                        )
+                    )
                 replace_keys.add(
                     (run_date, args.mode, task_id, model["provider_id"], model["tier"], replicate)
                 )

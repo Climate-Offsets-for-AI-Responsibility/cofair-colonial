@@ -116,6 +116,13 @@ class BuildCostEventTest(unittest.TestCase):
         self.assertFalse(event["complete"])
         self.assertIsNone(event["estimated_cost_usd"])
 
+    def test_missing_pricing_snapshot_date_is_incomplete(self) -> None:
+        event = build_cost_event(**_generation_kwargs(pricing_snapshot_date=None))
+        self.assertFalse(event["complete"])
+        self.assertIsNone(event["input_cost_usd"])
+        self.assertIsNone(event["output_cost_usd"])
+        self.assertIsNone(event["estimated_cost_usd"])
+
     def test_count_endpoint_is_zero_cost_and_complete(self) -> None:
         event = build_cost_event(
             **_generation_kwargs(
@@ -130,6 +137,21 @@ class BuildCostEventTest(unittest.TestCase):
         self.assertEqual(event["input_cost_usd"], 0.0)
         self.assertEqual(event["output_cost_usd"], 0.0)
         self.assertEqual(event["estimated_cost_usd"], 0.0)
+
+    def test_nonbillable_unknown_usage_stays_incomplete(self) -> None:
+        event = build_cost_event(
+            **_generation_kwargs(
+                source="ledger",
+                request_kind="count_endpoint",
+                input_tokens=None,
+                output_tokens=None,
+                billable=False,
+            )
+        )
+        self.assertFalse(event["complete"])
+        self.assertIsNone(event["input_cost_usd"])
+        self.assertIsNone(event["output_cost_usd"])
+        self.assertIsNone(event["estimated_cost_usd"])
 
     def test_event_has_no_secret_or_error_fields(self) -> None:
         event = build_cost_event(**_generation_kwargs())
@@ -186,6 +208,15 @@ class PersistCostEventsTest(unittest.TestCase):
             self.assertIn("generated_at", payload)
             loaded = load_cost_events(path=path)
             self.assertEqual(loaded, [row])
+
+    def test_save_rejects_forbidden_keys(self) -> None:
+        row = build_cost_event(**_generation_kwargs())
+        bad = dict(row)
+        bad["error"] = "secret detail"
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "cost_events.json"
+            with self.assertRaises(ValueError):
+                save_cost_events([bad], path=path)
 
 
 if __name__ == "__main__":
