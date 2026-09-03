@@ -888,6 +888,24 @@ class BuildCostsTest(CostFixture):
             e_row["estimated_spend_usd"],
         )
 
+    def test_a_request_the_schedule_does_not_recognize_withholds_the_day(self) -> None:
+        """A stale task id means the day is not the day the schedule describes.
+
+        The corpus defines the expected request set, so an event outside it is a
+        replay from another corpus rather than extra coverage, and a total built
+        over it is not comparable with the days around it.
+        """
+        events = self.complete_events(POST_EPOCH)
+        events.append(self.meter_event(POST_EPOCH, self.PANEL[0], "Z", None))
+
+        day = build_costs(events, self.PANEL)["daily"][0]
+
+        self.assertFalse(day["complete"])
+        self.assertEqual(
+            day["provider_tiers"][0]["unexpected_requests"],
+            [{"source": "meter", "task_id": "Z", "turn": None}],
+        )
+
     def test_pre_epoch_events_are_not_published(self) -> None:
         costs = build_costs(self.complete_events(PRE_EPOCH), self.PANEL)
 
@@ -991,6 +1009,23 @@ class CostComparisonTest(CostFixture):
         )
         self.assertAlmostEqual(month["amount_usd"], 31 * self.ROW_DAY_USD * 2)
         self.assertAlmostEqual(month["previous_amount_usd"], 28 * self.ROW_DAY_USD)
+
+    def test_the_prior_month_of_january_is_the_previous_december(self) -> None:
+        events = self.events_for_range(
+            "2028-12-01", "2028-12-15", panel=self.solo_panel, scale=1
+        )
+        events += self.events_for_range(
+            "2029-01-01", "2029-01-15", panel=self.solo_panel, scale=1
+        )
+
+        month = build_costs(events, self.solo_panel)["comparisons"]["current_month"]
+
+        self.assertEqual(month["status"], "ok")
+        self.assertEqual(
+            month["previous_window"], {"start_date": "2028-12-01", "end_date": "2028-12-15"}
+        )
+        self.assertAlmostEqual(month["previous_amount_usd"], 15 * self.ROW_DAY_USD)
+        self.assertAlmostEqual(month["delta_usd"], 0.0)
 
     def test_year_to_date_clamps_a_leap_day_against_a_common_year(self) -> None:
         events = self.events_for_range(
