@@ -2,7 +2,9 @@
 """Unit tests for dashboard artifact normalization."""
 from __future__ import annotations
 
+import json
 import sys
+import tempfile
 import unittest
 from datetime import date, timedelta
 from pathlib import Path
@@ -14,6 +16,8 @@ from build_dashboard_data import (
     DASHBOARD_START_DATE,
     MIN_FIT_CHAR_SPAN,
     MIN_FIT_TASKS,
+    build_cost_comparison,
+    build_costs,
     build_equivalence,
     build_ledger_fits,
     build_models,
@@ -22,11 +26,16 @@ from build_dashboard_data import (
     normalize_snapshot,
     run_date_of,
 )
+from cost_events import build_cost_event
 from run_equivalence_tasks import current_run_date
 from task_corpus import (
     DEGENERATE_TASK_IDS,
+    E_USER_PROMPTS,
+    GENERATING_TASK_IDS,
+    LEDGER_TASK_IDS,
     METER_TASK_IDS,
     MIN_LEXICAL_VARIETY,
+    TASK_IDS,
     TASK_PROMPTS,
     lexical_variety,
 )
@@ -597,6 +606,594 @@ class LedgerFitTest(unittest.TestCase):
             fits["xai"]["fixed_overhead_tokens"],
             fits["openai"]["fixed_overhead_tokens"] + 500,
         )
+
+
+class CostFixture(unittest.TestCase):
+    """One complete instrumented day, built through the real event constructor.
+
+    Every event is priced at 1.00/2.00 per 1M tokens on 100 input and 50 output
+    tokens, so a meter request is worth 0.0002 and a ledger probe 0.0001. A
+    complete panel row is therefore 8 meter requests (A/B/C/D/F plus E turns
+    1-3) and 5 ledger requests: 0.0021 a day, which is small enough to keep the
+    arithmetic in the assertions readable and exact enough to reconcile.
+    """
+
+    PANEL = [
+        {
+            "provider_id": "openai",
+            "tier": "flagship",
+            "model_id": "chat-latest",
+            "display_name": "OpenAI Flagship",
+        },
+        {
+            "provider_id": "deepseek",
+            "tier": "workhorse",
+            "model_id": "deepseek-v4-flash",
+            "display_name": "DeepSeek Workhorse",
+        },
+    ]
+    INPUT_PRICE = 1.0
+    OUTPUT_PRICE = 2.0
+    METER_TOKENS = (100, 50)
+    LEDGER_TOKENS = (100, 0)
+    # Per panel row, per day, at scale 1.
+    ROW_DAY_USD = 8 * (100 / 1e6 * 1.0 + 50 / 1e6 * 2.0) + 5 * (100 / 1e6 * 1.0)
+
+    @property
+    def solo_panel(self) -> list[dict]:
+        return self.PANEL[:1]
+
+    def meter_event(
+        self,
+        date_: str,
+        entry: dict,
+        task_id: str,
+        turn: int | None,
+        *,
+        scale: float = 1.0,
+        canonical: bool = True,
+        attempt: int = 1,
+        run_suffix: str = "",
+        prices: tuple[float | None, float | None] | None = None,
+    ) -> dict:
+        input_price, output_price = prices or (self.INPUT_PRICE, self.OUTPUT_PRICE)
+        return build_cost_event(
+            date=date_,
+            run_at=f"{date_}T00:00:00Z",
+            source="meter",
+            provider_id=entry["provider_id"],
+            tier=entry["tier"],
+            task_id=task_id,
+            turn=turn,
+            request_kind="generation",
+            api_model=entry["model_id"],
+            input_tokens=int(self.METER_TOKENS[0] * scale),
+            output_tokens=int(self.METER_TOKENS[1] * scale),
+            input_price_per_1m=input_price,
+            output_price_per_1m=output_price,
+            pricing_snapshot_date=date_,
+            corpus_version="3.0.0",
+            chat_corpus_version="2.0.0" if task_id == "E" else None,
+            run_id=f"{date_}:two:1{run_suffix}",
+            replicate=1,
+            attempt=attempt,
+            canonical=canonical,
+        )
+
+    def ledger_event(
+        self,
+        date_: str,
+        entry: dict,
+        task_id: str,
+        *,
+        scale: float = 1.0,
+    ) -> dict:
+        return build_cost_event(
+            date=date_,
+            run_at=f"{date_}T00:00:00Z",
+            source="ledger",
+            provider_id=entry["provider_id"],
+            tier=entry["tier"],
+            task_id=task_id,
+            turn=None,
+            request_kind="completion_probe",
+            api_model=entry["model_id"],
+            input_tokens=int(self.LEDGER_TOKENS[0] * scale),
+            output_tokens=int(self.LEDGER_TOKENS[1] * scale),
+            input_price_per_1m=self.INPUT_PRICE,
+            output_price_per_1m=self.OUTPUT_PRICE,
+            pricing_snapshot_date=date_,
+            corpus_version="3.0.0",
+            chat_corpus_version=None,
+            run_id=f"{date_}:ledger",
+            replicate=1,
+            attempt=1,
+            canonical=True,
+        )
+
+    def complete_events(
+        self, date_: str, panel: list[dict] | None = None, scale: float = 1.0
+    ) -> list[dict]:
+        rows: list[dict] = []
+        for entry in panel or self.PANEL:
+            for task_id in GENERATING_TASK_IDS:
+                turns = (
+                    list(range(1, len(E_USER_PROMPTS) + 1)) if task_id == "E" else [None]
+                )
+                for turn in turns:
+                    rows.append(self.meter_event(date_, entry, task_id, turn, scale=scale))
+            for task_id in LEDGER_TASK_IDS:
+                rows.append(self.ledger_event(date_, entry, task_id, scale=scale))
+        return rows
+
+    def events_for_range(
+        self,
+        start: str,
+        end: str,
+        panel: list[dict] | None = None,
+        scale: float = 1.0,
+    ) -> list[dict]:
+        rows: list[dict] = []
+        day = date.fromisoformat(start)
+        last = date.fromisoformat(end)
+        while day <= last:
+            rows.extend(self.complete_events(day.isoformat(), panel=panel, scale=scale))
+            day += timedelta(days=1)
+        return rows
+
+
+class BuildCostsTest(CostFixture):
+    def test_complete_day_reconciles_cost_tree(self) -> None:
+        costs = build_costs(self.complete_events(POST_EPOCH), self.PANEL)
+        day = costs["daily"][0]
+
+        self.assertTrue(day["complete"])
+        leaves = [
+            detail["estimated_cost_usd"]
+            for row in day["provider_tiers"]
+            for task in row["tasks"]
+            for detail in task["details"]
+        ]
+        self.assertEqual(len(leaves), 13 * len(self.PANEL))
+        self.assertAlmostEqual(sum(leaves), day["estimated_spend_usd"])
+        self.assertAlmostEqual(day["estimated_spend_usd"], self.ROW_DAY_USD * len(self.PANEL))
+
+        # Generation input/output is the meter; ledger probes are supporting spend.
+        self.assertAlmostEqual(
+            day["input_cost_usd"] + day["output_cost_usd"] + day["supporting_cost_usd"],
+            day["estimated_spend_usd"],
+        )
+        self.assertAlmostEqual(day["supporting_cost_usd"], 5 * 0.0001 * len(self.PANEL))
+
+        # Every level of the tree carries the same split, and the parents are the
+        # sum of their children rather than an independently computed figure.
+        for row in day["provider_tiers"]:
+            self.assertAlmostEqual(
+                sum(task["estimated_spend_usd"] for task in row["tasks"]),
+                row["estimated_spend_usd"],
+            )
+            for task in row["tasks"]:
+                self.assertAlmostEqual(
+                    sum(detail["estimated_cost_usd"] for detail in task["details"]),
+                    task["estimated_spend_usd"],
+                )
+
+        e_row = next(
+            task for task in day["provider_tiers"][0]["tasks"] if task["task_id"] == "E"
+        )
+        self.assertEqual([d["turn"] for d in e_row["details"]], [1, 2, 3])
+
+    def test_one_missing_e_turn_withholds_the_day(self) -> None:
+        events = [
+            e
+            for e in self.complete_events(POST_EPOCH)
+            if not (e["task_id"] == "E" and e["turn"] == 2)
+        ]
+        costs = build_costs(events, self.PANEL)
+
+        day = costs["daily"][0]
+        self.assertFalse(day["complete"])
+        self.assertIn(
+            {"source": "meter", "task_id": "E", "turn": 2},
+            [
+                {k: miss[k] for k in ("source", "task_id", "turn")}
+                for miss in day["provider_tiers"][0]["missing_requests"]
+            ],
+        )
+        self.assertIsNone(costs["latest_complete_date"])
+        self.assertEqual(costs["latest_attempted_date"], POST_EPOCH)
+
+    def test_a_missing_ledger_task_withholds_the_day(self) -> None:
+        events = [
+            e
+            for e in self.complete_events(POST_EPOCH)
+            if not (e["source"] == "ledger" and e["task_id"] == "D")
+        ]
+        self.assertFalse(build_costs(events, self.PANEL)["daily"][0]["complete"])
+
+    def test_a_panel_row_with_no_events_withholds_the_day(self) -> None:
+        events = self.complete_events(POST_EPOCH, panel=self.solo_panel)
+        costs = build_costs(events, self.PANEL)
+
+        day = costs["daily"][0]
+        self.assertFalse(day["complete"])
+        # The absent row is still named, so the reason is legible.
+        self.assertEqual(
+            [(row["provider_id"], row["tier"]) for row in day["provider_tiers"]],
+            [(row["provider_id"], row["tier"]) for row in self.PANEL],
+        )
+        self.assertFalse(day["provider_tiers"][1]["complete"])
+        self.assertEqual(day["provider_tiers"][1]["estimated_spend_usd"], 0.0)
+
+    def test_an_incomplete_event_withholds_the_day_but_not_the_spend(self) -> None:
+        """A priceless request means the day's real spend is unknown.
+
+        The requests that did complete are still real money, so they stay in the
+        total; what is withheld is the claim that the total is the whole day.
+        """
+        events = [
+            e
+            for e in self.complete_events(POST_EPOCH)
+            if not (e["source"] == "meter" and e["task_id"] == "A")
+        ]
+        events.append(
+            self.meter_event(
+                POST_EPOCH, self.PANEL[0], "A", None, prices=(None, None)
+            )
+        )
+        events.append(self.meter_event(POST_EPOCH, self.PANEL[1], "A", None))
+
+        day = build_costs(events, self.PANEL)["daily"][0]
+
+        self.assertFalse(day["complete"])
+        self.assertEqual(day["incomplete_event_count"], 1)
+        self.assertAlmostEqual(
+            day["estimated_spend_usd"], self.ROW_DAY_USD * len(self.PANEL) - 0.0002
+        )
+
+    def test_an_abandoned_conversation_attempt_is_spent_but_not_required(self) -> None:
+        """Task E can be retried; only the winning attempt is canonical.
+
+        The abandoned turns were still billed, so they belong in the day's
+        estimated spend — but completeness is judged on the canonical 1/2/3 set,
+        or a retried conversation could never close a day.
+        """
+        events = self.complete_events(POST_EPOCH)
+        events += [
+            self.meter_event(
+                POST_EPOCH,
+                self.PANEL[0],
+                "E",
+                turn,
+                canonical=False,
+                attempt=1,
+                run_suffix=":a1",
+            )
+            for turn in (1, 2)
+        ]
+
+        costs = build_costs(events, self.PANEL)
+        day = costs["daily"][0]
+
+        self.assertTrue(day["complete"])
+        self.assertAlmostEqual(
+            day["estimated_spend_usd"], self.ROW_DAY_USD * len(self.PANEL) + 2 * 0.0002
+        )
+        e_row = next(
+            task for task in day["provider_tiers"][0]["tasks"] if task["task_id"] == "E"
+        )
+        self.assertEqual(len(e_row["details"]), 5)
+        self.assertAlmostEqual(
+            sum(detail["estimated_cost_usd"] for detail in e_row["details"]),
+            e_row["estimated_spend_usd"],
+        )
+
+    def test_pre_epoch_events_are_not_published(self) -> None:
+        costs = build_costs(self.complete_events(PRE_EPOCH), self.PANEL)
+
+        self.assertEqual(costs["daily"], [])
+        self.assertIsNone(costs["latest_attempted_date"])
+        self.assertEqual(costs["complete_start_date"], DASHBOARD_START_DATE)
+
+    def test_no_events_is_pending_not_zero(self) -> None:
+        costs = build_costs([], self.PANEL)
+
+        self.assertEqual(costs["status"], "pending_first_complete_day")
+        self.assertEqual(costs["daily"], [])
+        self.assertIsNone(costs["latest_complete_date"])
+        self.assertEqual(costs["panel_row_count"], len(self.PANEL))
+        for period in ("current_run", "current_month", "year_to_date"):
+            with self.subTest(period=period):
+                comparison = costs["comparisons"][period]
+                self.assertEqual(comparison["status"], "comparison_unavailable")
+                self.assertIsNone(comparison["amount_usd"])
+        self.assertIn("not an invoice", costs["note"])
+
+    def test_expected_requests_are_derived_from_the_corpus(self) -> None:
+        costs = build_costs([], self.PANEL)
+
+        # Corpus order, with the conversation expanded in place into its turns.
+        expected = []
+        for task_id in GENERATING_TASK_IDS:
+            if task_id == "E":
+                expected += [
+                    {"task_id": "E", "turn": turn}
+                    for turn in range(1, len(E_USER_PROMPTS) + 1)
+                ]
+            else:
+                expected.append({"task_id": task_id, "turn": None})
+        self.assertEqual(costs["expected_meter_requests_per_row"], expected)
+        self.assertEqual(
+            costs["expected_ledger_requests_per_row"],
+            [{"task_id": task_id, "turn": None} for task_id in LEDGER_TASK_IDS],
+        )
+
+    def test_latest_attempted_date_can_be_widened_by_the_caller(self) -> None:
+        later = (date.fromisoformat(POST_EPOCH) + timedelta(days=4)).isoformat()
+        costs = build_costs(self.complete_events(POST_EPOCH), self.PANEL, later)
+
+        self.assertEqual(costs["latest_attempted_date"], later)
+        self.assertEqual(costs["latest_complete_date"], POST_EPOCH)
+
+
+class CostComparisonTest(CostFixture):
+    def day(self, offset: int) -> str:
+        return (date.fromisoformat(POST_EPOCH) + timedelta(days=offset)).isoformat()
+
+    def test_current_run_compares_the_two_most_recent_complete_days(self) -> None:
+        events = self.complete_events(self.day(0), panel=self.solo_panel, scale=1)
+        events += self.complete_events(self.day(1), panel=self.solo_panel, scale=2)
+        run = build_costs(events, self.solo_panel)["comparisons"]["current_run"]
+
+        self.assertEqual(run["status"], "ok")
+        self.assertAlmostEqual(run["amount_usd"], self.ROW_DAY_USD * 2)
+        self.assertAlmostEqual(run["previous_amount_usd"], self.ROW_DAY_USD)
+        self.assertAlmostEqual(run["delta_usd"], self.ROW_DAY_USD)
+        self.assertAlmostEqual(run["delta_pct"], 100.0)
+        self.assertEqual(run["previous_window"]["end_date"], self.day(0))
+
+    def test_the_first_complete_day_is_a_new_baseline(self) -> None:
+        run = build_costs(
+            self.complete_events(self.day(0), panel=self.solo_panel), self.solo_panel
+        )["comparisons"]["current_run"]
+
+        self.assertEqual(run["status"], "new_baseline")
+        self.assertAlmostEqual(run["amount_usd"], self.ROW_DAY_USD)
+        self.assertIsNone(run["previous_amount_usd"])
+        self.assertIsNone(run["delta_usd"])
+        self.assertIsNone(run["delta_pct"])
+
+    def test_a_zero_baseline_yields_no_percentage(self) -> None:
+        events = self.complete_events(self.day(0), panel=self.solo_panel, scale=0)
+        events += self.complete_events(self.day(1), panel=self.solo_panel, scale=1)
+        run = build_costs(events, self.solo_panel)["comparisons"]["current_run"]
+
+        self.assertEqual(run["status"], "new_baseline")
+        self.assertEqual(run["previous_amount_usd"], 0.0)
+        self.assertAlmostEqual(run["delta_usd"], self.ROW_DAY_USD)
+        self.assertIsNone(run["delta_pct"])
+
+    def test_the_prior_month_window_clamps_to_the_shorter_month(self) -> None:
+        """31 March has no 31 February; the window ends on the 28th instead."""
+        events = self.events_for_range(
+            "2027-02-01", "2027-02-28", panel=self.solo_panel, scale=1
+        )
+        events += self.events_for_range(
+            "2027-03-01", "2027-03-31", panel=self.solo_panel, scale=2
+        )
+
+        month = build_costs(events, self.solo_panel)["comparisons"]["current_month"]
+
+        self.assertEqual(month["status"], "ok")
+        self.assertEqual(month["current_window"], {"start_date": "2027-03-01", "end_date": "2027-03-31"})
+        self.assertEqual(
+            month["previous_window"], {"start_date": "2027-02-01", "end_date": "2027-02-28"}
+        )
+        self.assertAlmostEqual(month["amount_usd"], 31 * self.ROW_DAY_USD * 2)
+        self.assertAlmostEqual(month["previous_amount_usd"], 28 * self.ROW_DAY_USD)
+
+    def test_year_to_date_clamps_a_leap_day_against_a_common_year(self) -> None:
+        events = self.events_for_range(
+            "2027-01-01", "2027-02-28", panel=self.solo_panel, scale=1
+        )
+        events += self.events_for_range(
+            "2028-01-01", "2028-02-29", panel=self.solo_panel, scale=1
+        )
+
+        ytd = build_costs(events, self.solo_panel)["comparisons"]["year_to_date"]
+
+        self.assertEqual(ytd["status"], "ok")
+        self.assertEqual(
+            ytd["current_window"], {"start_date": "2028-01-01", "end_date": "2028-02-29"}
+        )
+        self.assertEqual(
+            ytd["previous_window"], {"start_date": "2027-01-01", "end_date": "2027-02-28"}
+        )
+        self.assertAlmostEqual(ytd["amount_usd"], 60 * self.ROW_DAY_USD)
+        self.assertAlmostEqual(ytd["previous_amount_usd"], 59 * self.ROW_DAY_USD)
+
+    def test_a_prior_period_entirely_before_the_epoch_is_a_new_baseline(self) -> None:
+        events = self.events_for_range(self.day(0), self.day(1), panel=self.solo_panel)
+        comparisons = build_costs(events, self.solo_panel)["comparisons"]
+
+        for period in ("current_month", "year_to_date"):
+            with self.subTest(period=period):
+                comparison = comparisons[period]
+                self.assertEqual(comparison["status"], "new_baseline")
+                self.assertAlmostEqual(comparison["amount_usd"], 2 * self.ROW_DAY_USD)
+                self.assertIsNone(comparison["previous_amount_usd"])
+                self.assertIsNone(comparison["delta_pct"])
+        # The epoch, not the 1st, is the floor for the month the epoch lands in.
+        self.assertEqual(
+            comparisons["current_month"]["current_window"]["start_date"],
+            DASHBOARD_START_DATE,
+        )
+
+    def test_a_missing_scheduled_day_withholds_the_calendar_comparisons(self) -> None:
+        events = self.complete_events(self.day(0), panel=self.solo_panel)
+        events += self.complete_events(self.day(2), panel=self.solo_panel)
+        comparisons = build_costs(events, self.solo_panel)["comparisons"]
+
+        for period in ("current_month", "year_to_date"):
+            with self.subTest(period=period):
+                comparison = comparisons[period]
+                self.assertEqual(comparison["status"], "comparison_unavailable")
+                self.assertIsNone(comparison["amount_usd"])
+        # A run-over-run comparison is still honest: both runs are complete, and
+        # the window it names says which run it used.
+        self.assertEqual(comparisons["current_run"]["status"], "ok")
+        self.assertEqual(comparisons["current_run"]["previous_window"]["end_date"], self.day(0))
+
+    def test_an_incomplete_current_window_publishes_no_amount(self) -> None:
+        comparison = build_cost_comparison(
+            {
+                "start_date": "2026-09-03",
+                "end_date": "2026-09-05",
+                "amount_usd": 1.5,
+                "complete": False,
+                "scheduled_date_count": 3,
+            },
+            {
+                "start_date": "2026-08-03",
+                "end_date": "2026-08-05",
+                "amount_usd": 1.0,
+                "complete": True,
+                "scheduled_date_count": 3,
+            },
+        )
+
+        self.assertEqual(comparison["status"], "comparison_unavailable")
+        self.assertIsNone(comparison["amount_usd"])
+        self.assertIsNone(comparison["previous_amount_usd"])
+        self.assertIsNone(comparison["delta_usd"])
+
+    def test_an_incomplete_prior_window_still_publishes_the_amount(self) -> None:
+        comparison = build_cost_comparison(
+            {
+                "start_date": "2026-09-03",
+                "end_date": "2026-09-05",
+                "amount_usd": 1.5,
+                "complete": True,
+                "scheduled_date_count": 3,
+            },
+            {
+                "start_date": "2026-08-03",
+                "end_date": "2026-08-05",
+                "amount_usd": 1.0,
+                "complete": False,
+                "scheduled_date_count": 3,
+            },
+        )
+
+        self.assertEqual(comparison["status"], "comparison_unavailable")
+        self.assertAlmostEqual(comparison["amount_usd"], 1.5)
+        self.assertIsNone(comparison["previous_amount_usd"])
+        self.assertIsNone(comparison["delta_pct"])
+
+
+class CostEpochPublicationTest(CostFixture):
+    def test_the_epoch_is_the_shared_september_restart(self) -> None:
+        self.assertEqual(DASHBOARD_START_DATE, "2026-09-03")
+
+    def equivalence(self, **kwargs) -> dict:
+        models = [
+            {
+                "provider_id": "anthropic",
+                "model_id": "claude-opus-5",
+                "display_name": "Claude Opus 5",
+                "latest_input": 5.0,
+                "latest_output": 25.0,
+                "currency": "USD",
+                "currently_active": True,
+            },
+            {
+                "provider_id": "anthropic",
+                "model_id": "claude-haiku-4.5",
+                "display_name": "Claude Haiku 4.5",
+                "latest_input": 1.0,
+                "latest_output": 5.0,
+                "currency": "USD",
+                "currently_active": True,
+            },
+        ]
+        index = {
+            "generated_at": "2026-09-03T00:00:00Z",
+            "first_date": DASHBOARD_START_DATE,
+            "last_date": DASHBOARD_START_DATE,
+            "snapshot_count": 1,
+        }
+        return build_equivalence(models, index, live_model_map={}, **kwargs)
+
+    def test_publishes_the_canonical_task_sets_and_current_e_metadata(self) -> None:
+        eq = self.equivalence(cost_events=[])
+
+        self.assertEqual(eq["task_ids"], list(TASK_IDS))
+        self.assertEqual(eq["generating_task_ids"], list(GENERATING_TASK_IDS))
+        self.assertEqual(eq["ledger_task_ids"], list(LEDGER_TASK_IDS))
+        self.assertEqual(eq["dashboard_start_date"], "2026-09-03")
+        conversation = eq["conversation_task"]
+        self.assertEqual(conversation["task_id"], "E")
+        self.assertEqual(conversation["turns"], len(E_USER_PROMPTS))
+        self.assertEqual(conversation["prompts"], list(E_USER_PROMPTS))
+
+    def test_publishes_a_costs_block_scoped_to_the_selected_panel(self) -> None:
+        eq = self.equivalence(cost_events=[])
+
+        costs = eq["costs"]
+        self.assertEqual(costs["complete_start_date"], DASHBOARD_START_DATE)
+        self.assertEqual(costs["status"], "pending_first_complete_day")
+        # Derived from the panel the meter actually runs, never a written-down count.
+        self.assertEqual(costs["panel_row_count"], len(eq["selected_models_by_mode"]["two"]))
+
+    def test_costs_roll_up_the_events_the_builder_is_given(self) -> None:
+        panel = [
+            {"provider_id": "anthropic", "tier": "flagship", "model_id": "claude-opus-5"},
+            {"provider_id": "anthropic", "tier": "workhorse", "model_id": "claude-haiku-4.5"},
+        ]
+        eq = self.equivalence(cost_events=self.complete_events(POST_EPOCH, panel=panel))
+
+        costs = eq["costs"]
+        self.assertEqual(costs["latest_complete_date"], POST_EPOCH)
+        self.assertEqual(costs["status"], "active")
+        self.assertAlmostEqual(
+            costs["daily"][0]["estimated_spend_usd"], self.ROW_DAY_USD * 2
+        )
+
+    def test_the_wrapper_archive_ignores_the_epoch(self) -> None:
+        """The epoch keeps the *live* series comparable; the archive is neither.
+
+        Wrapper collection is retired and every wrapper row predates the epoch,
+        so scoping the archive to it would publish an empty history and read as
+        data loss. It is published whole, flagged as unscoped, and nothing on
+        the current surface may read it as task E.
+        """
+        stale = {
+            "run_date": PRE_EPOCH,
+            "provider_id": "openai",
+            "tier": "flagship",
+            "task_id": "E",
+            "tokens_in": 4000,
+            "run_status": "ok",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "wrapper_runs.json"
+            path.write_text(json.dumps({"rows": [stale]}))
+            with mock.patch.object(build_dashboard_data, "WRAPPER_RUNS_FILE", path):
+                eq = self.equivalence(cost_events=[])
+
+        wrapper = eq["wrapper_runs"]
+        self.assertEqual(wrapper["status"], "retired")
+        self.assertFalse(wrapper["epoch_scoped"])
+        self.assertEqual(wrapper["row_count"], 1)
+        self.assertEqual(wrapper["ok_row_count"], 1)
+        self.assertEqual(wrapper["last_date"], PRE_EPOCH)
+
+    def test_ui_facing_ledger_note_drops_content_density_but_keeps_the_fits(self) -> None:
+        eq = self.equivalence(cost_events=[])
+
+        ledger = eq["tokenizer_ledger"]
+        self.assertNotIn("density", ledger["note"].lower())
+        self.assertIn("fits", ledger)
 
 
 if __name__ == "__main__":
