@@ -16,7 +16,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run_tokenizer_ledger
-from task_corpus import LEDGER_TASK_IDS, METER_TASK_IDS
+from task_corpus import LEDGER_TASK_IDS
 
 PANEL = [
     {"provider_id": "google", "tier": "flagship", "model_id": "gemini-3.1-pro"},

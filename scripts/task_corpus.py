@@ -310,7 +310,12 @@ def task_definitions() -> list[dict]:
 TASK_DEFINITIONS = task_definitions()
 
 
-# ---- Test 4: frozen multi-turn chat (wrapper overhead) ---------------------
+# ---- Historical wrapper transcript (pre-generated E) -----------------------
+#
+# CHAT_TASK and CHAT_TRANSCRIPT are historical-only. They interpret legacy
+# wrapper-count rows collected before corpus 3.0.0, when task E was a frozen
+# ten-turn transcript counted input-only. The canonical task E is TASK_SPECS["E"]
+# with TASK_PROMPTS["E"] built from E_USER_PROMPTS.
 #
 # Versioned separately from A–D so editing the transcript does not invalidate
 # the prose/code density series. Counts are input-only: runners never regenerate
@@ -322,8 +327,6 @@ TASK_DEFINITIONS = task_definitions()
 #         rows collected under the old E semantics.
 CHAT_CORPUS_VERSION = "2.0.0"
 
-# Corpus entry E. Sits alongside A–D in the published task list even though it is
-# collected by a different runner, because to a reader it is simply the fifth task.
 CHAT_TASK_ID = "E"
 
 CHAT_TASK = {

@@ -36,6 +36,7 @@ class CanonicalCorpusTest(unittest.TestCase):
         self.assertEqual(TASK_IDS, ("A", "B", "C", "D", "E", "F"))
         self.assertEqual(GENERATING_TASK_IDS, TASK_IDS)
         self.assertEqual(LEDGER_TASK_IDS, ("A", "B", "C", "D", "F"))
+        self.assertEqual(METER_TASK_IDS, GENERATING_TASK_IDS)
         self.assertEqual(TASK_PACKS["suiteLong"], list(TASK_IDS))
 
     def test_task_e_is_three_frozen_relational_prompts(self) -> None:
@@ -44,6 +45,7 @@ class CanonicalCorpusTest(unittest.TestCase):
         self.assertIn("Challenge your recommendation", E_USER_PROMPTS[1])
         self.assertIn("three-step policy", E_USER_PROMPTS[2])
         self.assertIn("E", TASK_PROMPTS)
+        self.assertEqual(TASK_PROMPTS["E"], "\n".join(E_USER_PROMPTS))
         self.assertEqual(TASK_SPECS["E"]["label"], "Chat conversation")
 
     def test_the_daily_ledger_excludes_conversation_task_e(self) -> None:
@@ -227,7 +229,7 @@ class LongNaturalCorpusTest(unittest.TestCase):
     def test_it_spans_far_enough_to_anchor_the_fit(self) -> None:
         self.assertGreaterEqual(len(TASK_PROMPTS["F"]) / len(TASK_PROMPTS["A"]), 10.0)
 
-    def test_the_daily_ledger_collects_every_corpus_task(self) -> None:
+    def test_the_daily_ledger_collects_all_ledger_tasks(self) -> None:
         """The gap that would have made all of this inert.
 
         The fit reads ledger rows, and the ledger workflow used to name its tasks
