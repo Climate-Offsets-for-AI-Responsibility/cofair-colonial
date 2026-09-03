@@ -75,7 +75,7 @@ def _token_source_command(source: str, provider_id: str) -> list[str] | None:
             sys.executable,
             str(SCRIPTS / "run_tokenizer_ledger.py"),
             "--tasks",
-            "ABCD",
+            "all",
             "--mode",
             "two",
             "--provider",
@@ -89,17 +89,6 @@ def _token_source_command(source: str, provider_id: str) -> list[str] | None:
             "two",
             "--workhorse-replicates",
             "1",
-            "--provider",
-            provider_id,
-        ]
-    if source == "wrapper":
-        return [
-            sys.executable,
-            str(SCRIPTS / "run_wrapper_overhead.py"),
-            "--mode",
-            "two",
-            "--max-turn",
-            "10",
             "--provider",
             provider_id,
         ]
@@ -154,8 +143,6 @@ def runbook_retry_token_source(report: dict) -> tuple[bool, list[str], int]:
             "meter",
             "--sources",
             "ledger",
-            "--sources",
-            "wrapper",
         ],
         cwd=ROOT,
         capture_output=True,

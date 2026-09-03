@@ -25,7 +25,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 EQUIVALENCE_FILE = REPO_ROOT / "dashboard" / "data" / "equivalence.json"
 TOKEN_RUN_REPORT = REPO_ROOT / "ops" / "token_run_report.json"
 
-SOURCES = ("meter", "ledger", "wrapper")
+SOURCES = ("meter", "ledger")
 
 sys.path.insert(0, str(REPO_ROOT / "scripts" / "ops"))
 from provider_faults import remedy_for_error  # noqa: E402
@@ -219,7 +219,7 @@ def main() -> int:
         "--sources",
         action="append",
         choices=SOURCES,
-        help="Source to gate on; repeatable. Defaults to all three.",
+        help="Source to gate on; repeatable. Defaults to active sources.",
     )
     ap.add_argument("--json", action="store_true", help="Print full result JSON only.")
     ap.add_argument("--run-id", default=None, help="Workflow run id for the token run report.")

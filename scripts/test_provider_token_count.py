@@ -7,6 +7,7 @@ body, and pinned model ids that the catalog lists but the API will not serve.
 """
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -18,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from provider_token_count import (
     OPENAI_BASE_URL,
     OPENAI_MIN_OUTPUT_TOKENS,
+    _count_one,
     _is_model_unavailable,
     api_model_candidates,
     normalize_messages,
@@ -30,6 +32,14 @@ def _http_error(status: int, body: str) -> requests.HTTPError:
     response.status_code = status
     response._content = body.encode()
     return requests.HTTPError(f"{status} Client Error", response=response)
+
+
+def _json_response(status: int, payload: dict) -> requests.Response:
+    response = requests.Response()
+    response.status_code = status
+    response._content = json.dumps(payload).encode()
+    response.headers["Content-Type"] = "application/json"
+    return response
 
 
 class UncappedBodyTest(unittest.TestCase):
@@ -80,6 +90,61 @@ class NormalizeMessagesTest(unittest.TestCase):
 
     def test_missing_body_becomes_empty_string_not_none(self) -> None:
         self.assertEqual(normalize_messages([{"role": "user"}]), [{"role": "user", "content": ""}])
+
+
+class CountUsageShapeTest(unittest.TestCase):
+    def test_openai_completion_probe_retains_output_usage(self) -> None:
+        with mock.patch(
+            "provider_token_count.request_with_retry",
+            return_value=_json_response(
+                200,
+                {"usage": {"prompt_tokens": 29, "completion_tokens": 16}},
+            ),
+        ):
+            usage, model = _count_one("openai", "chat-latest", "hello", "key", False)
+        self.assertEqual(model, "chat-latest")
+        self.assertEqual(usage.request_kind, "completion_probe")
+        self.assertEqual(usage.tokens_out, 16)
+        self.assertTrue(usage.billable)
+
+    def test_gemini_native_count_is_non_billable(self) -> None:
+        with (
+            mock.patch("provider_token_count._gemini_candidates", return_value=["gemini-pro-latest"]),
+            mock.patch(
+                "provider_token_count.request_with_retry",
+                return_value=_json_response(200, {"promptTokenCount": 12}),
+            ),
+        ):
+            usage, model = _count_one("google", "gemini-pro-latest", "hello", "key", False)
+        self.assertEqual(model, "gemini-pro-latest")
+        self.assertEqual(usage.request_kind, "count_endpoint")
+        self.assertEqual(usage.tokens_out, 0)
+        self.assertFalse(usage.billable)
+
+    def test_gemini_count_fallback_to_generation_is_billable(self) -> None:
+        with (
+            mock.patch("provider_token_count._gemini_candidates", return_value=["gemini-pro-latest"]),
+            mock.patch(
+                "provider_token_count.request_with_retry",
+                side_effect=[
+                    _json_response(404, {"error": {"message": "not found"}}),
+                    _json_response(
+                        200,
+                        {
+                            "usageMetadata": {
+                                "promptTokenCount": 12,
+                                "candidatesTokenCount": 7,
+                            }
+                        },
+                    ),
+                ],
+            ),
+        ):
+            usage, model = _count_one("google", "gemini-pro-latest", "hello", "key", False)
+        self.assertEqual(model, "gemini-pro-latest")
+        self.assertEqual(usage.request_kind, "completion_probe")
+        self.assertEqual(usage.tokens_out, 7)
+        self.assertTrue(usage.billable)
 
 
 class OpenAICompatibleBodyTest(unittest.TestCase):
@@ -274,7 +339,11 @@ class GeminiTierResolutionTest(unittest.TestCase):
 
         with (
             mock.patch.object(ptc, "_gemini_candidates", fake_candidates),
-            mock.patch.object(ptc, "_gemini_count_tokens", return_value=4031),
+            mock.patch.object(
+                ptc,
+                "_gemini_count_tokens",
+                return_value=ptc.CountUsage(4031, 0, "count_endpoint", False),
+            ),
         ):
             payload = [{"role": "user", "content": "hi"}] if is_messages else "hi"
             status, tokens, error, used = ptc._count(

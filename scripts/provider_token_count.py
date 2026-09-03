@@ -10,7 +10,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import requests
 
@@ -49,6 +49,13 @@ BEDROCK_MODEL_MAP = {
     "nova-2.0-pro": "us.amazon.nova-2-pro-v1:0",
     "nova-2-pro": "us.amazon.nova-2-pro-v1:0",
 }
+
+
+class CountUsage(NamedTuple):
+    tokens_in: int
+    tokens_out: int
+    request_kind: str
+    billable: bool
 
 
 def bedrock_region() -> str:
@@ -264,7 +271,7 @@ def _count_one(
     api_key: str,
     is_messages: bool,
     tier: str | None = None,
-):
+) -> tuple[CountUsage, str]:
     if provider_id == "anthropic":
         counter = _anthropic_count_messages if is_messages else _anthropic_count_text
         return counter(api_model, payload, api_key), api_model
@@ -289,7 +296,7 @@ def _count_one(
     raise LookupError(f"provider {provider_id} not implemented")
 
 
-def _count(
+def _count_with_usage(
     provider_id: str,
     api_model: str,
     payload: Any,
@@ -297,14 +304,14 @@ def _count(
     is_messages: bool,
     candidates: list[str] | None,
     tier: str | None = None,
-) -> tuple[str, int | None, str | None, str]:
+) -> tuple[str, CountUsage | None, str | None, str]:
     attempts = [api_model, *[c for c in (candidates or []) if c != api_model]]
     last_error: str | None = None
     used = api_model
     for candidate in attempts:
         used = candidate
         try:
-            tokens, used = _count_one(
+            usage, used = _count_one(
                 provider_id, candidate, payload, api_key, is_messages, tier=tier
             )
         except LookupError as exc:
@@ -316,8 +323,29 @@ def _count(
             return _status_for_http_error(exc), None, last_error, candidate
         except Exception as exc:  # noqa: BLE001
             return "error", None, str(exc), candidate
-        return "ok", tokens, None, used
+        return "ok", usage, None, used
     return "error", None, last_error, used
+
+
+def _count(
+    provider_id: str,
+    api_model: str,
+    payload: Any,
+    api_key: str,
+    is_messages: bool,
+    candidates: list[str] | None,
+    tier: str | None = None,
+) -> tuple[str, int | None, str | None, str]:
+    status, usage, error, used = _count_with_usage(
+        provider_id,
+        api_model,
+        payload,
+        api_key,
+        is_messages,
+        candidates,
+        tier=tier,
+    )
+    return status, (usage.tokens_in if usage is not None else None), error, used
 
 
 def count_prompt_tokens_text(
@@ -327,14 +355,16 @@ def count_prompt_tokens_text(
     api_key: str,
     candidates: list[str] | None = None,
     tier: str | None = None,
-) -> tuple[str, int | None, str | None, str]:
-    """Count tokens for a single user-text prompt. Returns status, tokens, error, model.
+) -> tuple[str, CountUsage | None, str | None, str]:
+    """Count one user-text request.
+
+    Returns status, structured usage, error, and resolved model id.
 
     Pass `tier` wherever the caller knows it: Gemini resolves its callable id from
     the live model list, and without the tier it cannot tell a flagship row from a
     workhorse one.
     """
-    return _count(
+    return _count_with_usage(
         provider_id,
         api_model,
         text,
@@ -365,7 +395,7 @@ def count_prompt_tokens_messages(
     )
 
 
-def _anthropic_count_text(model: str, text: str, api_key: str) -> int:
+def _anthropic_count_text(model: str, text: str, api_key: str) -> CountUsage:
     response = request_with_retry(
         "POST",
         "https://api.anthropic.com/v1/messages",
@@ -383,10 +413,16 @@ def _anthropic_count_text(model: str, text: str, api_key: str) -> int:
     )
     if not response.ok:
         raise _http_error_from_response(response)
-    return int(response.json().get("usage", {}).get("input_tokens", 0))
+    usage = response.json().get("usage", {})
+    return CountUsage(
+        tokens_in=int(usage.get("input_tokens", 0)),
+        tokens_out=int(usage.get("output_tokens", 0)),
+        request_kind="completion_probe",
+        billable=True,
+    )
 
 
-def _anthropic_count_messages(model: str, messages: list[dict[str, str]], api_key: str) -> int:
+def _anthropic_count_messages(model: str, messages: list[dict[str, str]], api_key: str) -> CountUsage:
     # Anthropic requires alternating roles ending with user for some paths;
     # if the prefix ends on assistant, append a tiny user nudge that we do not
     # bill as content of interest — still counts wrapper on the frozen prefix.
@@ -406,7 +442,13 @@ def _anthropic_count_messages(model: str, messages: list[dict[str, str]], api_ke
     )
     if not response.ok:
         raise _http_error_from_response(response)
-    return int(response.json().get("usage", {}).get("input_tokens", 0))
+    usage = response.json().get("usage", {})
+    return CountUsage(
+        tokens_in=int(usage.get("input_tokens", 0)),
+        tokens_out=int(usage.get("output_tokens", 0)),
+        request_kind="completion_probe",
+        billable=True,
+    )
 
 
 def openai_compatible_body(
@@ -435,7 +477,7 @@ def openai_compatible_body(
     return body
 
 
-def _openai_compat_count_text(base_url: str, model: str, text: str, api_key: str) -> int:
+def _openai_compat_count_text(base_url: str, model: str, text: str, api_key: str) -> CountUsage:
     return _openai_compat_count_messages(
         base_url, model, [{"role": "user", "content": text}], api_key
     )
@@ -443,7 +485,7 @@ def _openai_compat_count_text(base_url: str, model: str, text: str, api_key: str
 
 def _openai_compat_count_messages(
     base_url: str, model: str, messages: list[dict[str, str]], api_key: str
-) -> int:
+) -> CountUsage:
     response = request_with_retry(
         "POST",
         f"{base_url}/chat/completions",
@@ -453,7 +495,13 @@ def _openai_compat_count_messages(
     )
     if not response.ok:
         raise _http_error_from_response(response)
-    return int(response.json().get("usage", {}).get("prompt_tokens", 0))
+    usage = response.json().get("usage", {})
+    return CountUsage(
+        tokens_in=int(usage.get("prompt_tokens", 0)),
+        tokens_out=int(usage.get("completion_tokens", 0)),
+        request_kind="completion_probe",
+        billable=True,
+    )
 
 
 def _bedrock_messages(messages: list[dict[str, str]]) -> list[dict[str, Any]]:
@@ -489,24 +537,36 @@ def _bedrock_converse(
     return response.json()
 
 
-def _bedrock_count_text(model: str, text: str, api_key: str) -> int:
+def _bedrock_count_text(model: str, text: str, api_key: str) -> CountUsage:
     payload = _bedrock_converse(model, [{"role": "user", "content": text}], api_key)
-    return int(payload.get("usage", {}).get("inputTokens", 0))
+    usage = payload.get("usage", {})
+    return CountUsage(
+        tokens_in=int(usage.get("inputTokens", 0)),
+        tokens_out=int(usage.get("outputTokens", 0)),
+        request_kind="completion_probe",
+        billable=True,
+    )
 
 
-def _bedrock_count_messages(model: str, messages: list[dict[str, str]], api_key: str) -> int:
+def _bedrock_count_messages(model: str, messages: list[dict[str, str]], api_key: str) -> CountUsage:
     # Converse wants the last message to be from the user for some models; if the
     # frozen transcript ends on assistant, nudge with a tiny user turn.
     api_messages = list(messages)
     if api_messages and api_messages[-1].get("role") == "assistant":
         api_messages = api_messages + [{"role": "user", "content": "."}]
     payload = _bedrock_converse(model, api_messages, api_key)
-    return int(payload.get("usage", {}).get("inputTokens", 0))
+    usage = payload.get("usage", {})
+    return CountUsage(
+        tokens_in=int(usage.get("inputTokens", 0)),
+        tokens_out=int(usage.get("outputTokens", 0)),
+        request_kind="completion_probe",
+        billable=True,
+    )
 
 
 def _gemini_count_text(
     model: str, text: str, api_key: str, tier_hint: str = "workhorse"
-) -> tuple[int, str]:
+) -> tuple[CountUsage, str]:
     candidates = _gemini_candidates(api_key, tier_hint, preferred=model)
     last_error: Exception | None = None
     for candidate in candidates:
@@ -523,7 +583,7 @@ def _gemini_count_text(
 
 def _gemini_count_messages(
     model: str, messages: list[dict[str, str]], api_key: str, tier_hint: str = "flagship"
-) -> tuple[int, str]:
+) -> tuple[CountUsage, str]:
     contents = []
     for turn in normalize_messages(messages):
         role = "user" if turn["role"] == "user" else "model"
@@ -542,7 +602,7 @@ def _gemini_count_messages(
     raise RuntimeError("No callable Gemini model for countTokens")
 
 
-def _gemini_count_tokens(model: str, contents: list[dict[str, Any]], api_key: str) -> int:
+def _gemini_count_tokens(model: str, contents: list[dict[str, Any]], api_key: str) -> CountUsage:
     response = request_with_retry(
         "POST",
         f"https://generativelanguage.googleapis.com/v1beta/models/{model}:countTokens",
@@ -564,11 +624,22 @@ def _gemini_count_tokens(model: str, contents: list[dict[str, Any]], api_key: st
         )
         if not gen.ok:
             raise _http_error_from_response(gen)
-        return int(gen.json().get("usageMetadata", {}).get("promptTokenCount", 0))
+        usage = gen.json().get("usageMetadata", {})
+        return CountUsage(
+            tokens_in=int(usage.get("promptTokenCount", 0)),
+            tokens_out=int(usage.get("candidatesTokenCount", 0)),
+            request_kind="completion_probe",
+            billable=True,
+        )
     if not response.ok:
         raise _http_error_from_response(response)
     payload = response.json()
-    return int(payload.get("totalTokens") or payload.get("promptTokenCount") or 0)
+    return CountUsage(
+        tokens_in=int(payload.get("totalTokens") or payload.get("promptTokenCount") or 0),
+        tokens_out=0,
+        request_kind="count_endpoint",
+        billable=False,
+    )
 
 
 def _gemini_candidates(api_key: str, tier_hint: str, preferred: str) -> list[str]:
