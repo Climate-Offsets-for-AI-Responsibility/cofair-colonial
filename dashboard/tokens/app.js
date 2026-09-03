@@ -10,6 +10,7 @@ import {
   hexToHsl,
   parseOptionalNumber,
   pointAtOrBefore,
+  resolveCostDetailRequestState,
   splitLeafCostColumns,
   sortDatasetsForDate,
 } from "../labels.js";
@@ -1354,13 +1355,15 @@ async function loadCostDetailIndex() {
   if (costIndexPromise) return costIndexPromise;
   const path = state.eq?.costs?.detail_index_path;
   if (!path) {
-    state.costDetailIndex = { dates: [] };
-    return state.costDetailIndex;
+    state.costDetailIndex = null;
+    state.costIndexError = "Unable to load run-date index.";
+    renderCostsIfVisible();
+    return null;
   }
   state.costIndexLoading = true;
   state.costIndexError = null;
   renderCostsStatus();
-  renderCosts();
+  renderCostsIfVisible();
   costIndexPromise = fetch(`../data/${path}`)
     .then(async (res) => {
       if (!res.ok) throw new Error(`Cost detail index returned ${res.status}`);
@@ -1369,34 +1372,47 @@ async function loadCostDetailIndex() {
     })
     .catch((error) => {
       console.error("Unable to load cost detail index", error);
-      state.costDetailIndex = { dates: [] };
+      state.costDetailIndex = null;
       state.costIndexError = "Unable to load run-date index.";
-      return state.costDetailIndex;
+      return null;
     })
     .finally(() => {
       costIndexPromise = null;
       state.costIndexLoading = false;
-      renderCosts();
+      renderCostsIfVisible();
     });
   return costIndexPromise;
 }
 
 async function loadCostDetail(date) {
   if (!date) return null;
-  if (state.costDetailsByDate.has(date)) return state.costDetailsByDate.get(date);
-  if (costDetailPromises.has(date)) return costDetailPromises.get(date);
-
+  const hasCachedDetail = state.costDetailsByDate.has(date);
   const path = costDetailPath(date);
-  if (!path) {
-    state.costDetailErrors.set(date, "No detail path published for this run date.");
-    renderCosts();
-    return null;
+  const decision = resolveCostDetailRequestState({
+    hasCachedDetail,
+    hasPath: Boolean(path),
+  });
+
+  state.costInFlightDates.delete(date);
+  if (decision.error) state.costDetailErrors.set(date, decision.error);
+  else state.costDetailErrors.delete(date);
+
+  if (!decision.shouldFetch) {
+    renderCostsIfVisible();
+    return hasCachedDetail ? state.costDetailsByDate.get(date) : null;
+  }
+
+  if (costDetailPromises.has(date)) {
+    state.costInFlightDates.add(date);
+    state.costDetailErrors.delete(date);
+    renderCostsIfVisible();
+    return costDetailPromises.get(date);
   }
 
   state.costInFlightDates.add(date);
   state.costDetailErrors.delete(date);
   renderCostsStatus();
-  renderCosts();
+  renderCostsIfVisible();
   const promise = fetch(`../data/${path}`)
     .then(async (res) => {
       if (!res.ok) throw new Error(`Cost detail returned ${res.status}`);
@@ -1413,7 +1429,7 @@ async function loadCostDetail(date) {
     .finally(() => {
       costDetailPromises.delete(date);
       state.costInFlightDates.delete(date);
-      renderCosts();
+      renderCostsIfVisible();
     });
   costDetailPromises.set(date, promise);
   return promise;
@@ -1462,6 +1478,10 @@ function renderCostsStatus(statusText) {
   if (next === state.costLastStatus) return;
   status.textContent = next;
   state.costLastStatus = next;
+}
+
+function renderCostsIfVisible() {
+  if (costsPanelVisible()) renderCosts();
 }
 
 function rememberCostFocus(kind, key) {
@@ -1531,7 +1551,10 @@ function renderCostRows(detail) {
                 <span class="cost-expand__caret" aria-hidden="true">${taskExpanded ? "▾" : "▸"}</span>
                 <span class="cost-label">${esc(task.task_id)} · ${esc(label)}</span>
               </button>`
-              : `<span class="cost-label">${esc(task.task_id)} · ${esc(label)}</span>`
+              : `<span class="cost-label">
+                  <span class="cost-expand__caret" aria-hidden="true"></span>
+                  <span>${esc(task.task_id)} · ${esc(label)}</span>
+                </span>`
           }
           ${
             taskNotes.length
@@ -1612,18 +1635,21 @@ function renderCosts() {
         detailDates[detailDates.length - 1].date,
       )}.`;
     } else {
-      range.textContent = costPendingMessage();
+      range.textContent = "";
     }
   }
-  if (!detailDates.length) statusText = costPendingMessage();
   if (state.costIndexLoading) statusText = "Loading run-date index…";
   if (state.costIndexError) statusText = state.costIndexError;
 
   const tbody = document.getElementById("costBody");
   if (!tbody) return;
   if (!state.costDate) {
-    tbody.innerHTML = emptyRow(5, "No run detail yet", costPendingMessage());
-    renderCostsStatus(statusText || "No run detail yet.");
+    const title = state.costIndexError ? "Run detail unavailable" : "No run detail yet";
+    const body = state.costIndexError
+      ? "Unable to load run-date index. Open Costs again to retry."
+      : costPendingMessage();
+    tbody.innerHTML = emptyRow(5, title, body);
+    renderCostsStatus(statusText);
     return;
   }
 
@@ -1643,7 +1669,7 @@ function renderCosts() {
   const detail = state.costDetailsByDate.get(state.costDate);
   if (!detail) {
     tbody.innerHTML = emptyRow(5, "Run detail unavailable", "This run date has no loaded detail yet.");
-    renderCostsStatus(statusText || "Run detail unavailable.");
+    renderCostsStatus(statusText);
     return;
   }
   if (!(detail.provider_tiers || []).length) {
@@ -1652,7 +1678,7 @@ function renderCosts() {
       "No provider totals for this date",
       "No provider-tier cost rows were published for the selected run date.",
     );
-    renderCostsStatus("No provider totals for selected run date.");
+    renderCostsStatus(statusText);
     return;
   }
 
@@ -1683,7 +1709,7 @@ function renderCosts() {
       renderCosts();
     });
   });
-  renderCostsStatus(statusText || "");
+  renderCostsStatus(statusText);
   restoreCostFocus();
 }
 
@@ -1696,7 +1722,7 @@ function render() {
   renderHealth();
   renderLedger();
   renderTaskTable();
-  if (costsPanelVisible()) renderCosts();
+  renderCostsIfVisible();
   if (trendsPanelVisible()) {
     const { points } = aggregate();
     renderChart(points);
@@ -1763,8 +1789,7 @@ async function main() {
     state.costExpandedRows.clear();
     state.costExpandedTasks.clear();
     state.costDetailErrors.delete(state.costDate);
-    if (state.costDate) state.costInFlightDates.add(state.costDate);
-    renderCosts();
+    renderCostsIfVisible();
     void loadCostDetail(state.costDate);
   });
 

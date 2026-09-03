@@ -150,7 +150,8 @@ export function formatCostDelta(comparison) {
   const sign = deltaUsd > 0 ? "+" : "-";
   const pct = `${sign}${Math.abs(deltaPct).toFixed(1)}%`;
   const usd = `${sign}${formatEstimatedSpend(Math.abs(deltaUsd))}`;
-  return `${pct} · ${usd}`;
+  const direction = deltaUsd > 0 ? "Increase" : "Decrease";
+  return `${direction} · ${pct} · ${usd}`;
 }
 
 export function splitLeafCostColumns(detail) {
@@ -171,5 +172,27 @@ export function splitLeafCostColumns(detail) {
     output: parseOptionalNumber(detail?.output_cost_usd),
     supporting: parseOptionalNumber(detail?.supporting_cost_usd),
     total,
+  };
+}
+
+export function resolveCostDetailRequestState({ hasCachedDetail, hasPath }) {
+  if (hasCachedDetail) {
+    return {
+      shouldFetch: false,
+      loading: false,
+      error: null,
+    };
+  }
+  if (!hasPath) {
+    return {
+      shouldFetch: false,
+      loading: false,
+      error: "No detail path published for this run date.",
+    };
+  }
+  return {
+    shouldFetch: true,
+    loading: true,
+    error: null,
   };
 }

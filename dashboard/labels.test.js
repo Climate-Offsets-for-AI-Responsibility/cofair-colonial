@@ -11,6 +11,7 @@ import {
   formatEstimatedSpend,
   formatCostDelta,
   parseOptionalNumber,
+  resolveCostDetailRequestState,
   splitLeafCostColumns,
   priceAtOrBefore,
   sortDatasetsForDate,
@@ -182,14 +183,14 @@ describe("cost formatters", () => {
     );
     assert.equal(
       formatCostDelta({ status: "ok", delta_pct: 8.2, delta_usd: 0.0142 }),
-      "+8.2% · +$0.0142",
+      "Increase · +8.2% · +$0.0142",
     );
   });
 
   it("formatCostDelta handles negative, zero, and baseline states", () => {
     assert.equal(
       formatCostDelta({ status: "ok", delta_pct: -2.4, delta_usd: -0.0142 }),
-      "-2.4% · -$0.0142",
+      "Decrease · -2.4% · -$0.0142",
     );
     assert.equal(
       formatCostDelta({ status: "ok", delta_pct: 0, delta_usd: 0 }),
@@ -237,5 +238,34 @@ describe("cost leaf splits", () => {
       }),
       { input: null, output: null, supporting: null, total: null },
     );
+  });
+});
+
+describe("cost detail request state", () => {
+  it("marks cached selections as not loading", () => {
+    assert.deepEqual(
+      resolveCostDetailRequestState({ hasCachedDetail: true, hasPath: true }),
+      { shouldFetch: false, loading: false, error: null },
+    );
+  });
+
+  it("flags missing detail path as explicit error", () => {
+    assert.deepEqual(
+      resolveCostDetailRequestState({ hasCachedDetail: false, hasPath: false }),
+      {
+        shouldFetch: false,
+        loading: false,
+        error: "No detail path published for this run date.",
+      },
+    );
+  });
+
+  it("regression: A to B to cached A is never loading", () => {
+    const stateA = resolveCostDetailRequestState({ hasCachedDetail: false, hasPath: true });
+    const stateB = resolveCostDetailRequestState({ hasCachedDetail: false, hasPath: true });
+    const backToCachedA = resolveCostDetailRequestState({ hasCachedDetail: true, hasPath: true });
+    assert.equal(stateA.loading, true);
+    assert.equal(stateB.loading, true);
+    assert.equal(backToCachedA.loading, false);
   });
 });
