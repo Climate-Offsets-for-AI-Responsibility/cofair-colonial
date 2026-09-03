@@ -18,7 +18,7 @@ _SCRIPTS = Path(__file__).resolve().parent
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
-from ops.provider_faults import classify_provider_error, run_status_for_category
+from ops.provider_faults import classify_provider_error, run_status_for_http
 from provider_http import request_with_retry
 
 TIMEOUT_SECONDS = 90

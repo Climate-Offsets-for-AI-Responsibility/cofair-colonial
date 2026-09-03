@@ -180,6 +180,68 @@ class ProviderFaultsTest(unittest.TestCase):
         self.assertEqual(run_status_for_http(429, body), "provider_unavailable")
 
 
+class HttpErrorPathTest(unittest.TestCase):
+    """Exercise the real error path, not just the classifier behind it.
+
+    `_status_for_http_error` called `run_status_for_http` while the module imported
+    `run_status_for_category` — its sibling — so every non-retryable provider
+    error raised `NameError` instead of being classified. It took the whole daily
+    collection down: OpenAI's billing outage returns 429, so the first provider to
+    fault killed the run before any other provider was counted.
+
+    It survived review because the existing test imported `run_status_for_http`
+    directly and asserted on it, which passes whether or not the module that needs
+    it imported it. So drive the function that actually runs in production.
+    """
+
+    def _status(self, code: int, body: str) -> str:
+        import provider_token_count as ptc
+
+        response = requests.Response()
+        response.status_code = code
+        response._content = body.encode()
+        return ptc._status_for_http_error(
+            requests.HTTPError(f"{code} Client Error", response=response)
+        )
+
+    def test_billing_outage_is_classified_not_raised(self) -> None:
+        body = '{"error":{"code":"billing_not_active","message":"not active"}}'
+        self.assertEqual(self._status(429, body), "provider_unavailable")
+
+    def test_ordinary_rate_limit_stays_an_error(self) -> None:
+        self.assertEqual(self._status(429, '{"error":{"message":"slow down"}}'), "error")
+
+    def test_a_missing_response_does_not_blow_up(self) -> None:
+        import provider_token_count as ptc
+
+        self.assertEqual(
+            ptc._status_for_http_error(requests.HTTPError("boom", response=None)), "error"
+        )
+
+    def test_a_faulting_provider_does_not_abort_the_run(self) -> None:
+        """The consequence that mattered: one provider's fault is reported, not
+        raised, so the remaining providers still get counted."""
+        import provider_token_count as ptc
+
+        body = '{"error":{"code":"billing_not_active","message":"not active"}}'
+        response = requests.Response()
+        response.status_code = 429
+        response._content = body.encode()
+
+        with mock.patch.object(
+            ptc,
+            "_count_one",
+            side_effect=requests.HTTPError("429 Client Error", response=response),
+        ):
+            status, tokens, error, used = ptc._count(
+                "openai", "gpt-5.6", "hello", "key", is_messages=False, candidates=None
+            )
+
+        self.assertEqual(status, "provider_unavailable")
+        self.assertIsNone(tokens)
+        self.assertIsNotNone(error)
+
+
 class GeminiTierResolutionTest(unittest.TestCase):
     """Gemini must count a flagship row on a flagship model.
 
