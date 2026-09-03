@@ -214,7 +214,8 @@ class BuildEquivalenceTest(unittest.TestCase):
         eq = build_equivalence(models, index, live_model_map={})
         self.assertEqual(eq["pricing_snapshot_date"], "2026-08-13")
         self.assertEqual(eq["tokenizer_ledger"]["cadence"], "daily")
-        self.assertEqual(eq["wrapper_runs"]["cadence"], "daily")
+        self.assertEqual(eq["wrapper_runs"]["cadence"], "historical")
+        self.assertEqual(eq["wrapper_runs"]["status"], "retired")
         self.assertEqual(eq["tasks"][0]["task_id"], "A")
         self.assertIn("suiteLong", eq["task_packs"])
         self.assertEqual(len(eq["chat_transcript"]), 20)
@@ -245,6 +246,10 @@ class BuildEquivalenceTest(unittest.TestCase):
         # Tasks expose the invariant denominator the index normalizes on.
         self.assertGreater(eq["tasks"][0]["input_chars"], 0)
         self.assertIn("prompt", eq["tasks"][0])
+        note = eq["package_cost_note"]
+        self.assertIn("daily generated meter on tasks A–F", note)
+        self.assertIn("daily tokenizer ledger on tasks A/B/C/D/F", note)
+        self.assertNotIn("daily task E wrapper counts", note)
 
 
 class BuildTokenRunsTest(unittest.TestCase):

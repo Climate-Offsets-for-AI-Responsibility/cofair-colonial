@@ -225,7 +225,24 @@ def _is_model_unavailable(exc: requests.HTTPError) -> bool:
 
 
 def _redact(msg: str) -> str:
-    return re.sub(r"(key=)[^&\s]+", r"\1[REDACTED]", msg)
+    redacted = re.sub(r"(?i)(bearer\s+)[^\s,;]+", r"\1[REDACTED]", msg)
+    redacted = re.sub(r"(?i)(x-api-key\s*[:=]\s*)[^\s,;]+", r"\1[REDACTED]", redacted)
+    redacted = re.sub(r'(?i)("api[_-]?key"\s*:\s*")[^"]+(")', r"\1[REDACTED]\2", redacted)
+    redacted = re.sub(r'(?i)("token"\s*:\s*")[^"]+(")', r"\1[REDACTED]\2", redacted)
+    redacted = re.sub(
+        r"(?i)\b(api[_-]?key|token|key)\s*[:=]\s*[^\s,;]+",
+        lambda m: f"{m.group(1)}=[REDACTED]",
+        redacted,
+    )
+    redacted = re.sub(r"\bsk-[A-Za-z0-9._-]+\b", "[REDACTED]", redacted)
+    redacted = re.sub(r"\bAIza[0-9A-Za-z\-_]{20,}\b", "[REDACTED]", redacted)
+    redacted = re.sub(r"\bAKIA[0-9A-Z]{16}\b", "[REDACTED]", redacted)
+    redacted = re.sub(
+        r"\beyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9._-]{2,}\.[A-Za-z0-9._-]{2,}\b",
+        "[REDACTED]",
+        redacted,
+    )
+    return redacted
 
 
 def _http_error_message(exc: requests.HTTPError) -> str:
@@ -322,7 +339,7 @@ def _count_with_usage(
                 continue
             return _status_for_http_error(exc), None, last_error, candidate
         except Exception as exc:  # noqa: BLE001
-            return "error", None, str(exc), candidate
+            return "error", None, _redact(str(exc)), candidate
         return "ok", usage, None, used
     return "error", None, last_error, used
 

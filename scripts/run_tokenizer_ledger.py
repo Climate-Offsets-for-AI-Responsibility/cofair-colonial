@@ -101,6 +101,12 @@ def prices_for_api_model(model: dict, api_model: str) -> tuple[float | None, flo
     if not provider_id or not tier:
         return None, None
 
+    # Google live ids are account-resolved and can differ from catalog ids
+    # (`gemini-pro-latest`, `gemini-flash-latest-*`); meter values these at the
+    # panel row's own prices, and ledger must match.
+    if provider_id == "google" and "gemini" in str(api_model).lower():
+        return model.get("input_price"), model.get("output_price")
+
     for candidate in [model, *(model.get("api_candidates") or [])]:
         candidate_model = candidate.get("model_id")
         if not candidate_model:

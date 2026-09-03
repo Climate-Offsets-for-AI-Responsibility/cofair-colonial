@@ -949,8 +949,8 @@ def build_equivalence(
         "package_ceiling_annual_usd": None,
         "package_planning_annual_usd": planning_annual,
         "package_cost_note": (
-            "Shipped package: daily meter with flagship N=1 + workhorse N=1, daily "
-            "tokenizer ledger on tasks A–D, daily task E wrapper counts on turns 1–10. "
+            "Shipped package: daily generated meter on tasks A–F with flagship N=1 + "
+            "workhorse N=1, daily tokenizer ledger on tasks A/B/C/D/F. "
             f"Planning figure is ${planning_annual:,.0f}/yr at list, assuming "
             f"{BUDGET_OUTPUT_TOKENS_PER_TASK:,} output tokens per task per day. Output is "
             "uncapped, so this bounds nothing: verbosity is the measurement, and a cap "
@@ -963,7 +963,7 @@ def build_equivalence(
             "cadence": "daily",
             "status": "active" if ledger_ok else "pending_first_run",
             "note": (
-                "Count-only density on the frozen corpus. Tasks A\u2013D all counted "
+                "Count-only density on the frozen corpus. Tasks A/B/C/D/F are counted "
                 "daily."
             ),
             "last_observed_date": max((r.get("date") for r in ledger_ok), default=None),
@@ -976,11 +976,11 @@ def build_equivalence(
             "fits": build_ledger_fits(ledger_ok),
         },
         "wrapper_runs": {
-            "cadence": "daily",
-            "status": "active" if wrapper_ok else "pending_first_run",
+            "cadence": "historical",
+            "status": "retired",
             "note": (
-                "Test 4: frozen 10-turn transcript; api_prompt_tokens at turns 1–10. "
-                "Assistant turns are never regenerated."
+                "Historical wrapper archive: frozen 10-turn transcript prompt-token counts "
+                "from the retired wrapper schedule. Kept for continuity; no longer collected."
             ),
             "chat_corpus_version": CHAT_CORPUS_VERSION,
             "last_date": max((run_date_of(r) for r in wrapper_ok), default="") or None,

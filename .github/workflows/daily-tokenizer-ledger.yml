@@ -27,7 +27,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Count-only ledger (tasks A+B+C+D)
+      - name: Count-only ledger (tasks A/B/C/D/F)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

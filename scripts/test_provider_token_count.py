@@ -306,6 +306,69 @@ class HttpErrorPathTest(unittest.TestCase):
         self.assertIsNone(tokens)
         self.assertIsNotNone(error)
 
+    def test_http_error_details_are_redacted(self) -> None:
+        import provider_token_count as ptc
+
+        body = (
+            'Authorization: Bearer sk-live-secret token=abc123 key=xyz '
+            'api_key=foo x-api-key: bar sk-rawvalue '
+            '{"api_key":"secret-1","token":"secret-2",'
+            '"jwt":"eyJhbGciOiJIUzI1NiJ9.abc.def",'
+            '"google":"AIzaSyD123456789012345678901234567890123",'
+            '"aws":"AKIA1234567890ABCD12"}'
+        )
+        response = _json_response(401, {"error": body})
+        response._content = body.encode()
+        with mock.patch.object(
+            ptc,
+            "_count_one",
+            side_effect=requests.HTTPError("401 Client Error", response=response),
+        ):
+            status, _, error, _ = ptc._count(
+                "openai", "gpt-5.6", "hello", "key", is_messages=False, candidates=None
+            )
+
+        self.assertEqual(status, "error")
+        self.assertIsNotNone(error)
+        redacted = error or ""
+        for secret in (
+            "sk-live-secret",
+            "abc123",
+            "xyz",
+            "foo",
+            "bar",
+            "sk-rawvalue",
+            "secret-1",
+            "secret-2",
+            "AIzaSyD123456789012345678901234567890123",
+            "AKIA1234567890ABCD12",
+            "eyJhbGciOiJIUzI1NiJ9.abc.def",
+        ):
+            self.assertNotIn(secret, redacted)
+        self.assertIn("Bearer [REDACTED]", redacted)
+
+    def test_generic_error_details_are_redacted(self) -> None:
+        import provider_token_count as ptc
+
+        with mock.patch.object(
+            ptc,
+            "_count_one",
+            side_effect=RuntimeError(
+                'boom {"api_key":"secret","token":"abc","jwt":"eyJhbGciOiJIUzI1NiJ9.a.b"} '
+                "Bearer sk-secret AIzaSyD123456789012345678901234567890123 AKIA1234567890ABCD12"
+            ),
+        ):
+            status, _, error, _ = ptc._count(
+                "openai", "gpt-5.6", "hello", "key", is_messages=False, candidates=None
+            )
+        self.assertEqual(status, "error")
+        redacted = error or ""
+        self.assertNotIn("secret", redacted)
+        self.assertNotIn("abc", redacted)
+        self.assertNotIn("sk-secret", redacted)
+        self.assertNotIn("AIzaSyD123456789012345678901234567890123", redacted)
+        self.assertNotIn("AKIA1234567890ABCD12", redacted)
+
 
 class GeminiTierResolutionTest(unittest.TestCase):
     """Gemini must count a flagship row on a flagship model.

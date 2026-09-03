@@ -9,6 +9,7 @@ the real ones.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -20,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "ops"))
 import run_tokenizer_ledger
 import runbooks
 import verify_token_runs as verify_ops
+from cost_events import COST_EVENTS_FILE
 from task_corpus import LEDGER_TASK_IDS, METER_TASK_IDS
 
 PANEL = [
@@ -50,6 +52,9 @@ class DryRunTest(unittest.TestCase):
 
     def _run(self, argv: list[str]) -> list[dict] | None:
         written: list[list[dict]] = []
+        saved_cost_rows: list[list[dict]] = []
+        before_exists = COST_EVENTS_FILE.exists()
+        before_mtime = COST_EVENTS_FILE.stat().st_mtime if before_exists else None
         with (
             mock.patch.object(sys, "argv", ["run_tokenizer_ledger.py", *argv]),
             mock.patch.object(
@@ -64,9 +69,17 @@ class DryRunTest(unittest.TestCase):
             mock.patch.object(
                 run_tokenizer_ledger, "save_ledger", side_effect=written.append
             ),
+            mock.patch.object(run_tokenizer_ledger, "load_cost_events", return_value=[]),
+            mock.patch.object(
+                run_tokenizer_ledger, "save_cost_events", side_effect=saved_cost_rows.append
+            ),
             mock.patch.object(run_tokenizer_ledger, "env_for_provider", return_value=None),
         ):
             self.assertEqual(run_tokenizer_ledger.main(), 0)
+        after_exists = COST_EVENTS_FILE.exists()
+        after_mtime = COST_EVENTS_FILE.stat().st_mtime if after_exists else None
+        self.assertEqual(after_exists, before_exists)
+        self.assertEqual(after_mtime, before_mtime)
         return written[0] if written else None
 
     def test_dry_run_does_not_write_the_ledger(self) -> None:
@@ -127,6 +140,34 @@ class PricesForApiModelTest(unittest.TestCase):
         self.assertEqual(
             run_tokenizer_ledger.prices_for_api_model(model, "amazon.nova-pro-v1:0"),
             (0.8, 3.2),
+        )
+
+    def test_google_live_pro_id_uses_panel_prices(self) -> None:
+        model = {
+            "provider_id": "google",
+            "tier": "flagship",
+            "model_id": "gemini-3.1-pro",
+            "input_price": 1.25,
+            "output_price": 7.5,
+            "api_candidates": [],
+        }
+        self.assertEqual(
+            run_tokenizer_ledger.prices_for_api_model(model, "gemini-pro-latest"),
+            (1.25, 7.5),
+        )
+
+    def test_google_live_flash_variant_uses_panel_prices(self) -> None:
+        model = {
+            "provider_id": "google",
+            "tier": "workhorse",
+            "model_id": "gemini-3-flash",
+            "input_price": 0.3,
+            "output_price": 0.9,
+            "api_candidates": [],
+        }
+        self.assertEqual(
+            run_tokenizer_ledger.prices_for_api_model(model, "gemini-flash-latest-high-res-exp"),
+            (0.3, 0.9),
         )
 
 
@@ -216,13 +257,24 @@ class LedgerCostEventsTest(unittest.TestCase):
             200 / 1_000_000 * 0.8 + 50 / 1_000_000 * 3.2,
         )
 
-    def test_replay_replaces_only_matching_ledger_event_group(self) -> None:
+    def test_missing_price_makes_billable_event_incomplete(self) -> None:
         usage = SimpleNamespace(
             tokens_in=200,
             tokens_out=50,
             request_kind="completion_probe",
             billable=True,
         )
+        with mock.patch.object(
+            run_tokenizer_ledger,
+            "prices_for_api_model",
+            return_value=(None, None),
+        ):
+            _, saved_cost = self._run(usage)
+        event = saved_cost[0]
+        self.assertIsNone(event["estimated_cost_usd"])
+        self.assertFalse(event["complete"])
+
+    def test_failed_rerun_clears_group_and_emits_no_event(self) -> None:
         existing = [
             {
                 "event_id": "old-ledger",
@@ -246,33 +298,6 @@ class LedgerCostEventsTest(unittest.TestCase):
                 "corpus_version": "3.0.0",
                 "chat_corpus_version": None,
                 "run_id": "old",
-                "replicate": 1,
-                "attempt": 1,
-                "canonical": True,
-                "complete": True,
-            },
-            {
-                "event_id": "keep-ledger-other-task",
-                "date": "2026-09-03",
-                "run_at": "2026-09-03T11:00:00Z",
-                "source": "ledger",
-                "provider_id": "aws",
-                "tier": "flagship",
-                "task_id": "A",
-                "turn": None,
-                "request_kind": "count_endpoint",
-                "api_model": "amazon.nova-pro-v1:0",
-                "input_tokens": 5,
-                "output_tokens": 0,
-                "input_price_per_1m": 0.8,
-                "output_price_per_1m": 3.2,
-                "input_cost_usd": 0.0,
-                "output_cost_usd": 0.0,
-                "estimated_cost_usd": 0.0,
-                "pricing_snapshot_date": "2026-09-01",
-                "corpus_version": "3.0.0",
-                "chat_corpus_version": None,
-                "run_id": "keep",
                 "replicate": 1,
                 "attempt": 1,
                 "canonical": True,
@@ -306,21 +331,125 @@ class LedgerCostEventsTest(unittest.TestCase):
                 "complete": True,
             },
         ]
-        _, saved_cost = self._run(usage, existing_cost_events=existing)
-        group = [
-            row
-            for row in saved_cost
-            if row.get("source") == "ledger"
-            and row.get("date") == "2026-09-03"
-            and row.get("provider_id") == "aws"
-            and row.get("tier") == "flagship"
-            and row.get("task_id") == "D"
-        ]
-        self.assertEqual(len(group), 1)
-        self.assertEqual(group[0]["request_kind"], "completion_probe")
-        self.assertEqual(group[0]["api_model"], "amazon.nova-pro-v1:0")
-        self.assertTrue(any(row.get("event_id") == "keep-meter" for row in saved_cost))
-        self.assertTrue(any(row.get("event_id") == "keep-ledger-other-task" for row in saved_cost))
+        ledger_rows: list[list[dict]] = []
+        cost_rows: list[list[dict]] = []
+        with (
+            mock.patch.object(
+                sys,
+                "argv",
+                ["run_tokenizer_ledger.py", "--tasks", "D", "--date", "2026-09-03"],
+            ),
+            mock.patch.object(
+                run_tokenizer_ledger,
+                "load_equivalence",
+                return_value={
+                    "selected_models_by_mode": {"two": [self.MODEL]},
+                    "pricing_snapshot_date": "2026-09-01",
+                },
+            ),
+            mock.patch.object(run_tokenizer_ledger, "load_panel", return_value=[self.MODEL]),
+            mock.patch.object(run_tokenizer_ledger, "load_ledger", return_value=[]),
+            mock.patch.object(run_tokenizer_ledger, "save_ledger", side_effect=ledger_rows.append),
+            mock.patch.object(run_tokenizer_ledger, "load_cost_events", return_value=existing),
+            mock.patch.object(run_tokenizer_ledger, "save_cost_events", side_effect=cost_rows.append),
+            mock.patch.object(run_tokenizer_ledger, "env_for_provider", return_value="key"),
+            mock.patch.object(
+                run_tokenizer_ledger,
+                "count_prompt_tokens_text",
+                return_value=("error", None, "boom", "amazon.nova-pro-v1:0"),
+            ),
+            mock.patch.object(run_tokenizer_ledger, "now_iso_z", return_value="2026-09-03T12:00:00Z"),
+        ):
+            self.assertEqual(run_tokenizer_ledger.main(), 0)
+        self.assertEqual(len(cost_rows), 1)
+        saved = cost_rows[0]
+        self.assertFalse(
+            any(
+                row.get("source") == "ledger"
+                and row.get("date") == "2026-09-03"
+                and row.get("provider_id") == "aws"
+                and row.get("tier") == "flagship"
+                and row.get("task_id") == "D"
+                for row in saved
+            )
+        )
+        self.assertTrue(any(row.get("event_id") == "keep-meter" for row in saved))
+
+
+class GoogleLedgerCostEventsTest(unittest.TestCase):
+    MODEL = {
+        "provider_id": "google",
+        "tier": "flagship",
+        "model_id": "gemini-3.1-pro",
+        "input_price": 1.25,
+        "output_price": 7.5,
+        "api_candidates": [],
+    }
+
+    def _run(self, usage: SimpleNamespace, api_model: str) -> dict:
+        cost_rows: list[list[dict]] = []
+        with (
+            mock.patch.object(
+                sys,
+                "argv",
+                ["run_tokenizer_ledger.py", "--tasks", "D", "--date", "2026-09-03"],
+            ),
+            mock.patch.object(
+                run_tokenizer_ledger,
+                "load_equivalence",
+                return_value={
+                    "selected_models_by_mode": {"two": [self.MODEL]},
+                    "pricing_snapshot_date": "2026-09-01",
+                },
+            ),
+            mock.patch.object(run_tokenizer_ledger, "load_panel", return_value=[self.MODEL]),
+            mock.patch.object(run_tokenizer_ledger, "load_ledger", return_value=[]),
+            mock.patch.object(run_tokenizer_ledger, "save_ledger"),
+            mock.patch.object(run_tokenizer_ledger, "load_cost_events", return_value=[]),
+            mock.patch.object(run_tokenizer_ledger, "save_cost_events", side_effect=cost_rows.append),
+            mock.patch.object(run_tokenizer_ledger, "env_for_provider", return_value="key"),
+            mock.patch.object(
+                run_tokenizer_ledger,
+                "count_prompt_tokens_text",
+                return_value=("ok", usage, None, api_model),
+            ),
+            mock.patch.object(run_tokenizer_ledger, "now_iso_z", return_value="2026-09-03T12:00:00Z"),
+        ):
+            self.assertEqual(run_tokenizer_ledger.main(), 0)
+        return cost_rows[0][0]
+
+    def test_google_native_count_on_live_id_is_complete_zero_cost(self) -> None:
+        event = self._run(
+            SimpleNamespace(
+                tokens_in=120,
+                tokens_out=0,
+                request_kind="count_endpoint",
+                billable=False,
+            ),
+            "gemini-pro-latest",
+        )
+        self.assertEqual(event["input_price_per_1m"], 1.25)
+        self.assertEqual(event["output_price_per_1m"], 7.5)
+        self.assertEqual(event["estimated_cost_usd"], 0.0)
+        self.assertTrue(event["complete"])
+
+    def test_google_generation_fallback_on_live_id_is_complete_and_costed(self) -> None:
+        event = self._run(
+            SimpleNamespace(
+                tokens_in=200,
+                tokens_out=50,
+                request_kind="completion_probe",
+                billable=True,
+            ),
+            "gemini-flash-latest-high-res-exp",
+        )
+        self.assertEqual(event["input_price_per_1m"], 1.25)
+        self.assertEqual(event["output_price_per_1m"], 7.5)
+        self.assertAlmostEqual(
+            event["estimated_cost_usd"],
+            200 / 1_000_000 * 1.25 + 50 / 1_000_000 * 7.5,
+        )
+        self.assertTrue(event["complete"])
 
 
 class TaskSetTest(unittest.TestCase):
@@ -356,6 +485,16 @@ class WorkflowContractTest(unittest.TestCase):
 
     def test_meter_tasks_cover_generation_a_through_f(self) -> None:
         self.assertEqual(tuple(METER_TASK_IDS), ("A", "B", "C", "D", "E", "F"))
+
+    def test_daily_tokenizer_ledger_uses_all_tasks(self) -> None:
+        workflow = (
+            Path(__file__).resolve().parent.parent
+            / ".github"
+            / "workflows"
+            / "daily-tokenizer-ledger.yml"
+        ).read_text()
+        self.assertIn("Count-only ledger (tasks A/B/C/D/F)", workflow)
+        self.assertIn("python scripts/run_tokenizer_ledger.py --tasks all --mode two", workflow)
 
     def test_default_active_sources_drop_wrapper(self) -> None:
         self.assertEqual(tuple(verify_ops.SOURCES), ("meter", "ledger"))
