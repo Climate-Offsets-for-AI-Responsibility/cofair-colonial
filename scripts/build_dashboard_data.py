@@ -30,7 +30,9 @@ import argparse
 import calendar
 import json
 import os
+import re
 import sys
+from collections import Counter
 from datetime import date as Date
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -861,37 +863,103 @@ def _load_json_rows(path: Path) -> list[dict]:
 # prompt moves the completeness bar with it.
 CONVERSATION_TASK_ID = "E"
 
-# What one panel row owes the record on a scheduled day. Meter requests are
-# generations (A/B/C/D/F once, plus one per conversation turn); ledger requests
-# are the count probes, which skip the conversation.
-EXPECTED_METER = frozenset(
-    {(task_id, None) for task_id in GENERATING_TASK_IDS if task_id != CONVERSATION_TASK_ID}
-    | {
-        (CONVERSATION_TASK_ID, turn)
-        for turn in range(1, len(E_USER_PROMPTS) + 1)
-    }
-)
-EXPECTED_LEDGER = frozenset((task_id, None) for task_id in LEDGER_TASK_IDS)
-EXPECTED_BY_SOURCE = {"meter": EXPECTED_METER, "ledger": EXPECTED_LEDGER}
+# The scheduled daily run is one pass of the panel — flagship and workhorse at
+# replicate 1. A canonical replicate 2 is a different run regime, not more
+# evidence of this one, so it reads as an unexpected record rather than being
+# folded into the day.
+SCHEDULED_REPLICATE = 1
+
+
+def _expected_requests() -> Counter:
+    """What one panel row owes the record on a scheduled day.
+
+    A Counter, not a set: the schedule promises each request exactly once, and
+    two records of one request is a different failure from a missing one. Set
+    membership cannot see either — it reads a doubled charge as satisfied and a
+    replicate-2-instead-of-1 as present — and both mis-state the day's spend.
+
+    The identity is (source, task, turn, replicate). Source belongs in it
+    because the meter and the ledger both send task A: without it, a ledger
+    probe would silently discharge the meter's obligation.
+    """
+    expected: Counter = Counter()
+    for task_id in GENERATING_TASK_IDS:
+        turns = (
+            range(1, len(E_USER_PROMPTS) + 1)
+            if task_id == CONVERSATION_TASK_ID
+            else [None]
+        )
+        for turn in turns:
+            expected[("meter", task_id, turn, SCHEDULED_REPLICATE)] += 1
+    for task_id in LEDGER_TASK_IDS:
+        expected[("ledger", task_id, None, SCHEDULED_REPLICATE)] += 1
+    return expected
+
+
+EXPECTED_REQUESTS = _expected_requests()
 
 _TASK_ORDER = {task_id: position for position, task_id in enumerate(TASK_IDS)}
+_SOURCE_ORDER = {"meter": 0, "ledger": 1}
 
 
-def _request_sort_key(key: tuple[str, int | None]) -> tuple:
-    task_id, turn = key
-    return (_TASK_ORDER.get(task_id, len(_TASK_ORDER)), turn or 0)
+def _request_sort_key(key: tuple) -> tuple:
+    source, task_id, turn, replicate = key
+    return (
+        _SOURCE_ORDER.get(source, len(_SOURCE_ORDER)),
+        _TASK_ORDER.get(task_id, len(_TASK_ORDER)),
+        task_id,
+        turn or 0,
+        replicate,
+    )
 
 
-def _requests_as_rows(
-    keys, source: str | None = None
-) -> list[dict]:
-    rows = []
-    for task_id, turn in sorted(keys, key=_request_sort_key):
-        row = {"task_id": task_id, "turn": turn}
-        if source is not None:
-            row = {"source": source, **row}
-        rows.append(row)
-    return rows
+def _request_row(key: tuple, **extra) -> dict:
+    source, task_id, turn, replicate = key
+    return {
+        "source": source,
+        "task_id": task_id,
+        "turn": turn,
+        "replicate": replicate,
+        **extra,
+    }
+
+
+def _expected_rows(source: str) -> list[dict]:
+    keys = [key for key in EXPECTED_REQUESTS if key[0] == source]
+    return [_request_row(key) for key in sorted(keys, key=_request_sort_key)]
+
+
+def _request_diagnostics(observed: Counter, expected: Counter) -> dict:
+    """Name every way the observed record departs from the schedule.
+
+    Published rather than reduced to a boolean: "the day is incomplete" is not
+    actionable, and the three cases have different causes — a provider outage, a
+    replay that was not replaced, and a run under a regime the schedule does not
+    describe.
+    """
+    missing = [key for key, count in expected.items() if observed[key] < count]
+    duplicate = [
+        key
+        for key, count in expected.items()
+        if observed[key] > count
+    ]
+    unexpected = [key for key in observed if key not in expected]
+    return {
+        "missing_requests": [
+            _request_row(key) for key in sorted(missing, key=_request_sort_key)
+        ],
+        "duplicate_requests": [
+            _request_row(key, observed_count=observed[key])
+            for key in sorted(duplicate, key=_request_sort_key)
+        ],
+        "unexpected_requests": [
+            _request_row(key) for key in sorted(unexpected, key=_request_sort_key)
+        ],
+    }
+
+
+def _has_diagnostics(diagnostics: dict) -> bool:
+    return any(diagnostics[name] for name in diagnostics)
 
 
 def _cost_leaf(event: dict) -> dict:
@@ -917,13 +985,31 @@ def _cost_leaf(event: dict) -> dict:
     }
 
 
+def _leaf_request_key(leaf: dict) -> tuple:
+    return (leaf["source"], leaf["task_id"], leaf["turn"], leaf["replicate"])
+
+
 def _leaf_sort_key(leaf: dict) -> tuple:
     return (
-        leaf.get("source") or "",
+        _SOURCE_ORDER.get(leaf.get("source"), len(_SOURCE_ORDER)),
         leaf.get("turn") or 0,
-        leaf.get("attempt") or 0,
         leaf.get("replicate") or 0,
+        leaf.get("attempt") or 0,
         leaf.get("event_id") or "",
+    )
+
+
+def _observed_requests(leaves: list[dict]) -> Counter:
+    """Count the requests that can satisfy the schedule.
+
+    Only complete canonical records qualify. An abandoned attempt is real spend
+    on a request that was superseded, and a request whose price is unknown has
+    not been accounted for at all — neither discharges an obligation.
+    """
+    return Counter(
+        _leaf_request_key(leaf)
+        for leaf in leaves
+        if leaf["complete"] and leaf["canonical"]
     )
 
 
@@ -947,43 +1033,56 @@ def _cost_totals(leaves: list[dict]) -> dict:
     }
 
 
+def _build_cost_task(task_id: str, leaves: list[dict], on_panel: bool) -> dict:
+    """One task inside one panel row.
+
+    Completeness means the same thing here as it does at the day: every request
+    the schedule names for this task, present exactly once and priced. A task
+    that sums two of three billed turns is not a cheaper task, and a reader
+    drilling into a withheld day must not find green rows inside it.
+    """
+    expected = Counter(
+        {key: count for key, count in EXPECTED_REQUESTS.items() if key[1] == task_id}
+    )
+    diagnostics = (
+        _request_diagnostics(_observed_requests(leaves), expected)
+        if on_panel
+        else {"missing_requests": [], "duplicate_requests": [], "unexpected_requests": []}
+    )
+    return {
+        "task_id": task_id,
+        **_cost_totals(leaves),
+        "complete": all(leaf["complete"] for leaf in leaves)
+        and not _has_diagnostics(diagnostics),
+        **diagnostics,
+        "details": leaves,
+    }
+
+
 def _build_cost_row(entry: dict | None, key: tuple[str, str], events: list[dict]) -> dict:
     provider_id, tier = key
     leaves = sorted((_cost_leaf(event) for event in events), key=_leaf_sort_key)
+    on_panel = entry is not None
 
     by_task: dict[str, list[dict]] = {}
     for leaf in leaves:
         by_task.setdefault(leaf["task_id"], []).append(leaf)
-
-    tasks = []
-    for task_id in sorted(by_task, key=lambda t: _TASK_ORDER.get(t, len(_TASK_ORDER))):
-        task_leaves = by_task[task_id]
-        tasks.append(
-            {
-                "task_id": task_id,
-                **_cost_totals(task_leaves),
-                "complete": all(leaf["complete"] for leaf in task_leaves),
-                "details": task_leaves,
-            }
-        )
-
-    # Only complete canonical requests can satisfy the schedule. An abandoned
-    # attempt is real spend on a request that was superseded, and a request whose
-    # price is unknown has not been accounted for at all.
-    observed: dict[str, set] = {source: set() for source in EXPECTED_BY_SOURCE}
-    for leaf in leaves:
-        if leaf["source"] in observed and leaf["complete"] and leaf["canonical"]:
-            observed[leaf["source"]].add((leaf["task_id"], leaf["turn"]))
-
-    missing: list[dict] = []
-    unexpected: list[dict] = []
-    on_panel = entry is not None
     if on_panel:
-        for source, expected in EXPECTED_BY_SOURCE.items():
-            missing += _requests_as_rows(expected - observed[source], source)
-            unexpected += _requests_as_rows(observed[source] - expected, source)
+        for _, task_id, _, _ in EXPECTED_REQUESTS:
+            by_task.setdefault(task_id, [])
 
+    tasks = [
+        _build_cost_task(task_id, by_task[task_id], on_panel)
+        for task_id in sorted(by_task, key=lambda t: _TASK_ORDER.get(t, len(_TASK_ORDER)))
+    ]
+
+    diagnostics = (
+        _request_diagnostics(_observed_requests(leaves), EXPECTED_REQUESTS)
+        if on_panel
+        else {"missing_requests": [], "duplicate_requests": [], "unexpected_requests": []}
+    )
     incomplete = [leaf for leaf in leaves if not leaf["complete"]]
+
     return {
         "provider_id": provider_id,
         "tier": tier,
@@ -994,9 +1093,8 @@ def _build_cost_row(entry: dict | None, key: tuple[str, str], events: list[dict]
         # spend is real and stays in the totals; it is not owed to the schedule.
         "on_panel": on_panel,
         **_cost_totals(leaves),
-        "complete": not missing and not unexpected and not incomplete,
-        "missing_requests": missing,
-        "unexpected_requests": unexpected,
+        "complete": not _has_diagnostics(diagnostics) and not incomplete,
+        **diagnostics,
         "incomplete_event_count": len(incomplete),
         "tasks": tasks,
     }
@@ -1020,22 +1118,28 @@ def _build_cost_day(date: str, events: list[dict], panel: list[dict]) -> dict:
     incomplete_count = sum(row["incomplete_event_count"] for row in rows)
     panel_rows = [row for row in rows if row["on_panel"]]
 
+    def gather(name: str) -> list[dict]:
+        return [
+            {"provider_id": row["provider_id"], "tier": row["tier"], **request}
+            for row in panel_rows
+            for request in row[name]
+        ]
+
     return {
         "date": date,
-        # A day is complete when the whole panel reported and nothing on it is
-        # unpriced. The second half matters as much as the first: one request
-        # without a price makes the day's real spend unknown, not merely lower.
+        # A day is complete when the whole panel reported exactly what the
+        # schedule names and nothing anywhere is unpriced. The second half
+        # matters as much as the first: one request without a price makes the
+        # day's real spend unknown, not merely lower.
         "complete": bool(panel_rows)
         and all(row["complete"] for row in panel_rows)
         and incomplete_count == 0,
         **_cost_totals(leaves),
         "event_count": len(leaves),
         "incomplete_event_count": incomplete_count,
-        "missing_requests": [
-            {"provider_id": row["provider_id"], "tier": row["tier"], **request}
-            for row in panel_rows
-            for request in row["missing_requests"]
-        ],
+        "missing_requests": gather("missing_requests"),
+        "duplicate_requests": gather("duplicate_requests"),
+        "unexpected_requests": gather("unexpected_requests"),
         "provider_tiers": rows,
     }
 
@@ -1075,6 +1179,7 @@ def _window_summary(
             amount += entry["estimated_spend_usd"]
         day += timedelta(days=1)
 
+    clipped = window_start > start
     return {
         "start_date": window_start.isoformat(),
         "end_date": end.isoformat(),
@@ -1082,33 +1187,57 @@ def _window_summary(
         "complete_date_count": complete,
         "amount_usd": amount,
         "complete": complete == scheduled,
+        # True when the epoch cut days off the front of the calendar period. The
+        # window is then shorter than the one it would be compared against, so
+        # its total is not a like-for-like figure even when it is fully reported.
+        "clipped": clipped,
+        "clip_reason": "before_complete_start_date" if clipped else None,
     }
 
 
 def build_cost_comparison(current: dict | None, previous: dict | None) -> dict:
     """One period against its predecessor, refusing every comparison it cannot make.
 
-    `comparison_unavailable` means a window was scheduled and did not fully
-    report; `new_baseline` means there is nothing to compare against — either the
-    prior period predates the epoch, or it really did spend nothing, which a
-    percentage cannot express.
+    `new_baseline` means there is nothing comparable to compare against — the
+    prior period is entirely before the epoch, or it really did spend nothing,
+    which no percentage can express. `comparison_unavailable` means a comparison
+    was owed and cannot be trusted: a window came back short, or the epoch cut
+    the prior window down to fewer days than the current one covers.
+
+    The current amount is published whenever the current window is whole, even
+    when no comparison can be drawn: what is withheld is the delta, not the
+    money. Both windows carry their scheduled and complete day counts so the
+    card can say *why* rather than only that.
     """
-    def window_dates(window: dict | None) -> dict | None:
+    def window_facts(window: dict | None) -> dict | None:
         if window is None:
             return None
-        return {"start_date": window["start_date"], "end_date": window["end_date"]}
+        return {
+            key: window[key]
+            for key in (
+                "start_date",
+                "end_date",
+                "scheduled_date_count",
+                "complete_date_count",
+                "complete",
+                "clipped",
+                "clip_reason",
+            )
+        }
 
     result = {
         "status": "comparison_unavailable",
+        "reason": None,
         "amount_usd": None,
         "previous_amount_usd": None,
         "delta_usd": None,
         "delta_pct": None,
-        "current_window": window_dates(current),
-        "previous_window": window_dates(previous),
+        "current_window": window_facts(current),
+        "previous_window": window_facts(previous),
     }
 
     if current is None or not current["complete"]:
+        result["reason"] = "current_window_incomplete"
         result["previous_window"] = None
         return result
 
@@ -1116,10 +1245,16 @@ def build_cost_comparison(current: dict | None, previous: dict | None) -> dict:
 
     if previous is None or not previous["scheduled_date_count"]:
         result["status"] = "new_baseline"
+        result["reason"] = "no_comparable_prior_period"
         result["previous_window"] = None
         return result
 
+    if previous["clipped"]:
+        result["reason"] = "previous_window_clipped"
+        return result
+
     if not previous["complete"]:
+        result["reason"] = "previous_window_incomplete"
         return result
 
     previous_amount = previous["amount_usd"]
@@ -1131,20 +1266,23 @@ def build_cost_comparison(current: dict | None, previous: dict | None) -> dict:
     else:
         # Nothing was spent in the prior window, so there is no ratio to state.
         result["status"] = "new_baseline"
+        result["reason"] = "zero_previous_amount"
     return result
 
 
 def build_costs(
     events: list[dict],
     selected_models: list[dict],
-    latest_date: str | None = None,
+    latest_attempt_date: str | None = None,
 ) -> dict:
     """Daily estimated spend for the panel, with period comparisons.
 
     `selected_models` is the panel the meter actually runs — the mode-two tier
     rows — so the completeness bar follows the panel instead of a written-down
-    row count. `latest_date` optionally widens `latest_attempted_date` to a date
-    the pipeline reached without writing cost events.
+    row count. `latest_attempt_date` widens `latest_attempted_date` to a day the
+    runners attempted without writing cost events; it must come from collection,
+    never from the pricing scrape, which runs on its own schedule and would
+    otherwise report an attempt that never happened.
     """
     panel = [
         {
@@ -1169,8 +1307,8 @@ def build_costs(
     latest_complete = complete_dates[-1] if complete_dates else None
 
     attempted = list(by_date)
-    if latest_date and include_dashboard_date(latest_date):
-        attempted.append(latest_date)
+    if latest_attempt_date and include_dashboard_date(latest_attempt_date):
+        attempted.append(latest_attempt_date)
 
     floor = Date.fromisoformat(DASHBOARD_START_DATE)
     comparisons: dict[str, dict] = {}
@@ -1182,15 +1320,14 @@ def build_costs(
     else:
         latest = Date.fromisoformat(latest_complete)
 
-        # Run over run: the last complete day against the one before it. A gap
-        # between them is not an error — it is the previous run — and the window
-        # this publishes names the day it used.
-        previous_run = None
-        if len(complete_dates) > 1:
-            prior = Date.fromisoformat(complete_dates[-2])
-            previous_run = _window_summary(daily_index, prior, prior, floor)
+        # Run over run: the last complete day against the day scheduled before
+        # it. Deliberately the previous *scheduled* day and not the previous day
+        # that happened to report — skipping a failed day would compare two runs
+        # 48 hours apart and label the result a run-over-run change.
+        previous_day = latest - timedelta(days=1)
         comparisons["current_run"] = build_cost_comparison(
-            _window_summary(daily_index, latest, latest, floor), previous_run
+            _window_summary(daily_index, latest, latest, floor),
+            _window_summary(daily_index, previous_day, previous_day, floor),
         )
 
         # Month to date against the same stretch of the month before it.
@@ -1223,18 +1360,131 @@ def build_costs(
         "latest_complete_date": latest_complete,
         "status": "active" if latest_complete else "pending_first_complete_day",
         "panel_row_count": len(panel),
-        "expected_meter_requests_per_row": _requests_as_rows(EXPECTED_METER),
-        "expected_ledger_requests_per_row": _requests_as_rows(EXPECTED_LEDGER),
+        "expected_meter_requests_per_row": _expected_rows("meter"),
+        "expected_ledger_requests_per_row": _expected_rows("ledger"),
         "complete_date_count": len(complete_dates),
         "note": (
             "Estimated spend at list prices, computed from the tokens each request "
             "actually reported. It is not an invoice: providers bill from their own "
             "meters, and a day is published only once every scheduled meter and "
-            "ledger request came back priced."
+            "ledger request came back priced, exactly once."
         ),
         "comparisons": comparisons,
         "daily": daily,
     }
+
+
+# ---- cost publication ------------------------------------------------------
+#
+# The request tree is roughly two orders of magnitude larger than the figures
+# the Costs cards need, and it is only ever read one date at a time. So
+# `equivalence.json` — fetched on every page load — carries the comparisons and
+# a per-day summary, and the tree is written to a static file per date that the
+# page fetches when a date is selected. `cost_events.json` stays as it is: the
+# raw operational record, not a second copy of the published summary.
+
+COST_DETAIL_DIRNAME = "costs"
+COST_DETAIL_DIR = DASHBOARD_DATA_DIR / COST_DETAIL_DIRNAME
+_COST_DETAIL_FILE = re.compile(r"^\d{4}-\d{2}-\d{2}\.json$")
+
+_COST_TOTAL_FIELDS = (
+    "estimated_spend_usd",
+    "input_cost_usd",
+    "output_cost_usd",
+    "supporting_cost_usd",
+)
+
+
+def _detail_path(date: str) -> str:
+    """Where the page fetches one date's tree, relative to `dashboard/data/`."""
+    return f"{COST_DETAIL_DIRNAME}/{date}.json"
+
+
+def _diagnostic_counts(node: dict) -> dict:
+    return {
+        "missing_request_count": len(node["missing_requests"]),
+        "duplicate_request_count": len(node["duplicate_requests"]),
+        "unexpected_request_count": len(node["unexpected_requests"]),
+    }
+
+
+def summarize_costs(costs: dict) -> dict:
+    """The costs block as published inline: totals and counts, no request leaves."""
+    daily = []
+    for day in costs["daily"]:
+        daily.append(
+            {
+                "date": day["date"],
+                "complete": day["complete"],
+                **{field: day[field] for field in _COST_TOTAL_FIELDS},
+                "event_count": day["event_count"],
+                "incomplete_event_count": day["incomplete_event_count"],
+                **_diagnostic_counts(day),
+                "detail_path": _detail_path(day["date"]),
+                "provider_tiers": [
+                    {
+                        "provider_id": row["provider_id"],
+                        "tier": row["tier"],
+                        "model_id": row["model_id"],
+                        "display_name": row["display_name"],
+                        "on_panel": row["on_panel"],
+                        "complete": row["complete"],
+                        **{field: row[field] for field in _COST_TOTAL_FIELDS},
+                        "incomplete_event_count": row["incomplete_event_count"],
+                        **_diagnostic_counts(row),
+                    }
+                    for row in day["provider_tiers"]
+                ],
+            }
+        )
+
+    summary = {key: value for key, value in costs.items() if key != "daily"}
+    summary["detail_index_path"] = f"{COST_DETAIL_DIRNAME}/index.json"
+    summary["daily"] = daily
+    return summary
+
+
+def write_cost_details(costs: dict, directory: Path = COST_DETAIL_DIR) -> dict:
+    """Write one static tree per date plus an index, and drop stale dates.
+
+    Cost events are replay-replaced, so a date can legitimately leave the
+    record; a file left behind would keep answering fetches for a day the record
+    no longer contains. Only generated `YYYY-MM-DD.json` files are removed.
+    """
+    directory.mkdir(parents=True, exist_ok=True)
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    written: set[str] = set()
+    for day in costs["daily"]:
+        path = directory / f"{day['date']}.json"
+        written.add(path.name)
+        path.write_text(
+            json.dumps({"generated_at": generated_at, **day}, indent=2) + "\n"
+        )
+
+    index = {
+        "generated_at": generated_at,
+        "complete_start_date": costs["complete_start_date"],
+        "latest_attempted_date": costs["latest_attempted_date"],
+        "latest_complete_date": costs["latest_complete_date"],
+        "dates": [
+            {
+                "date": day["date"],
+                "complete": day["complete"],
+                "estimated_spend_usd": day["estimated_spend_usd"],
+                "path": _detail_path(day["date"]),
+            }
+            for day in costs["daily"]
+        ],
+    }
+    (directory / "index.json").write_text(json.dumps(index, indent=2) + "\n")
+
+    for path in directory.glob("*.json"):
+        if path.name in written or not _COST_DETAIL_FILE.match(path.name):
+            continue
+        path.unlink()
+
+    return index
 
 
 def build_equivalence(
@@ -1328,20 +1578,32 @@ def build_equivalence(
     # Everything charted or tabulated starts at the epoch.
     ledger_rows = [row for row in ledger_all if include_dashboard_date(row.get("date") or "")]
     ledger_ok = [row for row in ledger_rows if row.get("run_status") == "ok"]
-    # Except the wrapper archive, deliberately. The epoch exists to keep a *live*
-    # series comparable, and wrapper collection is retired: every row predates
-    # 2026-09-03, so scoping it would publish an empty archive and read as data
-    # loss rather than as a restart. It is published whole and flagged unscoped.
-    # Nothing on the current surface may read it as task E — E is now a generated
-    # three-turn conversation, and these rows are input-only counts of a different
-    # transcript under the old semantics.
-    wrapper_rows = wrapper_all
+    # The wrapper archive is retired but still drawn, so it obeys the same start
+    # line as everything else: the page must not show history it says it is not
+    # showing. The rows that survive the epoch are read only as the historical
+    # wrapper series — never as task E, which is now a generated three-turn
+    # conversation rather than a counted transcript.
+    wrapper_rows = [row for row in wrapper_all if include_dashboard_date(run_date_of(row))]
     wrapper_ok = [row for row in wrapper_rows if row.get("run_status") == "ok"]
 
+    # What collection last *attempted*, from the runners themselves. The pricing
+    # scrape is a separate pipeline on its own schedule, so `index["last_date"]`
+    # would report a cost-collection attempt on a day nothing ran.
+    latest_attempt_date = max(
+        (
+            date
+            for date in (
+                [run_date_of(row) for row in run_rows]
+                + [row.get("date") or "" for row in ledger_all]
+            )
+            if include_dashboard_date(date)
+        ),
+        default=None,
+    )
     costs = build_costs(
         load_cost_events() if cost_events is None else cost_events,
         selected_by_mode["two"],
-        index.get("last_date"),
+        latest_attempt_date,
     )
 
     return {
@@ -1370,7 +1632,9 @@ def build_equivalence(
             "prompts": list(E_USER_PROMPTS),
             "chat_corpus_version": CHAT_CORPUS_VERSION,
         },
-        "costs": costs,
+        # Comparisons and per-day totals only. The request tree for a date is
+        # fetched from `costs/<date>.json` when the reader asks for it.
+        "costs": summarize_costs(costs),
         "chat_task": CHAT_TASK,
         "task_packs": TASK_PACKS,
         "chat_transcript": CHAT_TRANSCRIPT,
@@ -1423,9 +1687,9 @@ def build_equivalence(
                 "from the retired wrapper schedule. Kept for continuity; no longer collected. "
                 "Not task E — E is now a generated three-turn conversation."
             ),
-            # Published whole rather than clipped to the epoch: see the comment
-            # where these rows are read.
-            "epoch_scoped": False,
+            # Clipped to the epoch like every other published series: see the
+            # comment where these rows are read.
+            "epoch_scoped": True,
             "chat_corpus_version": CHAT_CORPUS_VERSION,
             "last_date": max((run_date_of(r) for r in wrapper_ok), default="") or None,
             "row_count": len(wrapper_rows),
@@ -1469,6 +1733,21 @@ def build_equivalence(
 
 # ---- modes -----------------------------------------------------------------
 
+def _publish_cost_details(equivalence: dict) -> dict:
+    """Write the per-date trees that the summary in `equivalence.json` points at.
+
+    Rebuilt from the same record and the same panel the summary was built from —
+    both read back off the artifact — so the inline summary and the files it
+    links to cannot describe different days.
+    """
+    costs = build_costs(
+        load_cost_events(),
+        equivalence["selected_models_by_mode"]["two"],
+        equivalence["costs"]["latest_attempted_date"],
+    )
+    return write_cost_details(costs)
+
+
 def cmd_rebuild() -> int:
     if not HISTORY_DIR.exists():
         print(f"error: {HISTORY_DIR} does not exist. Run backfill_pricing_history.py first.", file=sys.stderr)
@@ -1506,10 +1785,13 @@ def cmd_rebuild() -> int:
     INDEX_FILE.write_text(json.dumps(index, indent=2) + "\n")
     EQUIVALENCE_FILE.write_text(json.dumps(equivalence, indent=2) + "\n")
 
+    detail_index = _publish_cost_details(equivalence)
+
     print(f"\nWrote {SERIES_FILE.name} ({len(series)} rows)")
     print(f"Wrote {MODELS_FILE.name} ({len(models)} pricing_ids)")
     print(f"Wrote {INDEX_FILE.name} ({index['snapshot_count']} dates)")
     print(f"Wrote {EQUIVALENCE_FILE.name} ({len(equivalence['selected_models'])} selected tier rows)")
+    print(f"Wrote {COST_DETAIL_DIRNAME}/ ({len(detail_index['dates'])} cost dates)")
     return 0
 
 
@@ -1558,8 +1840,11 @@ def cmd_append(date: str | None) -> int:
     INDEX_FILE.write_text(json.dumps(index, indent=2) + "\n")
     EQUIVALENCE_FILE.write_text(json.dumps(equivalence, indent=2) + "\n")
 
+    detail_index = _publish_cost_details(equivalence)
+
     print(f"Appended {len(new_rows)} rows for {date} (total {len(series)} rows, {len(models)} pricing_ids)")
     print(f"Wrote {EQUIVALENCE_FILE.name} ({len(equivalence['selected_models'])} selected tier rows)")
+    print(f"Wrote {COST_DETAIL_DIRNAME}/ ({len(detail_index['dates'])} cost dates)")
     return 0
 
 
