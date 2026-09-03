@@ -5,8 +5,11 @@
 // --cofair-* token, nothing visual is hard-coded here (hub R13).
 
 import {
+  drawerObservedColumns,
   formatCostDelta,
+  formatCostDetailWithheldStatus,
   formatEstimatedSpend,
+  formatSuiteBaselineAwaitingStatus,
   hexToHsl,
   parseOptionalNumber,
   pointAtOrBefore,
@@ -632,7 +635,21 @@ function emptyChartReason() {
   // one too.
   const awaited = awaitingTaskReason();
   if (awaited) return awaited;
-  if (!state.providerMode.size) return awaitingEpochReason() || "No completed runs yet.";
+  if (!state.providerMode.size) {
+    const suiteBaseline = formatSuiteBaselineAwaitingStatus({
+      pack: state.pack,
+      metricSource: source,
+      dashboardStartDate: state.eq?.dashboard_start_date,
+      today: new Date().toISOString().slice(0, 10),
+      latestCompleteDate: state.eq?.costs?.latest_complete_date,
+      latestRunDate: state.eq?.live_runs?.latest_date,
+      chatCorpusVersion: state.eq?.chat_corpus_version,
+      panelRows: state.eq?.selected_models_by_mode?.two || [],
+      latestRunRows: state.eq?.live_runs?.latest_rows || [],
+    });
+    if (suiteBaseline) return suiteBaseline;
+    return awaitingEpochReason() || "No completed runs yet.";
+  }
   return "Every provider is hidden. Click a provider pill to bring it back.";
 }
 
@@ -1221,6 +1238,11 @@ function openDrawer(taskId, trigger) {
   const runs = (state.eq.token_runs || []).filter((r) => r.task_id === taskId);
   const latestDate = runs.reduce((max, r) => (r.date > max ? r.date : max), "");
   const latest = runs.filter((r) => r.date === latestDate);
+  const columns = drawerObservedColumns(task.task_id);
+  const observedCell = (row, column) => {
+    if (column.key === "tokens_in_per_1k_chars") return row.tokens_in_per_1k_chars.toFixed(1);
+    return Number(row[column.key] || 0).toLocaleString();
+  };
 
   const observed = latest.length
     ? `<table class="cofair-table cofair-table--striped drawer__table">
@@ -1228,9 +1250,12 @@ function openDrawer(taskId, trigger) {
           <tr class="cofair-table__row">
             <th class="cofair-table__th" scope="col">Provider · tier</th>
             <th class="cofair-table__th" scope="col">Model</th>
-            <th class="cofair-table__th cofair-table__th--num" scope="col">In</th>
-            <th class="cofair-table__th cofair-table__th--num" scope="col">Out</th>
-            <th class="cofair-table__th cofair-table__th--num" scope="col">Tokens / 1K chars</th>
+            ${columns
+              .map(
+                (column) =>
+                  `<th class="cofair-table__th cofair-table__th--num" scope="col">${esc(column.label)}</th>`,
+              )
+              .join("")}
           </tr>
         </thead>
         <tbody class="cofair-table__body">
@@ -1239,9 +1264,12 @@ function openDrawer(taskId, trigger) {
               (r) => `<tr class="cofair-table__row">
               <td class="cofair-table__td">${providerBadge(r.provider_id)} ${esc(r.tier)}</td>
               <td class="cofair-table__td">${esc(r.api_model || r.model_id || "—")}</td>
-              <td class="cofair-table__td cofair-table__td--num">${r.tokens_in.toLocaleString()}</td>
-              <td class="cofair-table__td cofair-table__td--num">${r.tokens_out.toLocaleString()}</td>
-              <td class="cofair-table__td cofair-table__td--num">${r.tokens_in_per_1k_chars.toFixed(1)}</td>
+              ${columns
+                .map(
+                  (column) =>
+                    `<td class="cofair-table__td cofair-table__td--num">${esc(observedCell(r, column))}</td>`,
+                )
+                .join("")}
             </tr>`,
             )
             .join("")}
@@ -1682,6 +1710,9 @@ function renderCosts() {
     return;
   }
 
+  if (!detail.complete) {
+    statusText = formatCostDetailWithheldStatus(detail) || statusText;
+  }
   tbody.innerHTML = renderCostRows(detail);
   tbody.querySelectorAll("[data-cost-row]").forEach((button) => {
     button.addEventListener("click", () => {

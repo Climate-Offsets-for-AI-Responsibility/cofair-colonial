@@ -70,11 +70,11 @@ python3 scrape_pricing.py
 
 Pricing index scraping is public-page based and does not require provider accounts.
 
-The token-equivalence dashboard runs a **recommended ~$40–45/yr** package:
+The token-equivalence dashboard runs a daily A-F package:
 
-- Weekly **task meter** (A–D): flagship N=1, workhorse N=3 (median)
-- Daily **tokenizer ledger** (A+B+C count-only); weekly ledger count for D
-- Weekly **Test 4** wrapper overhead on a frozen 10-turn transcript (turns 1–10)
+- Daily **generated meter** (A-F): flagship N=1, workhorse N=1
+- Daily **tokenizer ledger** (count-only A/B/C/D/F), via `--tasks all`
+- **Wrapper runner is retired from daily scheduling** and kept for historical/manual audits only
 
 Set these environment variables in `.env` (or `../cofair/.env/.env.cofair`).
 Prefer the `TRACKER_*` names in the shared hub env so they do not collide with
@@ -95,20 +95,19 @@ exchange / M0 tracer keys; unprefixed names still work for CI and a local `.env`
 # Daily meter (one replicate per tier, the shipped schedule)
 python3 scripts/run_equivalence_tasks.py --mode two --workhorse-replicates 1
 
-# Daily ledger (ABC) / weekly ledger (D)
-python3 scripts/run_tokenizer_ledger.py --tasks ABC --mode two
-python3 scripts/run_tokenizer_ledger.py --tasks D --mode two
+# Daily ledger (count-only A/B/C/D/F)
+python3 scripts/run_tokenizer_ledger.py --tasks all --mode two
 
-# Test 4 wrapper counts
+# Retired wrapper schedule: manual historical run only
 python3 scripts/run_wrapper_overhead.py --mode two --max-turn 10
 
 # Dry-run (no provider calls)
 python3 scripts/run_equivalence_tasks.py --mode two --dry-run
-python3 scripts/run_tokenizer_ledger.py --tasks ABC --dry-run
+python3 scripts/run_tokenizer_ledger.py --tasks all --dry-run
 python3 scripts/run_wrapper_overhead.py --dry-run
 ```
 
-CI: `.github/workflows/daily-tokenizer-ledger.yml` and `.github/workflows/weekly-token-equivalence.yml`.
+CI: `.github/workflows/daily-token-equivalence.yml`, `.github/workflows/daily-tokenizer-ledger.yml`, and `.github/workflows/token-ops-remediate.yml`.
 
 ### Scrape resilience process
 
@@ -168,7 +167,11 @@ Requires `cofair-design-system` as a sibling checkout with `npm install && npm r
 
 `.github/workflows/daily-scrape.yml` — daily scrape, Neon ingest, commit `pricing.json` + `pricing_history/` when changed.
 
-`.github/workflows/weekly-token-equivalence.yml` — weekly A/B/C/D live equivalence run, then rebuild + commit `dashboard/data/equivalence*.json`.
+`.github/workflows/daily-token-equivalence.yml` — daily A-F live equivalence run (flagship N=1, workhorse N=1), then rebuild + commit `dashboard/data/equivalence*.json`.
+
+`.github/workflows/daily-tokenizer-ledger.yml` — daily count-only ledger run for A/B/C/D/F, then rebuild + commit `dashboard/data/equivalence*.json`.
+
+`.github/workflows/token-ops-remediate.yml` — remediation workflow triggered by failed token collection runs.
 
 Secrets: `SLACK_*`, `NETLIFY_DATABASE_URL_UNPOOLED`, `NEON_*` (see `.env.example`).
 

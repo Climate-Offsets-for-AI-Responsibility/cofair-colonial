@@ -1856,6 +1856,64 @@ class CostEpochPublicationTest(CostFixture):
         # Retired, and never described as the current task E.
         self.assertIn("no longer collected", wrapper["note"])
 
+    def test_wrapper_history_does_not_make_live_reporting_look_healthy(self) -> None:
+        """Retired wrapper rows are preserved, but health is meter+ledger only."""
+        meter_rows = [
+            {
+                "run_date": POST_EPOCH,
+                "provider_id": "anthropic",
+                "tier": tier,
+                "task_id": "A",
+                "run_status": "error",
+                "error": "timeout",
+            }
+            for tier in ("flagship", "workhorse")
+        ]
+        ledger_rows = [
+            {
+                "date": POST_EPOCH,
+                "provider_id": "anthropic",
+                "tier": tier,
+                "task_id": "A",
+                "run_status": "error",
+                "error": "count endpoint failed",
+            }
+            for tier in ("flagship", "workhorse")
+        ]
+        wrapper_rows = [
+            {
+                "run_date": POST_EPOCH,
+                "provider_id": "anthropic",
+                "tier": tier,
+                "task_id": "E",
+                "run_status": "ok",
+                "tokens_in": 999,
+            }
+            for tier in ("flagship", "workhorse")
+        ]
+
+        eq = self.equivalence(
+            meter_rows=meter_rows,
+            ledger_rows=ledger_rows,
+            wrapper_rows=wrapper_rows,
+        )
+
+        panel = {
+            (row["provider_id"], row["tier"]): row
+            for row in eq["provider_health"]["panel"]
+        }
+        flagship = panel[("anthropic", "flagship")]
+        self.assertEqual(flagship["sources"]["wrapper"]["ok_count"], 1)
+        self.assertFalse(flagship["reporting"])
+        self.assertEqual(flagship["dark_sources"], ["ledger", "meter"])
+
+        self.assertEqual(eq["provider_health"]["reporting_count"], 0)
+        self.assertEqual(
+            eq["provider_health"]["dark"],
+            ["anthropic·flagship", "anthropic·workhorse"],
+        )
+        self.assertFalse(eq["provider_auth"]["ready_for_live_runs"])
+
     def test_ui_facing_ledger_note_drops_content_density_but_keeps_the_fits(self) -> None:
         eq = self.equivalence()
 

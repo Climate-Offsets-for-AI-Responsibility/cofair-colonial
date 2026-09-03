@@ -1,6 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  drawerObservedColumns,
+  formatCostDetailWithheldStatus,
+  formatSuiteBaselineAwaitingStatus,
   scrubDisplayName,
   isFutureSchedulePlaceholder,
   effectiveModality,
@@ -267,5 +270,80 @@ describe("cost detail request state", () => {
     assert.equal(stateA.loading, true);
     assert.equal(stateB.loading, true);
     assert.equal(backToCachedA.loading, false);
+  });
+});
+
+describe("cost detail withheld status", () => {
+  it("announces incomplete day-level withheld counts", () => {
+    assert.equal(
+      formatCostDetailWithheldStatus({
+        complete: false,
+        missing_request_count: 2,
+        duplicate_request_count: 1,
+        unexpected_request_count: 3,
+        incomplete_event_count: 4,
+      }),
+      "Selected run date is withheld until complete: 2 missing scheduled requests · 1 duplicate request · 3 unexplained charges · 4 unpriced requests.",
+    );
+  });
+
+  it("returns blank for complete days", () => {
+    assert.equal(
+      formatCostDetailWithheldStatus({
+        complete: true,
+        missing_request_count: 9,
+        duplicate_request_count: 9,
+      }),
+      "",
+    );
+  });
+});
+
+describe("suite baseline awaiting status", () => {
+  it("surfaces missing canonical task E rows after epoch", () => {
+    assert.equal(
+      formatSuiteBaselineAwaitingStatus({
+        pack: "suiteLong",
+        metricSource: "meter",
+        dashboardStartDate: "2026-09-03",
+        today: "2026-09-04",
+        latestCompleteDate: null,
+        latestRunDate: "2026-09-04",
+        chatCorpusVersion: "3.0.0",
+        panelRows: [
+          { provider_id: "openai", tier: "flagship" },
+          { provider_id: "openai", tier: "workhorse" },
+        ],
+        latestRunRows: [
+          { provider_id: "openai", tier: "flagship", task_id: "A", run_status: "ok" },
+          { provider_id: "openai", tier: "workhorse", task_id: "A", run_status: "ok" },
+          {
+            provider_id: "openai",
+            tier: "flagship",
+            task_id: "E",
+            run_status: "ok",
+            chat_corpus_version: "2.0.0",
+            canonical: true,
+          },
+        ],
+      }),
+      "Complete A-F baseline is still awaiting collection: 2 panel rows are missing canonical task E rows for chat corpus v3.0.0 on the latest run date.",
+    );
+  });
+});
+
+describe("drawer observed columns", () => {
+  it("uses aggregate totals for task E", () => {
+    assert.deepEqual(
+      drawerObservedColumns("E").map((col) => col.key),
+      ["tokens_in", "tokens_out", "tokens_total"],
+    );
+  });
+
+  it("keeps density columns for non-conversation tasks", () => {
+    assert.deepEqual(
+      drawerObservedColumns("A").map((col) => col.key),
+      ["tokens_in", "tokens_out", "tokens_in_per_1k_chars"],
+    );
   });
 });

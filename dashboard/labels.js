@@ -196,3 +196,99 @@ export function resolveCostDetailRequestState({ hasCachedDetail, hasPath }) {
     error: null,
   };
 }
+
+function diagnosticCount(node, field) {
+  const explicit = parseOptionalNumber(node?.[`${field}_count`]);
+  if (explicit != null) return explicit;
+  const list = node?.[`${field}s`];
+  return Array.isArray(list) ? list.length : 0;
+}
+
+export function formatCostDetailWithheldStatus(detail) {
+  if (!detail || detail.complete !== false) return "";
+  const parts = [];
+  const missing = diagnosticCount(detail, "missing_request");
+  const duplicate = diagnosticCount(detail, "duplicate_request");
+  const unexpected = diagnosticCount(detail, "unexpected_request");
+  const incomplete = parseOptionalNumber(detail.incomplete_event_count) || 0;
+
+  if (missing) parts.push(`${missing} missing scheduled request${missing === 1 ? "" : "s"}`);
+  if (duplicate) parts.push(`${duplicate} duplicate request${duplicate === 1 ? "" : "s"}`);
+  if (unexpected) parts.push(`${unexpected} unexplained charge${unexpected === 1 ? "" : "s"}`);
+  if (incomplete) parts.push(`${incomplete} unpriced request${incomplete === 1 ? "" : "s"}`);
+
+  if (!parts.length) return "Selected run date is withheld until complete.";
+  return `Selected run date is withheld until complete: ${parts.join(" · ")}.`;
+}
+
+function panelKey(row) {
+  return `${row?.provider_id || ""}|${row?.tier || ""}`;
+}
+
+export function formatSuiteBaselineAwaitingStatus({
+  pack,
+  metricSource,
+  dashboardStartDate,
+  today,
+  latestCompleteDate,
+  latestRunDate,
+  chatCorpusVersion,
+  panelRows,
+  latestRunRows,
+}) {
+  if (pack !== "suiteLong" || metricSource !== "meter") return "";
+  if (!dashboardStartDate || !today || !chatCorpusVersion) return "";
+  if (dashboardStartDate >= today) return "";
+  if (latestCompleteDate) return "";
+  if (!latestRunDate || latestRunDate < dashboardStartDate) return "";
+
+  const panel = new Set((panelRows || []).map(panelKey).filter(Boolean));
+  if (!panel.size) return "";
+
+  const rows = latestRunRows || [];
+  const hasAnyPostEpochSuiteRows = rows.some(
+    (row) =>
+      row?.run_status === "ok" &&
+      row?.task_id &&
+      row.task_id !== "E" &&
+      panel.has(panelKey(row)),
+  );
+  if (!hasAnyPostEpochSuiteRows) return "";
+
+  const eReady = new Set(
+    rows
+      .filter(
+        (row) =>
+          row?.run_status === "ok" &&
+          row?.task_id === "E" &&
+          panel.has(panelKey(row)) &&
+          row?.canonical !== false &&
+          (row?.chat_corpus_version || chatCorpusVersion) === chatCorpusVersion,
+      )
+      .map(panelKey),
+  );
+  const missingCount = [...panel].filter((key) => !eReady.has(key)).length;
+  if (!missingCount) return "";
+
+  const rowsText = missingCount === 1 ? "row is" : "rows are";
+  return (
+    "Complete A-F baseline is still awaiting collection: " +
+    `${missingCount} panel ${rowsText} missing canonical task E rows ` +
+    `for chat corpus v${chatCorpusVersion} on the latest run date.`
+  );
+}
+
+export function drawerObservedColumns(taskId) {
+  if (taskId === "E") {
+    return [
+      { key: "tokens_in", label: "In" },
+      { key: "tokens_out", label: "Out" },
+      { key: "tokens_total", label: "Total" },
+    ];
+  }
+  return [
+    { key: "tokens_in", label: "In" },
+    { key: "tokens_out", label: "Out" },
+    { key: "tokens_in_per_1k_chars", label: "Tokens / 1K chars" },
+  ];
+}

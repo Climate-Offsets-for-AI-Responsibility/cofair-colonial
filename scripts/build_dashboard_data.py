@@ -642,6 +642,9 @@ def build_provider_health(
         latest = max((date_of(row) for row in attempted), default="") or None
         sources.append((name, attempted, date_of, latest))
 
+    # Wrapper rows are a retired historical archive. Keep their source metadata
+    # published, but health/reporting readiness for live runs is meter+ledger.
+    active_sources = ("meter", "ledger")
     health = []
     for entry in selected:
         key = (entry["provider_id"], entry["tier"])
@@ -690,15 +693,20 @@ def build_provider_health(
                 "ok_models": sorted({row.get("api_model") for row in ok_rows if row.get("api_model")}),
                 "last_unavailable_remedy": last_unavailable_remedy,
             }
-        item["reporting"] = any(src["ok_count"] for src in item["sources"].values())
+        active_stats = [
+            (name, item["sources"][name])
+            for name in active_sources
+            if name in item["sources"]
+        ]
+        item["reporting"] = any(src["ok_count"] for _, src in active_stats)
         item["dark_sources"] = sorted(
             name
-            for name, src in item["sources"].items()
+            for name, src in active_stats
             if src["error_count"] and not src["ok_count"]
         )
         item["unavailable_sources"] = sorted(
             name
-            for name, src in item["sources"].items()
+            for name, src in active_stats
             if src["unavailable_count"] and not src["ok_count"] and not src["error_count"]
         )
         health.append(item)
