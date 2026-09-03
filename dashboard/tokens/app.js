@@ -79,30 +79,17 @@ const PREFERRED_PROVIDER_SERIES = new Map([
 const PROVIDER_LABELS = new Map([["aws", "amazon"]]);
 
 const METRICS = {
-  tokens_in_per_1k_chars: {
-    label: "Input tokens per 1,000 characters, pack-weighted (meter)",
-    axis: "tokens / 1K chars (pack-weighted)",
-    source: "meter",
-    note:
-      "Tokenizer density from the daily task meter, pooled across the pack: total input " +
-      "tokens over total characters. Task D carries 25,743 of the suite's ~27,000 " +
-      "characters, so it dominates this figure. A step change on a pinned model is the " +
-      "signature of a silent re-tokenization.",
-    decimals: 1,
-    beginAtZero: false,
-  },
-  ledger_density: {
-    label: "Input tokens per 1,000 characters, mean of tasks A–C (ledger)",
-    axis: "tokens / 1K chars (task mean)",
-    source: "ledger",
-    note:
-      "Count-only daily ledger, no generation: the unweighted mean of the per-task " +
-      "densities for A, B and C. Every task counts equally here, so short prompts carry " +
-      "the same weight as long ones and the value runs several times above the " +
-      "pack-weighted meter. The two are different statistics on the same corpus — read " +
-      "each against its own history, not against the other.",
-    decimals: 1,
-  },
+  // `tokens_in_per_1k_chars` (pack-weighted meter density) and `ledger_density`
+  // (unweighted mean over A–C) were removed as measures on 2026-09-03. They were
+  // two blended figures answering the question `ledger_content_density` answers
+  // properly: both mix the provider's fixed per-request overhead into a per-
+  // character rate, so both move for two unrelated reasons and neither can say
+  // which. Offering three densities also forced the reader to pick between
+  // statistics rather than read a measurement.
+  //
+  // `tokens_in_per_1k_chars` survives as a *row field* — it is a column in the
+  // ledger table, where it is a per-task figure on a single prompt and the
+  // blending problem does not arise.
   ledger_content_density: {
     label: "Content density — overhead removed (ledger fit)",
     axis: "tokens / 1K chars (content only)",
@@ -133,15 +120,14 @@ const METRICS = {
       "on 23 Aug 2026, on every task at once.",
     decimals: 0,
   },
-  wrapper_turn10: {
-    label: "Turn-10 prompt tokens (Test 4)",
-    axis: "prompt tokens",
-    source: "wrapper",
-    note:
-      "Frozen 10-turn transcript counted at turn 10. Moves when providers change how they " +
-      "pack chat history / inject wrappers — not when the transcript text changes.",
-    decimals: 0,
-  },
+  // `wrapper_turn10` was removed as a measure on 2026-09-03. It named the
+  // instrument rather than the exposure ("Turn-10 prompt tokens (Test 4)") and
+  // measured chat-history packing, which is a special case of the fixed
+  // per-request overhead that `ledger_fixed_overhead` reports across the whole
+  // panel. Task E is still collected and its transcript is still inspectable in
+  // the Task Corpus drawer; it is no longer a chartable pack, because this was
+  // its only chart and leaving the pack selectable would have produced an empty
+  // chart on every measure (D75).
   tokens_total: {
     label: "Total tokens billed",
     axis: "tokens",
@@ -399,8 +385,6 @@ function aggregate() {
   const metric = METRICS[state.metric];
   const source = metric.source || "meter";
 
-  if (source === "ledger") return aggregateLedger();
-  if (source === "wrapper") return aggregateWrapper();
   if (source === "fit") return aggregateFit();
   return aggregateMeter();
 }
@@ -489,7 +473,6 @@ function aggregateMeter() {
       incomplete += 1;
       continue;
     }
-    group.tokens_in_per_1k_chars = group.tokens_in / (group.input_chars / 1000);
     group.corpus_basis = [...group.corpora].sort().join(",");
     complete.push(group);
   }
@@ -497,78 +480,10 @@ function aggregateMeter() {
   return { points: complete, incomplete, xField: "date" };
 }
 
-function aggregateLedger() {
-  // Average over a FIXED task set, never "whatever was collected that day".
-  // D stays out of the mean even though it is now collected daily: it is the
-  // long-context task and runs ~20% below the prose and code tasks, so folding
-  // it in would move the level of the line without telling you anything the
-  // `long` pack does not show on its own.
-  const generating = meterTaskIds();
-  const required = generating.filter((id) => id !== "D");
-  const need = required.length ? required : generating;
-  const taskIds = new Set(need);
-  if (!need.length) return { points: [], incomplete: 0, xField: "date" };
-
-  const groups = new Map();
-  for (const row of state.eq?.tokenizer_ledger?.rows || []) {
-    if (!taskIds.has(row.task_id)) continue;
-    if (!panelVisible(row.provider_id, row.tier)) continue;
-    if (row.tokens_in_per_1k_chars == null) continue;
-
-    const key = `${row.date}|${row.provider_id}|${row.tier}`;
-    let group = groups.get(key);
-    if (!group) {
-      group = {
-        date: row.date,
-        provider_id: row.provider_id,
-        tier: row.tier,
-        model_id: row.model_id,
-        api_model: row.api_model,
-        tasks: new Set(),
-        densitySum: 0,
-        n: 0,
-      };
-      groups.set(key, group);
-    }
-    group.tasks.add(row.task_id);
-    group.densitySum += row.tokens_in_per_1k_chars;
-    group.n += 1;
-  }
-
-  const complete = [];
-  let incomplete = 0;
-  for (const group of groups.values()) {
-    if (need.some((id) => !group.tasks.has(id))) {
-      incomplete += 1;
-      continue;
-    }
-    group.ledger_density = group.densitySum / group.n;
-    complete.push(group);
-  }
-  complete.sort((a, b) => a.date.localeCompare(b.date));
-  return { points: complete, incomplete, xField: "date" };
-}
-
-function aggregateWrapper() {
-  const groups = new Map();
-  if (!packHasChatTask()) return { points: [], incomplete: 0, xField: "date" };
-  for (const row of state.eq?.wrapper_runs?.rows || []) {
-    if (row.turn !== 10) continue;
-    if (!panelVisible(row.provider_id, row.tier)) continue;
-    if (row.api_prompt_tokens == null) continue;
-    const key = `${row.run_date}|${row.provider_id}|${row.tier}`;
-    groups.set(key, {
-      date: row.run_date,
-      provider_id: row.provider_id,
-      tier: row.tier,
-      model_id: row.model_id,
-      api_model: row.api_model,
-      wrapper_turn10: row.api_prompt_tokens,
-    });
-  }
-  const complete = [...groups.values()].sort((a, b) => a.date.localeCompare(b.date));
-  return { points: complete, incomplete: 0, xField: "date" };
-}
+// `aggregateLedger` removed 2026-09-03 with the `ledger_density` measure it fed.
+// It averaged per-task densities over A-C, which is a blended figure of the kind
+// `aggregateFit` replaces properly. The ledger rows it read are still published and
+// still drive the Ledger tab's table; what is gone is the chart series.
 
 /**
  * Panel rows that collected nothing from the source behind the current measure.
@@ -765,15 +680,11 @@ function renderHealth() {
 /**
  * Why the chart is empty, in the reader's terms.
  *
- * A pack/measure pair can be legitimately empty — task E has no generated
- * output, tasks A–D have no chat wrapper — and "no runs yet" would read as a
- * broken pipeline instead of a combination that cannot have data by design.
+ * A pack/measure pair can be legitimately empty, and "no runs yet" would read as
+ * a broken pipeline instead of a combination that cannot have data by design.
  */
 function emptyChartReason() {
   const source = METRICS[state.metric].source || "meter";
-  if (source === "wrapper" && !packHasChatTask()) {
-    return "Wrapper overhead is measured on task E only. Choose the full suite or E · Chat transcript.";
-  }
   if (source === "fit") {
     // Two different empty states share this source, and they mean opposite things.
     // Content density is withheld on every day before task F, so "not enough

@@ -80,22 +80,22 @@
                 <option value="code">C · Code</option>
                 <option value="long">D · Long context (25K packet)</option>
                 <option value="prose">F · Long context (prose)</option>
-                <option value="chat">E · Chat transcript</option>
               </select>
             </div>
             <div class="cofair-field control-group control-group--measure">
               <label class="cofair-label" for="metric">Measure</label>
               <div class="measure-row">
                 <select class="cofair-select" id="metric" aria-describedby="metricNote">
-                  <option value="tokens_total" selected>Total tokens billed (meter)</option>
-                  <option value="tokens_out">Output tokens (meter)</option>
-                  <option value="tokens_in">Input tokens (meter)</option>
-                  <option value="ledger_fixed_overhead">Fixed request overhead (ledger fit)</option>
-                  <option value="tokens_in_per_1k_chars">Tokenizer density — pack-weighted (meter)</option>
-                  <option value="ledger_density">Tokenizer density — task mean A–C (ledger)</option>
-                  <option value="ledger_content_density">Content density — overhead removed (ledger fit)</option>
-                  <option value="wrapper_turn10">Wrapper overhead (turn-10 prompt tokens)</option>
-                  <option value="usd">Cost per run (USD)</option>
+                  <optgroup label="What you are billed">
+                    <option value="tokens_total" selected>Total tokens billed</option>
+                    <option value="tokens_out">Output tokens</option>
+                    <option value="tokens_in">Input tokens</option>
+                    <option value="usd">Cost per run (USD)</option>
+                  </optgroup>
+                  <optgroup label="Why it moved">
+                    <option value="ledger_fixed_overhead">Fixed request overhead</option>
+                    <option value="ledger_content_density">Content density (overhead removed)</option>
+                  </optgroup>
                 </select>
                 <p class="cofair-help" id="metricNote"></p>
               </div>
