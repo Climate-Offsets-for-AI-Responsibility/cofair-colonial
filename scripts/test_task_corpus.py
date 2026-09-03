@@ -15,14 +15,41 @@ from task_corpus import (
     CHAT_TRANSCRIPT,
     CORPUS_VERSION,
     DEGENERATE_TASK_IDS,
+    E_USER_PROMPTS,
+    GENERATING_TASK_IDS,
+    LEDGER_TASK_IDS,
     METER_TASK_IDS,
     MIN_LEXICAL_VARIETY,
+    TASK_IDS,
+    TASK_PACKS,
     TASK_PROMPTS,
+    TASK_SPECS,
     _version_tuple,
     is_degenerate,
     lexical_variety,
     transcript_prefix,
 )
+
+
+class CanonicalCorpusTest(unittest.TestCase):
+    def test_the_full_suite_is_canonical_a_through_f(self) -> None:
+        self.assertEqual(TASK_IDS, ("A", "B", "C", "D", "E", "F"))
+        self.assertEqual(GENERATING_TASK_IDS, TASK_IDS)
+        self.assertEqual(LEDGER_TASK_IDS, ("A", "B", "C", "D", "F"))
+        self.assertEqual(TASK_PACKS["suiteLong"], list(TASK_IDS))
+
+    def test_task_e_is_three_frozen_relational_prompts(self) -> None:
+        self.assertEqual(len(E_USER_PROMPTS), 3)
+        self.assertIn("flagship model", E_USER_PROMPTS[0])
+        self.assertIn("Challenge your recommendation", E_USER_PROMPTS[1])
+        self.assertIn("three-step policy", E_USER_PROMPTS[2])
+        self.assertIn("E", TASK_PROMPTS)
+        self.assertEqual(TASK_SPECS["E"]["label"], "Chat conversation")
+
+    def test_the_daily_ledger_excludes_conversation_task_e(self) -> None:
+        from run_tokenizer_ledger import TASK_SETS
+
+        self.assertEqual(TASK_SETS["all"], list(LEDGER_TASK_IDS))
 
 
 class LongContextPacketTest(unittest.TestCase):
@@ -211,7 +238,7 @@ class LongNaturalCorpusTest(unittest.TestCase):
         """
         from run_tokenizer_ledger import TASK_SETS
 
-        self.assertEqual(TASK_SETS["all"], list(METER_TASK_IDS))
+        self.assertEqual(TASK_SETS["all"], list(LEDGER_TASK_IDS))
 
         workflow = (
             Path(__file__).resolve().parent.parent

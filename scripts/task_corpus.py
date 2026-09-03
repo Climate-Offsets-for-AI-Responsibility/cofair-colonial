@@ -33,7 +33,10 @@ from corpus_long_packet import LONG_CONTEXT_PACKET
 #         deleted — rows carry the version they were collected under and the
 #         chart breaks the line where it changes — but the two halves must not be
 #         read across (D79).
-CORPUS_VERSION = "2.0.0"
+# 3.0.0 = task E added as a generated three-turn conversation. Breaking: E was
+#         previously a frozen wrapper transcript counted input-only; the new E
+#         is generated like A–D and F and belongs in the meter, not the ledger.
+CORPUS_VERSION = "3.0.0"
 
 # Versioned separately from the prompt text because it governs a different
 # quantity. `max_tokens` cannot affect how a prompt tokenizes, so a cap change
@@ -65,6 +68,16 @@ OUTPUT_POLICY_VERSION = "4.0.0"
 # inferred from `tokens_out == cap` — an inference that stops working the moment
 # there is no cap to compare against.
 OUTPUT_CEILING = None
+
+E_USER_PROMPTS = (
+    "An organization uses AI for both routine administrative work and "
+    "high-stakes analysis. Explain how it should decide when to use a flagship "
+    "model and when to use a workhorse model.",
+    "Challenge your recommendation from the perspective of a team that values "
+    "reliability more than cost.",
+    "Now revise the recommendation to address that challenge while keeping "
+    "spending predictable. End with a practical three-step policy.",
+)
 
 TASK_PROMPTS = {
     "A": (
@@ -111,6 +124,7 @@ TASK_PROMPTS = {
         "surcharge threshold on contract NG-4471-B, and which three governance "
         "controls does the packet say most reduce billing surprise?"
     ),
+    "E": "\n".join(E_USER_PROMPTS),
     "F": (
         "Use the context below and answer the question in 5 bullets.\n\n"
         "Context:\n" + LONG_NATURAL_CONTEXT + "\n\nQuestion: Which three governance "
@@ -181,6 +195,17 @@ TASK_SPECS = {
         "output_cap": OUTPUT_CEILING,
         "cadence": "daily",
     },
+    "E": {
+        "label": "Chat conversation",
+        "probes": (
+            "Multi-turn relational dialogue — three frozen user turns that "
+            "exercise how a provider bills conversational context as turns "
+            "accumulate, distinct from the wrapper transcript counted "
+            "historically under the same task id."
+        ),
+        "output_cap": OUTPUT_CEILING,
+        "cadence": "daily",
+    },
     "F": {
         "label": "Long-context prose",
         "probes": (
@@ -194,9 +219,10 @@ TASK_SPECS = {
     },
 }
 
-# The generating tasks. Task E is the frozen chat transcript below: it is counted,
-# never generated, so it has no place in a meter or ledger run.
-METER_TASK_IDS = ("A", "B", "C", "D", "F")
+TASK_IDS = ("A", "B", "C", "D", "E", "F")
+GENERATING_TASK_IDS = TASK_IDS
+LEDGER_TASK_IDS = ("A", "B", "C", "D", "F")
+METER_TASK_IDS = GENERATING_TASK_IDS
 
 TASK_PACKS = {
     "qa": ["A"],
@@ -206,15 +232,7 @@ TASK_PACKS = {
     "chat": ["E"],
     "prose": ["F"],
     "suite": ["A", "B", "C"],
-    # Deliberately still A–E, even though task F is now collected daily. A pack
-    # total is a sum over a fixed task set, and `aggregateMeter` refuses to plot a
-    # day missing any of its tasks — correctly, because a sum over A–F is a
-    # different quantity from a sum over A–E, not a continuation of it. Adding F
-    # here would therefore have emptied the default view for every day already on
-    # the record, which is the failure D75 was about: a page that looks broken
-    # rather than one that is waiting. F is reachable on its own until it has
-    # enough history to justify promoting a combined pack.
-    "suiteLong": ["A", "B", "C", "D", "E"],
+    "suiteLong": list(TASK_IDS),
 }
 
 
@@ -298,8 +316,11 @@ TASK_DEFINITIONS = task_definitions()
 # the prose/code density series. Counts are input-only: runners never regenerate
 # assistant turns — they only ask the provider how many prompt tokens the
 # frozen prefix would bill.
-
-CHAT_CORPUS_VERSION = "1.0.0"
+#
+# 2.0.0 = task E is now a generated three-turn conversation in TASK_PROMPTS.
+#         The transcript below is kept only for interpreting historical wrapper
+#         rows collected under the old E semantics.
+CHAT_CORPUS_VERSION = "2.0.0"
 
 # Corpus entry E. Sits alongside A–D in the published task list even though it is
 # collected by a different runner, because to a reader it is simply the fifth task.

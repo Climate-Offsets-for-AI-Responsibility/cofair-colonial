@@ -22,7 +22,7 @@ from provider_token_count import (  # noqa: E402
 )
 from task_corpus import (  # noqa: E402
     CORPUS_VERSION,
-    METER_TASK_IDS,
+    LEDGER_TASK_IDS,
     TASK_PROMPTS,
     TASK_SPECS,
 )
@@ -46,7 +46,7 @@ TASK_SETS = {
     "ABC": ["A", "B", "C"],
     "D": ["D"],
     "ABCD": ["A", "B", "C", "D"],
-    "all": list(METER_TASK_IDS),
+    "all": list(LEDGER_TASK_IDS),
 }
 
 

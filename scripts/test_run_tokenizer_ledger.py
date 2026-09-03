@@ -16,7 +16,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run_tokenizer_ledger
-from task_corpus import METER_TASK_IDS
+from task_corpus import LEDGER_TASK_IDS, METER_TASK_IDS
 
 PANEL = [
     {"provider_id": "google", "tier": "flagship", "model_id": "gemini-3.1-pro"},
@@ -77,14 +77,15 @@ class DryRunTest(unittest.TestCase):
 
         payload = json.loads(printed.call_args[0][0])
         self.assertEqual(payload["event"], "tokenizer_ledger_dry_run")
-        self.assertEqual(payload["tasks"], list(METER_TASK_IDS))
+        self.assertEqual(payload["tasks"], list(LEDGER_TASK_IDS))
         self.assertIsNone(payload["output_file"])
 
 
 class TaskSetTest(unittest.TestCase):
     def test_all_tracks_the_corpus(self) -> None:
-        self.assertEqual(run_tokenizer_ledger.TASK_SETS["all"], list(METER_TASK_IDS))
+        self.assertEqual(run_tokenizer_ledger.TASK_SETS["all"], list(LEDGER_TASK_IDS))
         self.assertIn("F", run_tokenizer_ledger.TASK_SETS["all"])
+        self.assertNotIn("E", run_tokenizer_ledger.TASK_SETS["all"])
 
 
 if __name__ == "__main__":
