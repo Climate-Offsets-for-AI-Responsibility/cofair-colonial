@@ -122,10 +122,9 @@
   color: var(--cofair-color-text-muted);
 }
 
-.cost-expand--task { padding-left: var(--cofair-space-6); }
-.cost-expand--task .cost-label { padding-left: 0; }
-.cost-row--task .cost-label { padding-left: var(--cofair-space-6); }
-.cost-row--detail .cost-label { padding-left: var(--cofair-space-8); }
+.cost-row--task .cost-expand { padding-left: var(--cofair-space-6); }
+.cost-row--task .cofair-table__td > .cost-label { padding-left: var(--cofair-space-6); }
+.cost-row--detail .cost-label { padding-left: var(--cofair-space-10); }
 
 /* Ledger: fit the page width. Shared `.cofair-table` cells are nowrap, which
    forces a horizontal scroll once model ids and task labels sit side by side. */
