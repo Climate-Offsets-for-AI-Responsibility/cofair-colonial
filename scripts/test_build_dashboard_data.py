@@ -1044,6 +1044,38 @@ class BuildCostsTest(CostFixture):
             e_row["estimated_spend_usd"],
         )
 
+    def test_only_the_conversation_may_have_abandoned_attempts(self) -> None:
+        """A superseded attempt is a property of the multi-turn task.
+
+        Tasks A-D and F are one request each: there is nothing to abandon and
+        retry, so a non-canonical record on one of them is not a known pattern —
+        it is an unexplained charge, and the day cannot be described without
+        knowing what it was.
+        """
+        events = self.complete_events(POST_EPOCH)
+        events.append(
+            self.meter_event(
+                POST_EPOCH, self.PANEL[0], "A", None, canonical=False, run_suffix=":a1"
+            )
+        )
+
+        day = build_costs(events, self.PANEL)["daily"][0]
+        row = self.row_for(day, self.PANEL[0])
+
+        self.assertFalse(day["complete"])
+        self.assertEqual(
+            row["unexpected_requests"],
+            [{"source": "meter", "task_id": "A", "turn": None, "replicate": 1}],
+        )
+        self.assertEqual(row["missing_requests"], [])
+        self.assertEqual(row["duplicate_requests"], [])
+        self.assertFalse(self.task_for(day, self.PANEL[0], "A")["complete"])
+        # Unexplained or not, it was charged.
+        self.assertAlmostEqual(
+            day["estimated_spend_usd"],
+            self.ROW_DAY_USD * len(self.PANEL) + self.METER_USD,
+        )
+
     def test_an_abandoned_attempt_that_is_unpriced_still_withholds_the_day(self) -> None:
         """Spend that happened and cannot be priced is still unknown spend."""
         events = self.complete_events(POST_EPOCH)
@@ -1146,6 +1178,12 @@ class BuildCostsTest(CostFixture):
         self.assertEqual(costs["complete_start_date"], DASHBOARD_START_DATE)
 
     def test_no_events_is_pending_not_zero(self) -> None:
+        """Before the first run there is no record, which is not a short one.
+
+        `current_window_incomplete` would say the collection ran and came back
+        missing days; on day zero nothing has been attempted at all, and the
+        card has to be able to say so.
+        """
         costs = build_costs([], self.PANEL)
 
         self.assertEqual(costs["status"], "pending_first_complete_day")
@@ -1156,9 +1194,25 @@ class BuildCostsTest(CostFixture):
             with self.subTest(period=period):
                 comparison = costs["comparisons"][period]
                 self.assertEqual(comparison["status"], "comparison_unavailable")
-                self.assertEqual(comparison["reason"], "current_window_incomplete")
+                self.assertEqual(comparison["reason"], "no_record_yet")
                 self.assertIsNone(comparison["amount_usd"])
+                self.assertIsNone(comparison["current_window"])
+                self.assertIsNone(comparison["previous_window"])
         self.assertIn("not an invoice", costs["note"])
+
+    def test_a_record_that_has_no_complete_day_is_not_an_empty_record(self) -> None:
+        events = [
+            e
+            for e in self.complete_events(POST_EPOCH)
+            if not (e["task_id"] == "E" and e["turn"] == 2)
+        ]
+        costs = build_costs(events, self.PANEL)
+
+        for period in ("current_run", "current_month", "year_to_date"):
+            with self.subTest(period=period):
+                self.assertEqual(
+                    costs["comparisons"][period]["reason"], "current_window_incomplete"
+                )
 
     def test_expected_requests_are_derived_from_the_corpus(self) -> None:
         costs = build_costs([], self.PANEL)
@@ -1577,6 +1631,48 @@ class CostArtifactTest(CostFixture):
                 detail["estimated_spend_usd"],
             )
 
+    def test_rebuilding_an_unchanged_date_does_not_rewrite_its_file(self) -> None:
+        """Historical detail files must be byte-stable across rebuilds.
+
+        The builder runs daily, and a per-file build timestamp would rewrite
+        every date every day: the commit that adds one day would touch the whole
+        archive, and `git log` on a date's costs would stop meaning anything.
+        The index owns the build timestamp; the per-date files own only the day.
+        """
+        costs = self.costs()
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp) / "costs"
+            write_cost_details(costs, directory)
+            path = directory / f"{POST_EPOCH}.json"
+            before_bytes = path.read_bytes()
+            before_mtime = path.stat().st_mtime_ns
+
+            write_cost_details(costs, directory)
+
+            self.assertNotIn("generated_at", json.loads(path.read_text()))
+            self.assertEqual(path.read_bytes(), before_bytes)
+            self.assertEqual(path.stat().st_mtime_ns, before_mtime)
+            # The index does carry the build timestamp, so it is free to change.
+            self.assertIn("generated_at", json.loads((directory / "index.json").read_text()))
+
+    def test_a_date_whose_costs_changed_is_rewritten(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp) / "costs"
+            write_cost_details(self.costs(), directory)
+            path = directory / f"{POST_EPOCH}.json"
+            before = path.read_bytes()
+
+            replayed = build_costs(
+                self.complete_events(POST_EPOCH, scale=2)
+                + self.complete_events(
+                    (date.fromisoformat(POST_EPOCH) + timedelta(days=1)).isoformat()
+                ),
+                self.PANEL,
+            )
+            write_cost_details(replayed, directory)
+
+            self.assertNotEqual(path.read_bytes(), before)
+
     def test_rebuild_removes_detail_files_for_dates_that_no_longer_exist(self) -> None:
         """Cost events are replay-replaced, so a date can legitimately vanish.
 
@@ -1685,6 +1781,7 @@ class CostEpochPublicationTest(CostFixture):
         costs = eq["costs"]
         self.assertEqual(costs["complete_start_date"], DASHBOARD_START_DATE)
         self.assertEqual(costs["status"], "pending_first_complete_day")
+        self.assertEqual(costs["comparisons"]["current_run"]["reason"], "no_record_yet")
         # Derived from the panel the meter actually runs, never a written-down count.
         self.assertEqual(costs["panel_row_count"], len(eq["selected_models_by_mode"]["two"]))
         self.assertNotIn("details", json.dumps(costs))

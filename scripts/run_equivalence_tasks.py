@@ -863,24 +863,34 @@ def save_runs(rows: list[dict]) -> None:
     )
 
 
-def main() -> int:
+def build_arg_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description="Run the daily token-equivalence tasks.")
     ap.add_argument("--mode", choices=["two", "three"], default="two")
     ap.add_argument("--date", help="Override the run date (YYYY-MM-DD); defaults to today UTC")
     ap.add_argument("--dry-run", action="store_true", help="Do not call providers; emit dry_run statuses.")
     ap.add_argument("--limit-models", type=int, default=0, help="Optional model row limit for smoke runs.")
     ap.add_argument(
+        # One a day, the same as the flagship. The default was 3 under the
+        # three-replicate regime and the scheduled workflow has passed 1
+        # explicitly ever since; leaving the old default in place tripled the
+        # workhorse spend of any run started by hand or by a runbook that
+        # forgot the flag, and did it invisibly, because replicates are
+        # collapsed to a median before anything is charted.
         "--workhorse-replicates",
         type=int,
-        default=3,
-        help="Replicates for workhorse tier (flagship always 1). Default 3.",
+        default=1,
+        help="Replicates for workhorse tier (flagship always 1). Default 1.",
     )
     ap.add_argument(
         "--provider",
         choices=["anthropic", "openai", "google", "xai", "aws", "deepseek", "qwen"],
         help="Run for one provider only.",
     )
-    args = ap.parse_args()
+    return ap
+
+
+def main() -> int:
+    args = build_arg_parser().parse_args()
 
     eq = load_equivalence()
     tasks = {task["task_id"]: task for task in eq["tasks"]}

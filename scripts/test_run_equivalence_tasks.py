@@ -1264,5 +1264,28 @@ class ErrorRedactionTest(unittest.TestCase):
         self.assertNotIn("sk-secret", result.error or "")
 
 
+class ArgumentDefaultTest(unittest.TestCase):
+    def test_the_workhorse_default_is_the_shipped_schedule(self) -> None:
+        """One workhorse run a day, the same as the flagship.
+
+        The default was 3 from the three-replicate regime, and the workflow has
+        passed `--workhorse-replicates 1` explicitly ever since the schedule
+        changed. A default that contradicts the shipped schedule triples the
+        workhorse spend of any run started by hand or by a runbook that forgets
+        the flag — and does it silently, since three replicates are collapsed to
+        a median before anything is charted.
+        """
+        args = runner.build_arg_parser().parse_args([])
+
+        self.assertEqual(args.workhorse_replicates, 1)
+        self.assertEqual(args.mode, "two")
+        self.assertFalse(args.dry_run)
+
+    def test_the_flag_still_overrides_the_default(self) -> None:
+        args = runner.build_arg_parser().parse_args(["--workhorse-replicates", "3"])
+
+        self.assertEqual(args.workhorse_replicates, 3)
+
+
 if __name__ == "__main__":
     unittest.main()

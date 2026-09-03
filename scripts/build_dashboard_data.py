@@ -929,13 +929,15 @@ def _expected_rows(source: str) -> list[dict]:
     return [_request_row(key) for key in sorted(keys, key=_request_sort_key)]
 
 
-def _request_diagnostics(observed: Counter, expected: Counter) -> dict:
+def _request_diagnostics(
+    observed: Counter, expected: Counter, unexplained: Counter | None = None
+) -> dict:
     """Name every way the observed record departs from the schedule.
 
     Published rather than reduced to a boolean: "the day is incomplete" is not
-    actionable, and the three cases have different causes — a provider outage, a
-    replay that was not replaced, and a run under a regime the schedule does not
-    describe.
+    actionable, and the cases have different causes — a provider outage, a
+    replay that was not replaced, a run under a regime the schedule does not
+    describe, and a charge nothing in the schedule accounts for.
     """
     missing = [key for key, count in expected.items() if observed[key] < count]
     duplicate = [
@@ -943,7 +945,8 @@ def _request_diagnostics(observed: Counter, expected: Counter) -> dict:
         for key, count in expected.items()
         if observed[key] > count
     ]
-    unexpected = [key for key in observed if key not in expected]
+    unexpected = {key for key in observed if key not in expected}
+    unexpected |= set(unexplained or ())
     return {
         "missing_requests": [
             _request_row(key) for key in sorted(missing, key=_request_sort_key)
@@ -1013,6 +1016,23 @@ def _observed_requests(leaves: list[dict]) -> Counter:
     )
 
 
+def _unexplained_requests(leaves: list[dict]) -> Counter:
+    """Non-canonical records that no known pattern accounts for.
+
+    Only the conversation is retried: it is the one task made of several
+    requests, so it is the one task that can be abandoned part-way and started
+    again. A non-canonical record on a single-request task has no such story —
+    it is a charge whose origin is unknown, and a day containing one cannot be
+    described, so it is reported as an unexpected request rather than quietly
+    absorbed as spend.
+    """
+    return Counter(
+        _leaf_request_key(leaf)
+        for leaf in leaves
+        if not leaf["canonical"] and leaf["task_id"] != CONVERSATION_TASK_ID
+    )
+
+
 def _cost_totals(leaves: list[dict]) -> dict:
     """Split a set of leaves into the three published figures.
 
@@ -1045,7 +1065,9 @@ def _build_cost_task(task_id: str, leaves: list[dict], on_panel: bool) -> dict:
         {key: count for key, count in EXPECTED_REQUESTS.items() if key[1] == task_id}
     )
     diagnostics = (
-        _request_diagnostics(_observed_requests(leaves), expected)
+        _request_diagnostics(
+            _observed_requests(leaves), expected, _unexplained_requests(leaves)
+        )
         if on_panel
         else {"missing_requests": [], "duplicate_requests": [], "unexpected_requests": []}
     )
@@ -1077,7 +1099,9 @@ def _build_cost_row(entry: dict | None, key: tuple[str, str], events: list[dict]
     ]
 
     diagnostics = (
-        _request_diagnostics(_observed_requests(leaves), EXPECTED_REQUESTS)
+        _request_diagnostics(
+            _observed_requests(leaves), EXPECTED_REQUESTS, _unexplained_requests(leaves)
+        )
         if on_panel
         else {"missing_requests": [], "duplicate_requests": [], "unexpected_requests": []}
     )
@@ -1195,7 +1219,11 @@ def _window_summary(
     }
 
 
-def build_cost_comparison(current: dict | None, previous: dict | None) -> dict:
+def build_cost_comparison(
+    current: dict | None,
+    previous: dict | None,
+    absent_current_reason: str = "current_window_incomplete",
+) -> dict:
     """One period against its predecessor, refusing every comparison it cannot make.
 
     `new_baseline` means there is nothing comparable to compare against — the
@@ -1208,6 +1236,11 @@ def build_cost_comparison(current: dict | None, previous: dict | None) -> dict:
     when no comparison can be drawn: what is withheld is the delta, not the
     money. Both windows carry their scheduled and complete day counts so the
     card can say *why* rather than only that.
+
+    `absent_current_reason` names why there is no current window at all. Before
+    the first run that is `no_record_yet`, which the card can say plainly;
+    reporting it as an incomplete window would claim a collection ran and came
+    back short.
     """
     def window_facts(window: dict | None) -> dict | None:
         if window is None:
@@ -1237,7 +1270,7 @@ def build_cost_comparison(current: dict | None, previous: dict | None) -> dict:
     }
 
     if current is None or not current["complete"]:
-        result["reason"] = "current_window_incomplete"
+        result["reason"] = absent_current_reason
         result["previous_window"] = None
         return result
 
@@ -1313,8 +1346,10 @@ def build_costs(
     floor = Date.fromisoformat(DASHBOARD_START_DATE)
     comparisons: dict[str, dict] = {}
     if latest_complete is None:
+        # Nothing has been collected at all, versus collected and short.
+        pending = "no_record_yet" if not daily else "current_window_incomplete"
         comparisons = {
-            period: build_cost_comparison(None, None)
+            period: build_cost_comparison(None, None, pending)
             for period in ("current_run", "current_month", "year_to_date")
         }
     else:
@@ -1400,6 +1435,14 @@ def _detail_path(date: str) -> str:
     return f"{COST_DETAIL_DIRNAME}/{date}.json"
 
 
+def _write_if_changed(path: Path, text: str) -> bool:
+    """Write only a real change, so unchanged files keep their bytes and mtime."""
+    if path.exists() and path.read_text() == text:
+        return False
+    path.write_text(text)
+    return True
+
+
 def _diagnostic_counts(node: dict) -> dict:
     return {
         "missing_request_count": len(node["missing_requests"]),
@@ -1452,18 +1495,19 @@ def write_cost_details(costs: dict, directory: Path = COST_DETAIL_DIR) -> dict:
     no longer contains. Only generated `YYYY-MM-DD.json` files are removed.
     """
     directory.mkdir(parents=True, exist_ok=True)
-    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     written: set[str] = set()
     for day in costs["daily"]:
         path = directory / f"{day['date']}.json"
         written.add(path.name)
-        path.write_text(
-            json.dumps({"generated_at": generated_at, **day}, indent=2) + "\n"
-        )
+        # Deliberately no build timestamp in here — the index owns that. A
+        # per-file `generated_at` would rewrite every date on every daily build,
+        # so the commit that adds one day would touch the entire archive and the
+        # history of any one date would stop being readable.
+        _write_if_changed(path, json.dumps(day, indent=2) + "\n")
 
     index = {
-        "generated_at": generated_at,
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "complete_start_date": costs["complete_start_date"],
         "latest_attempted_date": costs["latest_attempted_date"],
         "latest_complete_date": costs["latest_complete_date"],

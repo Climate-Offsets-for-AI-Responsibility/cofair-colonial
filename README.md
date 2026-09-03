@@ -92,8 +92,8 @@ exchange / M0 tracer keys; unprefixed names still work for CI and a local `.env`
 `build_dashboard_data.py` and the runners auto-load `../cofair/.env/.env.cofair` when present.
 
 ```bash
-# Weekly meter
-python3 scripts/run_equivalence_tasks.py --mode two --workhorse-replicates 3
+# Daily meter (one replicate per tier, the shipped schedule)
+python3 scripts/run_equivalence_tasks.py --mode two --workhorse-replicates 1
 
 # Daily ledger (ABC) / weekly ledger (D)
 python3 scripts/run_tokenizer_ledger.py --tasks ABC --mode two
