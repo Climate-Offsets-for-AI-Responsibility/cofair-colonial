@@ -52,7 +52,7 @@ _GOOGLE_MODELS_CACHE: list[str] | None = None
 
 def _http_request(method: str, url: str, **kwargs):
     """Thin wrapper so unit tests can patch HTTP without touching provider_http."""
-    return _http_request(method, url, **kwargs)
+    return request_with_retry(method, url, **kwargs)
 
 
 def now_iso_z() -> str:
