@@ -9,16 +9,116 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from corpus_long_natural import LONG_NATURAL_CONTEXT
+from corpus_long_packet import LONG_CONTEXT_PACKET
 from task_corpus import (
     CHAT_CORPUS_VERSION,
     CHAT_TRANSCRIPT,
+    CORPUS_VERSION,
     DEGENERATE_TASK_IDS,
     METER_TASK_IDS,
     MIN_LEXICAL_VARIETY,
     TASK_PROMPTS,
+    _version_tuple,
+    is_degenerate,
     lexical_variety,
     transcript_prefix,
 )
+
+
+class LongContextPacketTest(unittest.TestCase):
+    """Task D's document, replacing the repeated sentence it used to be.
+
+    Same freeze discipline as task F: the bytes are the measurement, so an edit
+    has to fail here rather than show up as a step in the trend a day later.
+    """
+
+    SHA256 = "8afad93c4ec20a76ec1ee477b42cabb94ce1e576e47c89f5d93050beaa145b1e"
+    CHARS = 25047
+
+    def test_document_is_byte_frozen(self) -> None:
+        digest = hashlib.sha256(LONG_CONTEXT_PACKET.encode()).hexdigest()
+
+        self.assertEqual(len(LONG_CONTEXT_PACKET), self.CHARS)
+        self.assertEqual(
+            digest,
+            self.SHA256,
+            "Task D's context changed. That is a corpus edit: bump CORPUS_VERSION "
+            "and update this hash on purpose, or revert the text.",
+        )
+
+    def test_it_is_still_the_largest_request_in_the_suite(self) -> None:
+        """D's other job. If it stopped being the longest task, the character
+        span the fit depends on would collapse to F's 61x and the long-context
+        surcharge probe would have nothing to probe with."""
+        others = [len(TASK_PROMPTS[t]) for t in METER_TASK_IDS if t != "D"]
+        self.assertGreater(len(TASK_PROMPTS["D"]), max(others))
+
+    def test_it_is_no_longer_degenerate(self) -> None:
+        self.assertGreater(lexical_variety("D"), MIN_LEXICAL_VARIETY)
+        self.assertNotIn("D", DEGENERATE_TASK_IDS)
+        self.assertEqual(sorted(DEGENERATE_TASK_IDS), [])
+
+    def test_no_long_passage_repeats(self) -> None:
+        """The failure mode being replaced. A packet assembled from boilerplate
+        section headers would pass a whole-document variety check while still
+        handing the tokenizer the same merges over and over."""
+        for start in range(0, len(LONG_CONTEXT_PACKET) - 60, 37):
+            window = LONG_CONTEXT_PACKET[start : start + 60]
+            self.assertEqual(LONG_CONTEXT_PACKET.count(window), 1, msg=window[:40])
+
+    def test_the_needle_is_stated_once_and_asked_for(self) -> None:
+        """D is labelled a needle task and never was one. The answer has to be
+        in the context exactly once, or the retrieval reading is meaningless."""
+        self.assertEqual(LONG_CONTEXT_PACKET.count("192,000"), 1)
+        self.assertEqual(LONG_CONTEXT_PACKET.count("NG-4471-B"), 1)
+        self.assertIn("NG-4471-B", TASK_PROMPTS["D"])
+        self.assertNotIn("192,000", TASK_PROMPTS["D"].split("Question:")[-1])
+
+    def test_it_carries_the_features_vocabularies_diverge_on(self) -> None:
+        text = LONG_CONTEXT_PACKET
+        self.assertRegex(text, r"\$\d")
+        self.assertRegex(text, r"\d%|\d percent")
+        self.assertRegex(text, r"\d\.\d")
+        self.assertRegex(text, r"\d{2}:\d{2}")
+        self.assertIn("def ", text)
+        self.assertRegex(text, r"[a-z]+-[a-z]+")
+
+
+class DegeneracyIsVersionedTest(unittest.TestCase):
+    """Task D's id did not change when its prompt did.
+
+    Keying degeneracy on the task id alone was correct for exactly as long as D
+    meant one thing. The moment its prompt was replaced, that key would have
+    readmitted eleven days of filler-derived counts to the historical fit —
+    silently reintroducing the artifact D77 was raised to remove, and reporting
+    a content rate for days on which no natural long text was ever collected.
+    """
+
+    def test_old_task_d_rows_are_still_degenerate(self) -> None:
+        self.assertTrue(is_degenerate("D", "1.0.0"))
+        self.assertTrue(is_degenerate("D", "1.1.0"))
+
+    def test_new_task_d_rows_are_not(self) -> None:
+        self.assertFalse(is_degenerate("D", "2.0.0"))
+        self.assertFalse(is_degenerate("D", "2.1.0"))
+        self.assertFalse(is_degenerate("D", CORPUS_VERSION))
+
+    def test_an_unversioned_row_is_treated_as_old(self) -> None:
+        """Safe direction: a row with no version predates versioning, so it
+        predates the replacement."""
+        self.assertTrue(is_degenerate("D", None))
+        self.assertTrue(is_degenerate("D", ""))
+        self.assertTrue(is_degenerate("D", "not-a-version"))
+
+    def test_other_tasks_are_unaffected_by_version(self) -> None:
+        for task_id in ("A", "B", "C", "F"):
+            self.assertFalse(is_degenerate(task_id, "1.0.0"), msg=task_id)
+            self.assertFalse(is_degenerate(task_id, CORPUS_VERSION), msg=task_id)
+
+    def test_the_replacement_was_declared_as_breaking(self) -> None:
+        """A prompt change that is not a major bump would let the two halves of
+        the D series be read as one."""
+        self.assertGreaterEqual(_version_tuple(CORPUS_VERSION), (2, 0, 0))
 
 
 class ChatTranscriptTest(unittest.TestCase):
@@ -77,16 +177,17 @@ class LongNaturalCorpusTest(unittest.TestCase):
             "and update this hash on purpose, or revert the text.",
         )
 
-    def test_it_is_the_opposite_of_task_d(self) -> None:
+    def test_it_is_varied_enough_to_price_a_tokenizer(self) -> None:
         """The whole reason it exists: variety at length.
 
-        Task D is long and repetitive, so it cannot price a tokenizer. F has to be
-        long *and* varied, or it is just a second task D.
+        Written when task D was still `"Policy review context sentence. " * 800`
+        and F was the only long task a fit could rest on. D has since been
+        replaced and clears the floor too, so this no longer asserts anything
+        about D — but F still has to clear it on its own, or the corpus is one
+        prompt edit away from having no usable long text again.
         """
-        self.assertGreater(lexical_variety("F"), 20 * lexical_variety("D"))
         self.assertGreater(lexical_variety("F"), MIN_LEXICAL_VARIETY)
         self.assertNotIn("F", DEGENERATE_TASK_IDS)
-        self.assertIn("D", DEGENERATE_TASK_IDS)
 
     def test_no_long_passage_repeats(self) -> None:
         """A subtler way to fail: assembling filler from a handful of sentences

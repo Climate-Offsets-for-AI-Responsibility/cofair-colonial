@@ -111,10 +111,11 @@ const METRICS = {
       "Each day's counts are fitted as tokens = fixed overhead + rate × characters; " +
       "this is the rate. Estimated across tasks rather than within one, so it does " +
       "not change when you change the task pack, and it ignores the constant every " +
-      "provider prepends. Fitted on A, B, C and F — task D is excluded because its " +
-      "context is one sentence repeated 800 times, so its marginal cost is that " +
-      "phrase rather than text, which is why the rate used to read the same for " +
-      "almost every model. It moves only on a real re-tokenization.",
+      "provider prepends. Fitted on every task with natural text — which since " +
+      "3 Sep 2026 is all of them. Before that, task D was one sentence repeated " +
+      "800 times, so its marginal cost was that phrase rather than text and the " +
+      "rate read the same for almost every model; those days are withheld rather " +
+      "than restated. It moves only on a real re-tokenization.",
     decimals: 1,
     // Twelve of fourteen rows sit within 0.2 tokens/1K chars of each other; a zero
     // baseline would render that as one line and hide the only real outlier.
@@ -453,6 +454,13 @@ function aggregateMeter() {
         model_id: row.model_id,
         api_model: row.api_model,
         tasks: new Set(),
+        // The corpus each task in this total was collected under. A pack total
+        // is a sum over fixed prompts, so when a prompt is replaced the sum is
+        // a different quantity rather than a continuation — task D's context
+        // changed in corpus 2.0.0, and every pack containing D steps with it.
+        // Kept per point so the chart can break the line there instead of
+        // drawing the step as provider drift.
+        corpora: new Set(),
         tokens_in: 0,
         tokens_out: 0,
         tokens_total: 0,
@@ -464,6 +472,7 @@ function aggregateMeter() {
       groups.set(key, group);
     }
     group.tasks.add(row.task_id);
+    if (row.corpus_version) group.corpora.add(row.corpus_version);
     group.tokens_in += row.tokens_in;
     group.tokens_out += row.tokens_out;
     group.tokens_total += row.tokens_total;
@@ -481,6 +490,7 @@ function aggregateMeter() {
       continue;
     }
     group.tokens_in_per_1k_chars = group.tokens_in / (group.input_chars / 1000);
+    group.corpus_basis = [...group.corpora].sort().join(",");
     complete.push(group);
   }
   complete.sort((a, b) => a.date.localeCompare(b.date));
@@ -821,29 +831,22 @@ function awaitingTaskReason() {
 /**
  * Why content density has nothing to draw, distinguishing two unlike causes.
  *
- * Before task F, no day could set a slope at all: task D supplied the whole
- * character span and is one sentence repeated 800 times, so the record is
- * permanently withheld and saying "waiting" would be wrong. Once task F is in the
- * corpus the same emptiness means the opposite — the fit is sound and the first
- * run simply has not landed — and saying "withheld" would be wrong. Read from the
- * artifact rather than hard-coded, so the message flips itself on the day the data
- * arrives instead of needing an edit nobody will remember to make.
+ * A day is withheld when nothing long enough in that day's corpus had natural
+ * text: through 2 Sep 2026 the only long task was D, which was one sentence
+ * repeated 800 times, so those days are permanently withheld and telling the
+ * reader to wait would be wrong. From 3 Sep the corpus can set a rate, and the
+ * same empty chart means the ordinary thing — this window, these filters. Read
+ * from the artifact rather than hard-coded, so it stops claiming the corpus is
+ * broken the moment it is not.
  */
 function densityWithheldReason() {
-  const tasks = state.eq?.tasks || [];
-  const hasProseTask = tasks.some((task) => task.task_id === "F");
   const fits = state.eq?.tokenizer_ledger?.fits || [];
   const everFitted = fits.some((fit) => fit.density_ok);
 
-  if (hasProseTask && !everFitted) {
-    return "Content density returns with the first run that includes task F · Long context (prose). Until then the only long task is D, whose context is one sentence repeated 800 times, so its slope measures that phrase rather than the tokenizers. Fixed request overhead comes from the same fit and is unaffected.";
+  if (!everFitted) {
+    return "Content density is not available for any collected day yet. Through 2 Sep 2026 the only task long enough to set the rate was D, whose context was one sentence repeated 800 times, so its slope measured that phrase rather than the tokenizers. Task D now uses a heterogeneous document, so the rate returns with the runs collected from 3 Sep onward. Fixed request overhead comes from the same fit and is unaffected.";
   }
-  if (!hasProseTask) {
-    return "Content density is withheld. Task D is the only task long enough to set the rate, and it is one sentence repeated 800 times, so the slope measures that phrase rather than the tokenizers. Fixed request overhead is measured from the same fit and is unaffected.";
-  }
-  // Task F exists and has fitted before, so an empty chart is an ordinary
-  // filter/window emptiness — not a claim about the corpus.
-  return "No fitted day in this window. Fixed request overhead is measured from the same fit if you need a reading for these days.";
+  return "No fitted day in this window. Days before 3 Sep 2026 are withheld — the corpus had no long task with natural text, so no rate can be recovered for them, and they are left empty rather than restated. Fixed request overhead is measured from the same fit and is available for those days.";
 }
 
 /**
@@ -935,6 +938,10 @@ function showNodeTooltip(chart, hit) {
   // which tasks the fit was estimated from, and a reader comparing this point to
   // yesterday's needs to know it is not quite the same quantity.
   if (point.newBasis) notes.push("fit basis changed");
+  // The prompts themselves changed, so this total is a sum over different text
+  // from yesterday's. The strongest of the three breaks: the other two mean the
+  // measurement moved, this one means the thing measured did.
+  if (point.newCorpus) notes.push(`prompts changed · corpus v${point.corpus}`);
   if (point.censored) notes.push("cut short by provider");
   const suffix = notes.length ? ` · ${notes.join(" · ")}` : "";
   meta.textContent = `${fmtDate(pointDate(point))} · ${fmtMetric(point.y, state.metric)}${suffix}`;
@@ -1103,7 +1110,16 @@ function renderChart(points) {
     // detect provider drift.
     const basisAt = ordered.map((p) => p.fit_basis || "");
     const newBasisAt = basisAt.map((b, i) => i > 0 && b !== basisAt[i - 1] && Boolean(b));
-    const breakAt = newModelAt.map((changed, i) => changed || newBasisAt[i]);
+    // And once more for the prompts themselves. Everything above is about the
+    // measuring apparatus changing; this is about the thing being measured
+    // changing. Task D's context was replaced in corpus 2.0.0, so a pack total
+    // containing D is a sum over different text before and after — the two
+    // halves are each valid and must not be read across.
+    const corpusAt = ordered.map((p) => p.corpus_basis || "");
+    const newCorpusAt = corpusAt.map((c, i) => i > 0 && c !== corpusAt[i - 1] && Boolean(c));
+    const breakAt = newModelAt.map(
+      (changed, i) => changed || newBasisAt[i] || newCorpusAt[i]
+    );
     datasets.push({
       label: `${providerLabel(providerId)} · ${tier}`,
       data: ordered.map((p, i) => ({
@@ -1116,6 +1132,8 @@ function renderChart(points) {
         newModel: newModelAt[i],
         newBasis: newBasisAt[i],
         basis: basisAt[i],
+        newCorpus: newCorpusAt[i],
+        corpus: corpusAt[i],
       })),
       borderColor: color,
       backgroundColor: color,

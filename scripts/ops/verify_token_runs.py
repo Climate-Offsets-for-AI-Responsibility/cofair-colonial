@@ -31,6 +31,34 @@ sys.path.insert(0, str(REPO_ROOT / "scripts" / "ops"))
 from provider_faults import remedy_for_error  # noqa: E402
 
 
+def _tiers_sharing_a_model(health: list[dict], source: str) -> list[str]:
+    """Providers whose flagship and workhorse rows were counted on one model.
+
+    The failure this catches is silent by construction: both rows report ok, and
+    the two tiers publish identical token counts. Four providers in the panel
+    genuinely do share a tokenizer across their families, so identical numbers
+    are not themselves suspicious — which is why google flagship sat on
+    `gemini-flash-latest` for the whole ledger without anything looking wrong
+    (D77). The model id is the part that cannot be a coincidence.
+    """
+    served: dict[str, dict[str, set[str]]] = {}
+    for item in health:
+        models = ((item.get("sources") or {}).get(source) or {}).get("ok_models") or []
+        if models:
+            served.setdefault(item["provider_id"], {})[item["tier"]] = set(models)
+
+    collapsed = []
+    for provider_id, tiers in sorted(served.items()):
+        if len(tiers) < 2:
+            continue
+        shared = set.intersection(*tiers.values())
+        if shared:
+            collapsed.append(
+                f"{provider_id}: {', '.join(sorted(tiers))} all counted on {', '.join(sorted(shared))}"
+            )
+    return collapsed
+
+
 def verify_token_runs(sources: list[str], path: Path = EQUIVALENCE_FILE) -> dict:
     checks: list[dict] = []
 
@@ -97,10 +125,19 @@ def verify_token_runs(sources: list[str], path: Path = EQUIVALENCE_FILE) -> dict
             "; ".join(unavailable) if unavailable else "no account-level provider faults",
         )
 
+        collapsed = _tiers_sharing_a_model(health, source)
+        add(
+            f"{source}_tiers_resolve_distinct_models",
+            not collapsed,
+            "; ".join(collapsed) if collapsed else "each tier resolved to its own model",
+        )
+
     hard_failed = any(
         not check["passed"]
         for check in checks
-        if check["name"].endswith("_no_dark_providers") or check["name"].endswith("_no_silent_providers")
+        if check["name"].endswith("_no_dark_providers")
+        or check["name"].endswith("_no_silent_providers")
+        or check["name"].endswith("_tiers_resolve_distinct_models")
     )
     has_unavailable = bool(unavailable_entries)
     if hard_failed:

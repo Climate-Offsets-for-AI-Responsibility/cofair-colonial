@@ -15,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent / "ops"))
 from build_dashboard_data import build_provider_health
-from ops.verify_token_runs import verify_token_runs
+from ops.verify_token_runs import _tiers_sharing_a_model, verify_token_runs
 
 PANEL = [
     {"provider_id": "google", "tier": "flagship", "model_id": "gemini-3.1-pro"},
@@ -104,6 +104,71 @@ class BuildProviderHealthTest(unittest.TestCase):
         self.assertFalse(google["reporting"])
         self.assertEqual(google["sources"]["ledger"]["ok_count"], 0)
         self.assertEqual(google["sources"]["ledger"]["error_count"], 0)
+
+
+class TierCollapseTest(unittest.TestCase):
+    """A provider's two tiers must be counted on two different models.
+
+    This is the one collection fault with no symptom. Both rows report ok, and
+    the tiers publish identical token counts — which four providers in the panel
+    genuinely do, because they share a tokenizer across their family. So the
+    numbers cannot distinguish "same tokenizer" from "we called the same model
+    twice", and google flagship was counted on `gemini-flash-latest` for the
+    entire ledger before anyone noticed (D77). The served model id can.
+    """
+
+    PANEL_BOTH = [
+        {"provider_id": "google", "tier": "flagship", "model_id": "gemini-3.1-pro"},
+        {"provider_id": "google", "tier": "workhorse", "model_id": "gemini-flash"},
+    ]
+
+    def _health(self, flagship_model: str, workhorse_model: str) -> list[dict]:
+        rows = []
+        for tier, model in (("flagship", flagship_model), ("workhorse", workhorse_model)):
+            row = _ledger("google", "ok")
+            row["tier"] = tier
+            row["api_model"] = model
+            rows.append(row)
+        return build_provider_health(self.PANEL_BOTH, [], rows, [])
+
+    def test_the_gemini_bug_is_caught(self) -> None:
+        health = self._health("gemini-flash-latest", "gemini-flash-latest")
+        collapsed = _tiers_sharing_a_model(health, "ledger")
+
+        self.assertEqual(len(collapsed), 1)
+        self.assertIn("gemini-flash-latest", collapsed[0])
+        self.assertIn("google", collapsed[0])
+
+    def test_distinct_models_pass(self) -> None:
+        health = self._health("gemini-pro-latest", "gemini-flash-latest")
+        self.assertEqual(_tiers_sharing_a_model(health, "ledger"), [])
+
+    def test_identical_counts_on_distinct_models_are_not_flagged(self) -> None:
+        """The real finding must not be mistaken for the bug.
+
+        aws, deepseek, google and openai return byte-identical input counts
+        across two genuinely different models. That is a shared tokenizer, and
+        the gate has to stay quiet about it or it is useless.
+        """
+        health = self._health("amazon.nova-pro-v1:0", "amazon.nova-micro-v1:0")
+        self.assertEqual(_tiers_sharing_a_model(health, "ledger"), [])
+
+    def test_it_fails_the_gate_rather_than_warning(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "equivalence.json"
+            health = self._health("gemini-flash-latest", "gemini-flash-latest")
+            path.write_text(json.dumps({"provider_health": {"panel": health}}))
+
+            result = verify_token_runs(["ledger"], path=path)
+
+        self.assertFalse(result["passed"])
+        self.assertEqual(result["status"], "failed")
+
+    def test_a_single_tier_provider_is_not_flagged(self) -> None:
+        """Most of the panel has one tier; intersecting one set with itself
+        would flag every one of them."""
+        health = build_provider_health(PANEL, [], [_ledger("google", "ok")], [])
+        self.assertEqual(_tiers_sharing_a_model(health, "ledger"), [])
 
 
 class VerifyTokenRunsTest(unittest.TestCase):

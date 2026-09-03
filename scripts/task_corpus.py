@@ -15,6 +15,7 @@ density, which *is* comparable and is what detects a silent re-tokenization.
 from __future__ import annotations
 
 from corpus_long_natural import LONG_NATURAL_CONTEXT
+from corpus_long_packet import LONG_CONTEXT_PACKET
 
 # Bump when any prompt text changes. Older run rows keep their own recorded
 # version so a corpus edit never silently rewrites history.
@@ -25,7 +26,14 @@ from corpus_long_natural import LONG_NATURAL_CONTEXT
 #         no epoch reset is needed. Only the fitted content rate changes basis,
 #         which `fit_task_ids` records per row so the discontinuity is visible
 #         rather than silent (D78).
-CORPUS_VERSION = "1.1.0"
+# 2.0.0 = task D's prompt replaced. Breaking, and the only breaking corpus change
+#         so far: D's filler was one sentence repeated 800 times, so every D
+#         observation to date measures the cost of re-merging that phrase and is
+#         not comparable with a D observation on real text. The series is not
+#         deleted — rows carry the version they were collected under and the
+#         chart breaks the line where it changes — but the two halves must not be
+#         read across (D79).
+CORPUS_VERSION = "2.0.0"
 
 # Versioned separately from the prompt text because it governs a different
 # quantity. `max_tokens` cannot affect how a prompt tokenizes, so a cap change
@@ -84,17 +92,25 @@ TASK_PROMPTS = {
         "3) raises ValueError on invalid input\n"
         "Then include three unit tests."
     ),
+    # D is the largest request in the suite and keeps that role — it is what
+    # exercises whatever a provider does with a big payload. What changed is the
+    # text: it was `"Policy review context sentence. " * 800`, which is big and
+    # nothing else. 800 repetitions present one merge decision amortized over
+    # 25,743 characters, so its marginal cost was the cost of re-merging that
+    # phrase, and it had to be excluded from the fit (D77). The packet is the same
+    # order of magnitude with ordinary variety, so D now contributes to the fit
+    # instead of poisoning it.
+    #
+    # The question asks for a fact stated once, deep in section 6, so D also
+    # earns its "needle" label for the first time: retrieval and billing are both
+    # properties of how a provider handles a large request, and this measures them
+    # on the same call.
     "D": (
         "Use the context below and answer the question in 5 bullets.\n\n"
-        "Context:\n"
-        + ("Policy review context sentence. " * 800)
-        + "\n\nQuestion: Which three governance controls most reduce billing surprise?"
+        "Context:\n" + LONG_CONTEXT_PACKET + "\n\nQuestion: What is the long-context "
+        "surcharge threshold on contract NG-4471-B, and which three governance "
+        "controls does the packet say most reduce billing surprise?"
     ),
-    # Task D's filler is the same sentence 800 times, which is what a long-context
-    # *billing* probe needs and the opposite of what the fitted content rate needs:
-    # 800 repetitions present one merge decision, so the slope it sets is the cost
-    # of re-merging that phrase (D77). F is the same order of magnitude of text with
-    # ordinary variety, so it can anchor the fit; D keeps its own job unchanged.
     "F": (
         "Use the context below and answer the question in 5 bullets.\n\n"
         "Context:\n" + LONG_NATURAL_CONTEXT + "\n\nQuestion: Which three governance "
@@ -106,16 +122,20 @@ TASK_PROMPTS = {
 # Share of a prompt's words that are distinct. A tokenizer comparison needs text
 # whose vocabulary the tokenizers can actually disagree about: BPE merges diverge
 # on rare words, casing, punctuation and digits, and a phrase repeated 800 times
-# offers exactly one merge decision amortized over 25,743 characters. Tasks A, B
-# and C score 0.84-0.96 here; task D scores 0.007.
+# offers exactly one merge decision amortized over 25,743 characters. Every task
+# now scores 0.39-0.96; the old task D scored 0.007, which is what this exists to
+# catch.
 def lexical_variety(task_id: str) -> float:
     words = TASK_PROMPTS[task_id].split()
     return (len(set(words)) / len(words)) if words else 0.0
 
 
 # Floor for text allowed to set the fitted content rate in `build_ledger_fits`.
-# Well below the 0.84 that ordinary prose reaches and far above task D, so it
-# separates "natural language" from "one sentence on a loop" without being a knob
+# Kept even though no current task is anywhere near it: the guard is not about
+# today's corpus but about the next long task somebody adds by repeating filler
+# to reach a length, which is how the old task D came to exist. Well below the
+# 0.39 the long packet scores and two orders of magnitude above a loop, so it
+# separates "natural language" from "one sentence repeated" without being a knob
 # that ordinary corpus edits can trip.
 MIN_LEXICAL_VARIETY = 0.15
 
@@ -152,10 +172,11 @@ TASK_SPECS = {
     "D": {
         "label": "Long-context needle",
         "probes": (
-            "Repetitive long context — exposes long-context billing surcharges and "
-            "how much a vocabulary gains from a phrase it has already seen. Cannot "
-            "measure tokenizer density: the filler is one sentence repeated 800 "
-            "times, so its marginal cost is that phrase, not text (see task F)."
+            "The suite's largest request — exposes long-context billing surcharges "
+            "and whether a fact stated once survives a 25K-character payload. Its "
+            "context was one sentence repeated 800 times until 3 Sep 2026; it is "
+            "now a heterogeneous document, so D sets the top of the character span "
+            "and contributes to the fit instead of distorting it (D79)."
         ),
         "output_cap": OUTPUT_CEILING,
         "cadence": "daily",
@@ -214,6 +235,35 @@ def degenerate_task_ids() -> frozenset[str]:
 
 
 DEGENERATE_TASK_IDS = degenerate_task_ids()
+
+
+# Degeneracy is a property of the text that was actually sent, so it is keyed on
+# (task, corpus version) and not on the task id alone. Task D's id did not change
+# when its prompt did: every D row collected before corpus 2.0.0 measured
+# `"Policy review context sentence. " * 800` and must stay out of the fit, while
+# every D row after it measures a heterogeneous document and belongs in it.
+#
+# Keying on the id alone was briefly true and is now exactly wrong — it would have
+# readmitted eleven days of filler-derived counts to the historical fit the moment
+# the prompt was replaced, retroactively reintroducing the artifact that D77 was
+# raised to remove, and it would have done it silently.
+DEGENERATE_BEFORE_VERSION = {"D": (2, 0, 0)}
+
+
+def _version_tuple(version: str | None) -> tuple[int, ...]:
+    """Parse `"1.1.0"`. Unparseable or absent sorts oldest, which is the safe
+    direction: an unversioned row predates versioning, so it predates the fix."""
+    try:
+        return tuple(int(part) for part in (version or "0").split("."))
+    except ValueError:
+        return (0,)
+
+
+def is_degenerate(task_id: str | None, corpus_version: str | None) -> bool:
+    if task_id in DEGENERATE_TASK_IDS:
+        return True
+    floor = DEGENERATE_BEFORE_VERSION.get(task_id or "")
+    return floor is not None and _version_tuple(corpus_version) < floor
 
 
 def task_definitions() -> list[dict]:

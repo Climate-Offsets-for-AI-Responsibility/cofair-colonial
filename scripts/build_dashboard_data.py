@@ -45,6 +45,7 @@ from task_corpus import (  # noqa: E402
     CHAT_TRANSCRIPT,
     CORPUS_VERSION,
     DEGENERATE_TASK_IDS,
+    is_degenerate,
     METER_TASK_IDS,
     OUTPUT_CEILING,
     OUTPUT_POLICY_VERSION,
@@ -656,6 +657,15 @@ def build_provider_health(
                 or None,
                 "last_error": (last_error or {}).get("error"),
                 "last_error_model": (last_error or {}).get("api_model"),
+                # The model the provider actually served, not the id the panel
+                # asked for. Published so the ops gate can check that a
+                # provider's two tiers resolved to two different models: Gemini
+                # resolves its callable id at runtime, and a tier hint that got
+                # dropped had google flagship counted on the workhorse model for
+                # the entire ledger (D77). Nothing failed — both tiers reported
+                # ok, with identical numbers, which reads as "shared tokenizer"
+                # and is indistinguishable from the real thing by eye.
+                "ok_models": sorted({row.get("api_model") for row in ok_rows if row.get("api_model")}),
                 "last_unavailable_remedy": last_unavailable_remedy,
             }
         item["reporting"] = any(src["ok_count"] for src in item["sources"].values())
@@ -735,7 +745,12 @@ def build_ledger_fits(ledger_rows: list[dict]) -> list[dict]:
         # wrong slope far out barely moves it, and overhead is the half with a
         # track record (grok-4.6, +430 tokens on every task at once) — while the
         # rate is withheld.
-        natural = [r for r in rows if r.get("task_id") not in DEGENERATE_TASK_IDS]
+        # Keyed on the row's own corpus version, not just its task id: task D's
+        # prompt was replaced in corpus 2.0.0, so a D row is filler or prose
+        # depending on when it was collected, and the id cannot tell you which.
+        natural = [
+            r for r in rows if not is_degenerate(r.get("task_id"), r.get("corpus_version"))
+        ]
         density_ok, natural_span = _guards(natural)
         if density_ok:
             fit_rows, span = natural, natural_span

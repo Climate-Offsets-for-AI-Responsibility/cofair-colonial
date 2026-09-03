@@ -512,10 +512,10 @@ class LedgerFitTest(unittest.TestCase):
 
     def test_the_live_corpus_can_now_set_a_content_rate(self) -> None:
         """Reads the real prompts, not the fixture, so the corpus that actually
-        ships is what gets checked. Task D stays degenerate and excluded; the
-        remaining tasks have to clear both guards on their own."""
-        self.assertEqual(sorted(DEGENERATE_TASK_IDS), ["D"])
-        self.assertLess(lexical_variety("D"), MIN_LEXICAL_VARIETY)
+        ships is what gets checked. Every task now clears the variety floor —
+        task D's repeated filler was replaced in corpus 2.0.0 — and the set has
+        to clear both fit guards on its own."""
+        self.assertEqual(sorted(DEGENERATE_TASK_IDS), [])
 
         natural = [t for t in METER_TASK_IDS if t not in DEGENERATE_TASK_IDS]
         for task in natural:
