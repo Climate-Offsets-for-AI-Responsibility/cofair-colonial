@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-03T21:41:03Z",
+  "generated_at": "2026-09-03T21:53:26Z",
   "pricing_snapshot_date": "2026-09-03",
   "corpus_version": "3.0.0",
   "chat_corpus_version": "2.0.0",
@@ -224,7 +224,7 @@
     "comparisons": {
       "current_run": {
         "status": "comparison_unavailable",
-        "reason": "no_record_yet",
+        "reason": "current_window_incomplete",
         "amount_usd": null,
         "previous_amount_usd": null,
         "delta_usd": null,
@@ -234,7 +234,7 @@
       },
       "current_month": {
         "status": "comparison_unavailable",
-        "reason": "no_record_yet",
+        "reason": "current_window_incomplete",
         "amount_usd": null,
         "previous_amount_usd": null,
         "delta_usd": null,
@@ -244,7 +244,7 @@
       },
       "year_to_date": {
         "status": "comparison_unavailable",
-        "reason": "no_record_yet",
+        "reason": "current_window_incomplete",
         "amount_usd": null,
         "previous_amount_usd": null,
         "delta_usd": null,
@@ -254,7 +254,248 @@
       }
     },
     "detail_index_path": "costs/index.json",
-    "daily": []
+    "daily": [
+      {
+        "date": "2026-09-03",
+        "complete": false,
+        "estimated_spend_usd": 0.20077839000000003,
+        "input_cost_usd": 0,
+        "output_cost_usd": 0,
+        "supporting_cost_usd": 0.20077839000000003,
+        "event_count": 70,
+        "incomplete_event_count": 0,
+        "missing_request_count": 112,
+        "duplicate_request_count": 0,
+        "unexpected_request_count": 0,
+        "detail_path": "costs/2026-09-03.json",
+        "provider_tiers": [
+          {
+            "provider_id": "anthropic",
+            "tier": "flagship",
+            "model_id": "claude-opus-5",
+            "display_name": "Claude Opus 5",
+            "on_panel": true,
+            "complete": false,
+            "estimated_spend_usd": 0.056755,
+            "input_cost_usd": 0,
+            "output_cost_usd": 0,
+            "supporting_cost_usd": 0.056755,
+            "incomplete_event_count": 0,
+            "missing_request_count": 8,
+            "duplicate_request_count": 0,
+            "unexpected_request_count": 0
+          },
+          {
+            "provider_id": "anthropic",
+            "tier": "workhorse",
+            "model_id": "claude-haiku-4.5",
+            "display_name": "Claude Haiku 4.5",
+            "on_panel": true,
+            "complete": false,
+            "estimated_spend_usd": 0.008028,
+            "input_cost_usd": 0,
+            "output_cost_usd": 0,
+            "supporting_cost_usd": 0.008028,
+            "incomplete_event_count": 0,
+            "missing_request_count": 8,
+            "duplicate_request_count": 0,
+            "unexpected_request_count": 0
+          },
+          {
+            "provider_id": "openai",
+            "tier": "flagship",
+            "model_id": "chat-latest",
+            "display_name": "chat-latest",
+            "on_panel": true,
+            "complete": false,
+            "estimated_spend_usd": 0.03895,
+            "input_cost_usd": 0,
+            "output_cost_usd": 0,
+            "supporting_cost_usd": 0.03895,
+            "incomplete_event_count": 0,
+            "missing_request_count": 8,
+            "duplicate_request_count": 0,
+            "unexpected_request_count": 0
+          },
+          {
+            "provider_id": "openai",
+            "tier": "workhorse",
+            "model_id": "gpt-5.6-luna",
+            "display_name": "gpt-5.6-luna",
+            "on_panel": true,
+            "complete": false,
+            "estimated_spend_usd": 0.008775199999999999,
+            "input_cost_usd": 0,
+            "output_cost_usd": 0,
+            "supporting_cost_usd": 0.008775199999999999,
+            "incomplete_event_count": 0,
+            "missing_request_count": 8,
+            "duplicate_request_count": 0,
+            "unexpected_request_count": 0
+          },
+          {
+            "provider_id": "google",
+            "tier": "flagship",
+            "model_id": "gemini-3.1-pro",
+            "display_name": "Gemini 3.1 Pro",
+            "on_panel": true,
+            "complete": false,
+            "estimated_spend_usd": 0.0,
+            "input_cost_usd": 0,
+            "output_cost_usd": 0,
+            "supporting_cost_usd": 0.0,
+            "incomplete_event_count": 0,
+            "missing_request_count": 8,
+            "duplicate_request_count": 0,
+            "unexpected_request_count": 0
+          },
+          {
+            "provider_id": "google",
+            "tier": "workhorse",
+            "model_id": "gemini-2.0-flash",
+            "display_name": "Gemini 2.0 Flash",
+            "on_panel": true,
+            "complete": false,
+            "estimated_spend_usd": 0.0,
+            "input_cost_usd": 0,
+            "output_cost_usd": 0,
+            "supporting_cost_usd": 0.0,
+            "incomplete_event_count": 0,
+            "missing_request_count": 8,
+            "duplicate_request_count": 0,
+            "unexpected_request_count": 0
+          },
+          {
+            "provider_id": "xai",
+            "tier": "flagship",
+            "model_id": "grok-4.6",
+            "display_name": "grok-4.6",
+            "on_panel": true,
+            "complete": false,
+            "estimated_spend_usd": 0.042088,
+            "input_cost_usd": 0,
+            "output_cost_usd": 0,
+            "supporting_cost_usd": 0.042088,
+            "incomplete_event_count": 0,
+            "missing_request_count": 8,
+            "duplicate_request_count": 0,
+            "unexpected_request_count": 0
+          },
+          {
+            "provider_id": "xai",
+            "tier": "workhorse",
+            "model_id": "grok-build-0.1",
+            "display_name": "grok-build-0.1",
+            "on_panel": true,
+            "complete": false,
+            "estimated_spend_usd": 0.016246,
+            "input_cost_usd": 0,
+            "output_cost_usd": 0,
+            "supporting_cost_usd": 0.016246,
+            "incomplete_event_count": 0,
+            "missing_request_count": 8,
+            "duplicate_request_count": 0,
+            "unexpected_request_count": 0
+          },
+          {
+            "provider_id": "aws",
+            "tier": "flagship",
+            "model_id": "nova-premier",
+            "display_name": "Nova Premier",
+            "on_panel": true,
+            "complete": false,
+            "estimated_spend_usd": 0.0060552,
+            "input_cost_usd": 0,
+            "output_cost_usd": 0,
+            "supporting_cost_usd": 0.0060552,
+            "incomplete_event_count": 0,
+            "missing_request_count": 8,
+            "duplicate_request_count": 0,
+            "unexpected_request_count": 0
+          },
+          {
+            "provider_id": "aws",
+            "tier": "workhorse",
+            "model_id": "nova-micro",
+            "display_name": "Nova Micro",
+            "on_panel": true,
+            "complete": false,
+            "estimated_spend_usd": 0.000264915,
+            "input_cost_usd": 0,
+            "output_cost_usd": 0,
+            "supporting_cost_usd": 0.000264915,
+            "incomplete_event_count": 0,
+            "missing_request_count": 8,
+            "duplicate_request_count": 0,
+            "unexpected_request_count": 0
+          },
+          {
+            "provider_id": "deepseek",
+            "tier": "flagship",
+            "model_id": "deepseek-v4-pro",
+            "display_name": "deepseek-v4-pro",
+            "on_panel": true,
+            "complete": false,
+            "estimated_spend_usd": 0.0033708149999999997,
+            "input_cost_usd": 0,
+            "output_cost_usd": 0,
+            "supporting_cost_usd": 0.0033708149999999997,
+            "incomplete_event_count": 0,
+            "missing_request_count": 8,
+            "duplicate_request_count": 0,
+            "unexpected_request_count": 0
+          },
+          {
+            "provider_id": "deepseek",
+            "tier": "workhorse",
+            "model_id": "deepseek-v4-flash",
+            "display_name": "deepseek-v4-flash",
+            "on_panel": true,
+            "complete": false,
+            "estimated_spend_usd": 0.00108486,
+            "input_cost_usd": 0,
+            "output_cost_usd": 0,
+            "supporting_cost_usd": 0.00108486,
+            "incomplete_event_count": 0,
+            "missing_request_count": 8,
+            "duplicate_request_count": 0,
+            "unexpected_request_count": 0
+          },
+          {
+            "provider_id": "qwen",
+            "tier": "flagship",
+            "model_id": "qwen3.7-max",
+            "display_name": "qwen3.7-max",
+            "on_panel": true,
+            "complete": false,
+            "estimated_spend_usd": 0.0187825,
+            "input_cost_usd": 0,
+            "output_cost_usd": 0,
+            "supporting_cost_usd": 0.0187825,
+            "incomplete_event_count": 0,
+            "missing_request_count": 8,
+            "duplicate_request_count": 0,
+            "unexpected_request_count": 0
+          },
+          {
+            "provider_id": "qwen",
+            "tier": "workhorse",
+            "model_id": "qwen-flash",
+            "display_name": "qwen-flash",
+            "on_panel": true,
+            "complete": false,
+            "estimated_spend_usd": 0.0003779,
+            "input_cost_usd": 0,
+            "output_cost_usd": 0,
+            "supporting_cost_usd": 0.0003779,
+            "incomplete_event_count": 0,
+            "missing_request_count": 8,
+            "duplicate_request_count": 0,
+            "unexpected_request_count": 0
+          }
+        ]
+      }
+    ]
   },
   "chat_task": {
     "task_id": "E",
@@ -2470,9 +2711,9 @@
         "label": "Bounded Q&A",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:15Z"
+        "run_at": "2026-09-03T21:49:03Z"
       },
       {
         "date": "2026-09-03",
@@ -2487,9 +2728,9 @@
         "label": "Summarize frozen essay",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:17Z"
+        "run_at": "2026-09-03T21:49:10Z"
       },
       {
         "date": "2026-09-03",
@@ -2504,9 +2745,9 @@
         "label": "Code from frozen spec",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:17Z"
+        "run_at": "2026-09-03T21:49:10Z"
       },
       {
         "date": "2026-09-03",
@@ -2515,15 +2756,15 @@
         "task_id": "D",
         "model_id": "claude-opus-5",
         "api_model": "claude-opus-5",
-        "tokens_in": 7251,
-        "input_chars": 25743,
-        "tokens_in_per_1k_chars": 281.669,
+        "tokens_in": 8022,
+        "input_chars": 25282,
+        "tokens_in_per_1k_chars": 317.301,
         "label": "Long-context needle",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:19Z"
+        "run_at": "2026-09-03T21:49:12Z"
       },
       {
         "date": "2026-09-03",
@@ -2538,9 +2779,9 @@
         "label": "Long-context prose",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:21Z"
+        "run_at": "2026-09-03T21:49:15Z"
       },
       {
         "date": "2026-09-03",
@@ -2555,9 +2796,9 @@
         "label": "Bounded Q&A",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:21Z"
+        "run_at": "2026-09-03T21:49:15Z"
       },
       {
         "date": "2026-09-03",
@@ -2572,9 +2813,9 @@
         "label": "Summarize frozen essay",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:22Z"
+        "run_at": "2026-09-03T21:49:16Z"
       },
       {
         "date": "2026-09-03",
@@ -2589,9 +2830,9 @@
         "label": "Code from frozen spec",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:23Z"
+        "run_at": "2026-09-03T21:49:16Z"
       },
       {
         "date": "2026-09-03",
@@ -2600,15 +2841,15 @@
         "task_id": "D",
         "model_id": "claude-haiku-4.5",
         "api_model": "claude-haiku-4-5-20251001",
-        "tokens_in": 4038,
-        "input_chars": 25743,
-        "tokens_in_per_1k_chars": 156.858,
+        "tokens_in": 5651,
+        "input_chars": 25282,
+        "tokens_in_per_1k_chars": 223.519,
         "label": "Long-context needle",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:23Z"
+        "run_at": "2026-09-03T21:49:17Z"
       },
       {
         "date": "2026-09-03",
@@ -2623,9 +2864,9 @@
         "label": "Long-context prose",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:24Z"
+        "run_at": "2026-09-03T21:49:18Z"
       },
       {
         "date": "2026-09-03",
@@ -2640,9 +2881,9 @@
         "label": "Bounded Q&A",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:38Z"
+        "run_at": "2026-09-03T21:52:55Z"
       },
       {
         "date": "2026-09-03",
@@ -2657,9 +2898,9 @@
         "label": "Summarize frozen essay",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:39Z"
+        "run_at": "2026-09-03T21:52:56Z"
       },
       {
         "date": "2026-09-03",
@@ -2674,9 +2915,9 @@
         "label": "Code from frozen spec",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:40Z"
+        "run_at": "2026-09-03T21:52:57Z"
       },
       {
         "date": "2026-09-03",
@@ -2685,15 +2926,15 @@
         "task_id": "D",
         "model_id": "nova-premier",
         "api_model": "amazon.nova-pro-v1:0",
-        "tokens_in": 4027,
-        "input_chars": 25743,
-        "tokens_in_per_1k_chars": 156.431,
+        "tokens_in": 5354,
+        "input_chars": 25282,
+        "tokens_in_per_1k_chars": 211.771,
         "label": "Long-context needle",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:41Z"
+        "run_at": "2026-09-03T21:52:59Z"
       },
       {
         "date": "2026-09-03",
@@ -2708,9 +2949,9 @@
         "label": "Long-context prose",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:42Z"
+        "run_at": "2026-09-03T21:53:00Z"
       },
       {
         "date": "2026-09-03",
@@ -2725,9 +2966,9 @@
         "label": "Bounded Q&A",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:43Z"
+        "run_at": "2026-09-03T21:53:01Z"
       },
       {
         "date": "2026-09-03",
@@ -2742,9 +2983,9 @@
         "label": "Summarize frozen essay",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:43Z"
+        "run_at": "2026-09-03T21:53:01Z"
       },
       {
         "date": "2026-09-03",
@@ -2759,9 +3000,9 @@
         "label": "Code from frozen spec",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:44Z"
+        "run_at": "2026-09-03T21:53:02Z"
       },
       {
         "date": "2026-09-03",
@@ -2770,15 +3011,15 @@
         "task_id": "D",
         "model_id": "nova-micro",
         "api_model": "amazon.nova-micro-v1:0",
-        "tokens_in": 4027,
-        "input_chars": 25743,
-        "tokens_in_per_1k_chars": 156.431,
+        "tokens_in": 5354,
+        "input_chars": 25282,
+        "tokens_in_per_1k_chars": 211.771,
         "label": "Long-context needle",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:44Z"
+        "run_at": "2026-09-03T21:53:02Z"
       },
       {
         "date": "2026-09-03",
@@ -2793,9 +3034,9 @@
         "label": "Long-context prose",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:45Z"
+        "run_at": "2026-09-03T21:53:03Z"
       },
       {
         "date": "2026-09-03",
@@ -2810,9 +3051,9 @@
         "label": "Bounded Q&A",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:46Z"
+        "run_at": "2026-09-03T21:53:04Z"
       },
       {
         "date": "2026-09-03",
@@ -2827,9 +3068,9 @@
         "label": "Summarize frozen essay",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:47Z"
+        "run_at": "2026-09-03T21:53:05Z"
       },
       {
         "date": "2026-09-03",
@@ -2844,9 +3085,9 @@
         "label": "Code from frozen spec",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:48Z"
+        "run_at": "2026-09-03T21:53:06Z"
       },
       {
         "date": "2026-09-03",
@@ -2855,15 +3096,15 @@
         "task_id": "D",
         "model_id": "deepseek-v4-pro",
         "api_model": "deepseek-v4-pro",
-        "tokens_in": 4110,
-        "input_chars": 25743,
-        "tokens_in_per_1k_chars": 159.655,
+        "tokens_in": 5273,
+        "input_chars": 25282,
+        "tokens_in_per_1k_chars": 208.567,
         "label": "Long-context needle",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:49Z"
+        "run_at": "2026-09-03T21:53:07Z"
       },
       {
         "date": "2026-09-03",
@@ -2878,9 +3119,9 @@
         "label": "Long-context prose",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:50Z"
+        "run_at": "2026-09-03T21:53:08Z"
       },
       {
         "date": "2026-09-03",
@@ -2895,9 +3136,9 @@
         "label": "Bounded Q&A",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:51Z"
+        "run_at": "2026-09-03T21:53:09Z"
       },
       {
         "date": "2026-09-03",
@@ -2912,9 +3153,9 @@
         "label": "Summarize frozen essay",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:51Z"
+        "run_at": "2026-09-03T21:53:09Z"
       },
       {
         "date": "2026-09-03",
@@ -2929,9 +3170,9 @@
         "label": "Code from frozen spec",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:52Z"
+        "run_at": "2026-09-03T21:53:11Z"
       },
       {
         "date": "2026-09-03",
@@ -2940,15 +3181,15 @@
         "task_id": "D",
         "model_id": "deepseek-v4-flash",
         "api_model": "deepseek-v4-flash",
-        "tokens_in": 4110,
-        "input_chars": 25743,
-        "tokens_in_per_1k_chars": 159.655,
+        "tokens_in": 5273,
+        "input_chars": 25282,
+        "tokens_in_per_1k_chars": 208.567,
         "label": "Long-context needle",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:53Z"
+        "run_at": "2026-09-03T21:53:11Z"
       },
       {
         "date": "2026-09-03",
@@ -2963,9 +3204,9 @@
         "label": "Long-context prose",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:54Z"
+        "run_at": "2026-09-03T21:53:12Z"
       },
       {
         "date": "2026-09-03",
@@ -2980,9 +3221,9 @@
         "label": "Bounded Q&A",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:40Z"
+        "run_at": "2026-09-03T21:49:29Z"
       },
       {
         "date": "2026-09-03",
@@ -2997,9 +3238,9 @@
         "label": "Summarize frozen essay",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:40Z"
+        "run_at": "2026-09-03T21:49:30Z"
       },
       {
         "date": "2026-09-03",
@@ -3014,9 +3255,9 @@
         "label": "Code from frozen spec",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:41Z"
+        "run_at": "2026-09-03T21:49:30Z"
       },
       {
         "date": "2026-09-03",
@@ -3025,15 +3266,15 @@
         "task_id": "D",
         "model_id": "gemini-3.1-pro",
         "api_model": "gemini-pro-latest",
-        "tokens_in": 4031,
-        "input_chars": 25743,
-        "tokens_in_per_1k_chars": 156.586,
+        "tokens_in": 5399,
+        "input_chars": 25282,
+        "tokens_in_per_1k_chars": 213.551,
         "label": "Long-context needle",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:41Z"
+        "run_at": "2026-09-03T21:49:30Z"
       },
       {
         "date": "2026-09-03",
@@ -3048,9 +3289,9 @@
         "label": "Long-context prose",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:42Z"
+        "run_at": "2026-09-03T21:49:31Z"
       },
       {
         "date": "2026-09-03",
@@ -3058,16 +3299,16 @@
         "tier": "workhorse",
         "task_id": "A",
         "model_id": "gemini-2.0-flash",
-        "api_model": "gemini-flash-latest-high-res-exp",
+        "api_model": "gemini-flash-latest",
         "tokens_in": 30,
         "input_chars": 157,
         "tokens_in_per_1k_chars": 191.083,
         "label": "Bounded Q&A",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:42Z"
+        "run_at": "2026-09-03T21:49:31Z"
       },
       {
         "date": "2026-09-03",
@@ -3082,9 +3323,9 @@
         "label": "Summarize frozen essay",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:43Z"
+        "run_at": "2026-09-03T21:49:32Z"
       },
       {
         "date": "2026-09-03",
@@ -3099,9 +3340,9 @@
         "label": "Code from frozen spec",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:43Z"
+        "run_at": "2026-09-03T21:49:32Z"
       },
       {
         "date": "2026-09-03",
@@ -3110,15 +3351,15 @@
         "task_id": "D",
         "model_id": "gemini-2.0-flash",
         "api_model": "gemini-flash-latest-high-res-exp",
-        "tokens_in": 4031,
-        "input_chars": 25743,
-        "tokens_in_per_1k_chars": 156.586,
+        "tokens_in": 5399,
+        "input_chars": 25282,
+        "tokens_in_per_1k_chars": 213.551,
         "label": "Long-context needle",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:44Z"
+        "run_at": "2026-09-03T21:49:33Z"
       },
       {
         "date": "2026-09-03",
@@ -3133,9 +3374,9 @@
         "label": "Long-context prose",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:44Z"
+        "run_at": "2026-09-03T21:49:33Z"
       },
       {
         "date": "2026-09-03",
@@ -3150,9 +3391,9 @@
         "label": "Bounded Q&A",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:27Z"
+        "run_at": "2026-09-03T21:49:20Z"
       },
       {
         "date": "2026-09-03",
@@ -3167,9 +3408,9 @@
         "label": "Summarize frozen essay",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:27Z"
+        "run_at": "2026-09-03T21:49:21Z"
       },
       {
         "date": "2026-09-03",
@@ -3184,9 +3425,9 @@
         "label": "Code from frozen spec",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:30Z"
+        "run_at": "2026-09-03T21:49:22Z"
       },
       {
         "date": "2026-09-03",
@@ -3195,15 +3436,15 @@
         "task_id": "D",
         "model_id": "chat-latest",
         "api_model": "chat-latest",
-        "tokens_in": 4033,
-        "input_chars": 25743,
-        "tokens_in_per_1k_chars": 156.664,
+        "tokens_in": 5167,
+        "input_chars": 25282,
+        "tokens_in_per_1k_chars": 204.375,
         "label": "Long-context needle",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:31Z"
+        "run_at": "2026-09-03T21:49:23Z"
       },
       {
         "date": "2026-09-03",
@@ -3218,9 +3459,9 @@
         "label": "Long-context prose",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:33Z"
+        "run_at": "2026-09-03T21:49:24Z"
       },
       {
         "date": "2026-09-03",
@@ -3235,9 +3476,9 @@
         "label": "Bounded Q&A",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:33Z"
+        "run_at": "2026-09-03T21:49:25Z"
       },
       {
         "date": "2026-09-03",
@@ -3252,9 +3493,9 @@
         "label": "Summarize frozen essay",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:34Z"
+        "run_at": "2026-09-03T21:49:26Z"
       },
       {
         "date": "2026-09-03",
@@ -3269,9 +3510,9 @@
         "label": "Code from frozen spec",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:35Z"
+        "run_at": "2026-09-03T21:49:27Z"
       },
       {
         "date": "2026-09-03",
@@ -3280,15 +3521,15 @@
         "task_id": "D",
         "model_id": "gpt-5.6-luna",
         "api_model": "gpt-5.6-luna",
-        "tokens_in": 4033,
-        "input_chars": 25743,
-        "tokens_in_per_1k_chars": 156.664,
+        "tokens_in": 5167,
+        "input_chars": 25282,
+        "tokens_in_per_1k_chars": 204.375,
         "label": "Long-context needle",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:38Z"
+        "run_at": "2026-09-03T21:49:28Z"
       },
       {
         "date": "2026-09-03",
@@ -3303,9 +3544,9 @@
         "label": "Long-context prose",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:39Z"
+        "run_at": "2026-09-03T21:49:29Z"
       },
       {
         "date": "2026-09-03",
@@ -3320,9 +3561,9 @@
         "label": "Bounded Q&A",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:55Z"
+        "run_at": "2026-09-03T21:53:13Z"
       },
       {
         "date": "2026-09-03",
@@ -3337,9 +3578,9 @@
         "label": "Summarize frozen essay",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:56Z"
+        "run_at": "2026-09-03T21:53:14Z"
       },
       {
         "date": "2026-09-03",
@@ -3354,9 +3595,9 @@
         "label": "Code from frozen spec",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:57Z"
+        "run_at": "2026-09-03T21:53:15Z"
       },
       {
         "date": "2026-09-03",
@@ -3365,15 +3606,15 @@
         "task_id": "D",
         "model_id": "qwen3.7-max",
         "api_model": "qwen-max",
-        "tokens_in": 4035,
-        "input_chars": 25743,
-        "tokens_in_per_1k_chars": 156.742,
+        "tokens_in": 5304,
+        "input_chars": 25282,
+        "tokens_in_per_1k_chars": 209.794,
         "label": "Long-context needle",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:23:00Z"
+        "run_at": "2026-09-03T21:53:18Z"
       },
       {
         "date": "2026-09-03",
@@ -3388,9 +3629,9 @@
         "label": "Long-context prose",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:23:01Z"
+        "run_at": "2026-09-03T21:53:20Z"
       },
       {
         "date": "2026-09-03",
@@ -3405,9 +3646,9 @@
         "label": "Bounded Q&A",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:23:02Z"
+        "run_at": "2026-09-03T21:53:21Z"
       },
       {
         "date": "2026-09-03",
@@ -3422,9 +3663,9 @@
         "label": "Summarize frozen essay",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:23:04Z"
+        "run_at": "2026-09-03T21:53:22Z"
       },
       {
         "date": "2026-09-03",
@@ -3439,9 +3680,9 @@
         "label": "Code from frozen spec",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:23:04Z"
+        "run_at": "2026-09-03T21:53:23Z"
       },
       {
         "date": "2026-09-03",
@@ -3450,15 +3691,15 @@
         "task_id": "D",
         "model_id": "qwen-flash",
         "api_model": "qwen-turbo",
-        "tokens_in": 4039,
-        "input_chars": 25743,
-        "tokens_in_per_1k_chars": 156.897,
+        "tokens_in": 5308,
+        "input_chars": 25282,
+        "tokens_in_per_1k_chars": 209.952,
         "label": "Long-context needle",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:23:06Z"
+        "run_at": "2026-09-03T21:53:25Z"
       },
       {
         "date": "2026-09-03",
@@ -3473,9 +3714,9 @@
         "label": "Long-context prose",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:23:07Z"
+        "run_at": "2026-09-03T21:53:26Z"
       },
       {
         "date": "2026-09-03",
@@ -3490,9 +3731,9 @@
         "label": "Bounded Q&A",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:19:56Z"
+        "run_at": "2026-09-03T21:49:42Z"
       },
       {
         "date": "2026-09-03",
@@ -3507,9 +3748,9 @@
         "label": "Summarize frozen essay",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:20:02Z"
+        "run_at": "2026-09-03T21:49:48Z"
       },
       {
         "date": "2026-09-03",
@@ -3524,9 +3765,9 @@
         "label": "Code from frozen spec",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:20:22Z"
+        "run_at": "2026-09-03T21:49:58Z"
       },
       {
         "date": "2026-09-03",
@@ -3535,15 +3776,15 @@
         "task_id": "D",
         "model_id": "grok-4.6",
         "api_model": "grok-4.6",
-        "tokens_in": 4663,
-        "input_chars": 25743,
-        "tokens_in_per_1k_chars": 181.137,
+        "tokens_in": 5809,
+        "input_chars": 25282,
+        "tokens_in_per_1k_chars": 229.768,
         "label": "Long-context needle",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:20:36Z"
+        "run_at": "2026-09-03T21:50:50Z"
       },
       {
         "date": "2026-09-03",
@@ -3558,9 +3799,9 @@
         "label": "Long-context prose",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:20:54Z"
+        "run_at": "2026-09-03T21:51:07Z"
       },
       {
         "date": "2026-09-03",
@@ -3575,9 +3816,9 @@
         "label": "Bounded Q&A",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:21:12Z"
+        "run_at": "2026-09-03T21:51:27Z"
       },
       {
         "date": "2026-09-03",
@@ -3592,9 +3833,9 @@
         "label": "Summarize frozen essay",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:21:18Z"
+        "run_at": "2026-09-03T21:51:37Z"
       },
       {
         "date": "2026-09-03",
@@ -3609,9 +3850,9 @@
         "label": "Code from frozen spec",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:21:40Z"
+        "run_at": "2026-09-03T21:51:54Z"
       },
       {
         "date": "2026-09-03",
@@ -3620,15 +3861,15 @@
         "task_id": "D",
         "model_id": "grok-build-0.1",
         "api_model": "grok-build-0.1",
-        "tokens_in": 4213,
-        "input_chars": 25743,
-        "tokens_in_per_1k_chars": 163.656,
+        "tokens_in": 5274,
+        "input_chars": 25282,
+        "tokens_in_per_1k_chars": 208.607,
         "label": "Long-context needle",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:21:56Z"
+        "run_at": "2026-09-03T21:52:14Z"
       },
       {
         "date": "2026-09-03",
@@ -3643,9 +3884,9 @@
         "label": "Long-context prose",
         "run_status": "ok",
         "error": null,
-        "corpus_version": "1.1.0",
+        "corpus_version": "3.0.0",
         "source": "tokenizer_ledger",
-        "run_at": "2026-09-03T16:22:36Z"
+        "run_at": "2026-09-03T21:52:54Z"
       }
     ],
     "fits": [
@@ -3666,15 +3907,16 @@
           "A",
           "B",
           "C",
+          "D",
           "F"
         ],
-        "task_count": 4,
-        "char_span_ratio": 61.31,
+        "task_count": 5,
+        "char_span_ratio": 161.03,
         "fit_ok": true,
         "density_ok": true,
-        "fixed_overhead_tokens": 14.2,
-        "content_density_per_1k_chars": 299.921,
-        "r2": 0.99995
+        "fixed_overhead_tokens": -18.3,
+        "content_density_per_1k_chars": 316.199,
+        "r2": 0.999578
       },
       {
         "date": "2026-09-03",
@@ -3693,15 +3935,16 @@
           "A",
           "B",
           "C",
+          "D",
           "F"
         ],
-        "task_count": 4,
-        "char_span_ratio": 61.31,
+        "task_count": 5,
+        "char_span_ratio": 161.03,
         "fit_ok": true,
         "density_ok": true,
-        "fixed_overhead_tokens": 9.0,
-        "content_density_per_1k_chars": 213.578,
-        "r2": 0.999803
+        "fixed_overhead_tokens": -9.5,
+        "content_density_per_1k_chars": 222.854,
+        "r2": 0.999703
       },
       {
         "date": "2026-09-03",
@@ -3720,15 +3963,16 @@
           "A",
           "B",
           "C",
+          "D",
           "F"
         ],
-        "task_count": 4,
-        "char_span_ratio": 61.31,
+        "task_count": 5,
+        "char_span_ratio": 161.03,
         "fit_ok": true,
         "density_ok": true,
-        "fixed_overhead_tokens": 4.3,
-        "content_density_per_1k_chars": 200.859,
-        "r2": 0.999588
+        "fixed_overhead_tokens": -16.5,
+        "content_density_per_1k_chars": 211.258,
+        "r2": 0.999569
       },
       {
         "date": "2026-09-03",
@@ -3747,15 +3991,16 @@
           "A",
           "B",
           "C",
+          "D",
           "F"
         ],
-        "task_count": 4,
-        "char_span_ratio": 61.31,
+        "task_count": 5,
+        "char_span_ratio": 161.03,
         "fit_ok": true,
         "density_ok": true,
-        "fixed_overhead_tokens": 4.3,
-        "content_density_per_1k_chars": 200.859,
-        "r2": 0.999588
+        "fixed_overhead_tokens": -16.5,
+        "content_density_per_1k_chars": 211.258,
+        "r2": 0.999569
       },
       {
         "date": "2026-09-03",
@@ -3774,15 +4019,16 @@
           "A",
           "B",
           "C",
+          "D",
           "F"
         ],
-        "task_count": 4,
-        "char_span_ratio": 61.31,
+        "task_count": 5,
+        "char_span_ratio": 161.03,
         "fit_ok": true,
         "density_ok": true,
-        "fixed_overhead_tokens": 84.8,
-        "content_density_per_1k_chars": 196.152,
-        "r2": 0.999765
+        "fixed_overhead_tokens": 67.2,
+        "content_density_per_1k_chars": 204.924,
+        "r2": 0.999683
       },
       {
         "date": "2026-09-03",
@@ -3801,15 +4047,16 @@
           "A",
           "B",
           "C",
+          "D",
           "F"
         ],
-        "task_count": 4,
-        "char_span_ratio": 61.31,
+        "task_count": 5,
+        "char_span_ratio": 161.03,
         "fit_ok": true,
         "density_ok": true,
-        "fixed_overhead_tokens": 84.8,
-        "content_density_per_1k_chars": 196.152,
-        "r2": 0.999765
+        "fixed_overhead_tokens": 67.2,
+        "content_density_per_1k_chars": 204.924,
+        "r2": 0.999683
       },
       {
         "date": "2026-09-03",
@@ -3828,22 +4075,23 @@
           "A",
           "B",
           "C",
+          "D",
           "F"
         ],
-        "task_count": 4,
-        "char_span_ratio": 61.31,
+        "task_count": 5,
+        "char_span_ratio": 161.03,
         "fit_ok": true,
         "density_ok": true,
-        "fixed_overhead_tokens": 3.4,
-        "content_density_per_1k_chars": 203.214,
-        "r2": 0.999528
+        "fixed_overhead_tokens": -16.4,
+        "content_density_per_1k_chars": 213.09,
+        "r2": 0.999604
       },
       {
         "date": "2026-09-03",
         "provider_id": "google",
         "tier": "workhorse",
         "model_id": "gemini-2.0-flash",
-        "api_model": "gemini-flash-latest-high-res-exp",
+        "api_model": "gemini-flash-latest",
         "task_ids": [
           "A",
           "B",
@@ -3855,15 +4103,16 @@
           "A",
           "B",
           "C",
+          "D",
           "F"
         ],
-        "task_count": 4,
-        "char_span_ratio": 61.31,
+        "task_count": 5,
+        "char_span_ratio": 161.03,
         "fit_ok": true,
         "density_ok": true,
-        "fixed_overhead_tokens": 3.4,
-        "content_density_per_1k_chars": 203.214,
-        "r2": 0.999528
+        "fixed_overhead_tokens": -16.4,
+        "content_density_per_1k_chars": 213.09,
+        "r2": 0.999604
       },
       {
         "date": "2026-09-03",
@@ -3882,15 +4131,16 @@
           "A",
           "B",
           "C",
+          "D",
           "F"
         ],
-        "task_count": 4,
-        "char_span_ratio": 61.31,
+        "task_count": 5,
+        "char_span_ratio": 161.03,
         "fit_ok": true,
         "density_ok": true,
-        "fixed_overhead_tokens": 6.9,
-        "content_density_per_1k_chars": 195.103,
-        "r2": 0.99974
+        "fixed_overhead_tokens": -10.6,
+        "content_density_per_1k_chars": 203.815,
+        "r2": 0.999681
       },
       {
         "date": "2026-09-03",
@@ -3909,15 +4159,16 @@
           "A",
           "B",
           "C",
+          "D",
           "F"
         ],
-        "task_count": 4,
-        "char_span_ratio": 61.31,
+        "task_count": 5,
+        "char_span_ratio": 161.03,
         "fit_ok": true,
         "density_ok": true,
-        "fixed_overhead_tokens": 6.9,
-        "content_density_per_1k_chars": 195.103,
-        "r2": 0.99974
+        "fixed_overhead_tokens": -10.6,
+        "content_density_per_1k_chars": 203.815,
+        "r2": 0.999681
       },
       {
         "date": "2026-09-03",
@@ -3936,15 +4187,16 @@
           "A",
           "B",
           "C",
+          "D",
           "F"
         ],
-        "task_count": 4,
-        "char_span_ratio": 61.31,
+        "task_count": 5,
+        "char_span_ratio": 161.03,
         "fit_ok": true,
         "density_ok": true,
-        "fixed_overhead_tokens": 11.0,
-        "content_density_per_1k_chars": 198.295,
-        "r2": 0.999634
+        "fixed_overhead_tokens": -10.5,
+        "content_density_per_1k_chars": 209.005,
+        "r2": 0.999543
       },
       {
         "date": "2026-09-03",
@@ -3963,15 +4215,16 @@
           "A",
           "B",
           "C",
+          "D",
           "F"
         ],
-        "task_count": 4,
-        "char_span_ratio": 61.31,
+        "task_count": 5,
+        "char_span_ratio": 161.03,
         "fit_ok": true,
         "density_ok": true,
-        "fixed_overhead_tokens": 15.0,
-        "content_density_per_1k_chars": 198.295,
-        "r2": 0.999634
+        "fixed_overhead_tokens": -6.5,
+        "content_density_per_1k_chars": 209.005,
+        "r2": 0.999543
       },
       {
         "date": "2026-09-03",
@@ -3990,15 +4243,16 @@
           "A",
           "B",
           "C",
+          "D",
           "F"
         ],
-        "task_count": 4,
-        "char_span_ratio": 61.31,
+        "task_count": 5,
+        "char_span_ratio": 161.03,
         "fit_ok": true,
         "density_ok": true,
-        "fixed_overhead_tokens": 638.1,
-        "content_density_per_1k_chars": 197.87,
-        "r2": 0.999726
+        "fixed_overhead_tokens": 625.2,
+        "content_density_per_1k_chars": 204.315,
+        "r2": 0.999809
       },
       {
         "date": "2026-09-03",
@@ -4017,15 +4271,16 @@
           "A",
           "B",
           "C",
+          "D",
           "F"
         ],
-        "task_count": 4,
-        "char_span_ratio": 61.31,
+        "task_count": 5,
+        "char_span_ratio": 161.03,
         "fit_ok": true,
         "density_ok": true,
-        "fixed_overhead_tokens": 187.6,
-        "content_density_per_1k_chars": 192.638,
-        "r2": 0.999729
+        "fixed_overhead_tokens": 171.0,
+        "content_density_per_1k_chars": 200.915,
+        "r2": 0.9997
       }
     ]
   },
@@ -6149,7 +6404,7 @@
           "ANTHROPIC_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": false
+        "configured": true
       },
       "openai": {
         "env": [
@@ -6157,7 +6412,7 @@
           "OPENAI_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": false
+        "configured": true
       },
       "google": {
         "env": [
@@ -6166,7 +6421,7 @@
           "GOOGLE_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": false
+        "configured": true
       },
       "xai": {
         "env": [
@@ -6174,7 +6429,7 @@
           "XAI_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": false
+        "configured": true
       },
       "aws": {
         "env": [
@@ -6184,7 +6439,7 @@
           "AWS_ACCESS_KEY_ID"
         ],
         "purpose": "weekly task billing runs + tokenizer ledger (Bedrock Converse)",
-        "configured": false
+        "configured": true
       },
       "deepseek": {
         "env": [
@@ -6192,7 +6447,7 @@
           "DEEPSEEK_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": false
+        "configured": true
       },
       "qwen": {
         "env": [
@@ -6200,19 +6455,11 @@
           "QWEN_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": false
+        "configured": true
       }
     },
-    "missing_providers": [
-      "anthropic",
-      "openai",
-      "google",
-      "xai",
-      "aws",
-      "deepseek",
-      "qwen"
-    ],
-    "env_visible_to_builder": false,
+    "missing_providers": [],
+    "env_visible_to_builder": true,
     "ready_for_live_runs": true
   },
   "provider_health": {
@@ -6483,6 +6730,7 @@
             "last_error": null,
             "last_error_model": null,
             "ok_models": [
+              "gemini-flash-latest",
               "gemini-flash-latest-high-res-exp"
             ],
             "last_unavailable_remedy": null
