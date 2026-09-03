@@ -528,6 +528,12 @@ def build_token_runs(run_rows: list[dict]) -> list[dict]:
         input_chars = rows[0].get("input_chars") or chars_by_task[task_id]
         tokens_in = _median([float(r["tokens_in"]) for r in rows])
         tokens_out = _median([float(r["tokens_out"]) for r in rows])
+        ratios = [
+            float(r["tokens_in"]) / ((float(r.get("input_chars") or chars_by_task[task_id])) / 1000)
+            for r in rows
+            if (r.get("input_chars") or chars_by_task.get(task_id))
+        ]
+        density = _median(ratios) if ratios else (tokens_in / (input_chars / 1000))
         output_cap = rows[0].get("output_cap")
         # Rows from policy 4.0.0 on carry the provider's own stop reason. The
         # cap comparison is the legacy path only, for rows written when a cap
@@ -553,7 +559,7 @@ def build_token_runs(run_rows: list[dict]) -> list[dict]:
                 "tokens_out": tokens_out,
                 "tokens_total": tokens_in + tokens_out,
                 "input_chars": input_chars,
-                "tokens_in_per_1k_chars": round(tokens_in / (input_chars / 1000), 3),
+                "tokens_in_per_1k_chars": round(density, 3),
                 "usd": usd,
                 "output_cap": output_cap,
                 "output_censored": bool(censored),
@@ -921,6 +927,7 @@ def build_equivalence(
 
     return {
         "generated_at": index["generated_at"],
+        "pricing_snapshot_date": index.get("last_date"),
         "corpus_version": CORPUS_VERSION,
         "chat_corpus_version": CHAT_CORPUS_VERSION,
         "output_policy_version": OUTPUT_POLICY_VERSION,

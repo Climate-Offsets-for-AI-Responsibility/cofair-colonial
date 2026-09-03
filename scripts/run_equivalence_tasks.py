@@ -178,12 +178,21 @@ def _openai_assistant_text(payload: dict) -> str:
 def _redact_secrets(text: str) -> str:
     redacted = re.sub(r"(?i)(bearer\s+)[^\s,;]+", r"\1[REDACTED]", text)
     redacted = re.sub(r"(?i)(x-api-key\s*[:=]\s*)[^\s,;]+", r"\1[REDACTED]", redacted)
+    redacted = re.sub(r'(?i)("api[_-]?key"\s*:\s*")[^"]+(")', r"\1[REDACTED]\2", redacted)
+    redacted = re.sub(r'(?i)("token"\s*:\s*")[^"]+(")', r"\1[REDACTED]\2", redacted)
     redacted = re.sub(
         r"(?i)\b(api[_-]?key|token|key)\s*[:=]\s*[^\s,;]+",
         lambda m: f"{m.group(1)}=[REDACTED]",
         redacted,
     )
     redacted = re.sub(r"\bsk-[A-Za-z0-9._-]+\b", "[REDACTED]", redacted)
+    redacted = re.sub(r"\bAIza[0-9A-Za-z\-_]{20,}\b", "[REDACTED]", redacted)
+    redacted = re.sub(r"\bAKIA[0-9A-Z]{16}\b", "[REDACTED]", redacted)
+    redacted = re.sub(
+        r"\beyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9._-]{2,}\.[A-Za-z0-9._-]{2,}\b",
+        "[REDACTED]",
+        redacted,
+    )
     return redacted
 
 
@@ -656,7 +665,7 @@ def run_provider_task(
                 continue
             return TaskResult(_status_for_http_error(exc), None, None, last_error, candidate, *own_prices)
         except Exception as exc:  # noqa: BLE001
-            return TaskResult("error", None, None, str(exc), candidate, *own_prices)
+            return TaskResult("error", None, None, _redact_secrets(str(exc)), candidate, *own_prices)
         return TaskResult(
             "ok",
             usage.tokens_in,
@@ -756,7 +765,10 @@ def run_provider_conversation(
                 successful_turns,
             )
         except Exception as exc:  # noqa: BLE001
-            return TaskResult("error", None, None, str(exc), candidate, *own_prices), successful_turns
+            return (
+                TaskResult("error", None, None, _redact_secrets(str(exc)), candidate, *own_prices),
+                successful_turns,
+            )
 
         return (
             TaskResult(
@@ -822,6 +834,10 @@ def _turn_message_chars(messages: list[dict[str, Any]]) -> int:
     return sum(_text_chars(message) for message in messages)
 
 
+def _run_id_model_key(api_model: str) -> str:
+    return re.sub(r"[^A-Za-z0-9]+", "-", api_model).strip("-").lower() or "model"
+
+
 def load_equivalence() -> dict:
     return json.loads(EQUIVALENCE_FILE.read_text())
 
@@ -883,6 +899,7 @@ def main() -> int:
 
     new_rows = []
     incoming_cost_events: list[dict] = []
+    executed_meter_keys: set[tuple[str, str, str, str, int]] = set()
     for model in models:
         replicates = wh_reps if model["tier"] == "workhorse" else 1
         for replicate in range(1, replicates + 1):
@@ -944,9 +961,27 @@ def main() -> int:
                     "chat_corpus_version": CHAT_CORPUS_VERSION if task_id == "E" else None,
                 }
                 new_rows.append(row)
+                executed_meter_keys.add(
+                    (run_date, model["provider_id"], model["tier"], task_id, replicate)
+                )
                 if task_id == "E":
+                    attempt = 0
+                    previous_turn = 0
+                    attempts: list[int] = []
+                    for turn in turns:
+                        if turn.turn <= previous_turn:
+                            attempt += 1
+                        elif attempt == 0:
+                            attempt = 1
+                        previous_turn = turn.turn
+                        attempts.append(attempt)
+                    winning_attempt = attempts[-1] if (status == "ok" and attempts) else None
                     for event_index, turn in enumerate(turns, start=1):
-                        turn_run_id = f"{run_id}:e{event_index}"
+                        turn_attempt = attempts[event_index - 1]
+                        model_key = _run_id_model_key(turn.api_model)
+                        turn_run_id = (
+                            f"{run_id}:a{turn_attempt}:{model_key}:t{turn.turn}:n{event_index}"
+                        )
                         incoming_cost_events.append(
                             build_cost_event(
                                 date=run_date,
@@ -967,6 +1002,8 @@ def main() -> int:
                                 chat_corpus_version=CHAT_CORPUS_VERSION,
                                 run_id=turn_run_id,
                                 replicate=replicate,
+                                attempt=turn_attempt,
+                                canonical=winning_attempt is not None and turn_attempt == winning_attempt,
                             )
                         )
                 elif status == "ok":
@@ -990,6 +1027,8 @@ def main() -> int:
                             chat_corpus_version=None,
                             run_id=run_id,
                             replicate=replicate,
+                            attempt=1,
+                            canonical=True,
                         )
                     )
                 replace_keys.add(
@@ -1021,7 +1060,23 @@ def main() -> int:
     )
     if not args.dry_run:
         save_runs(merged)
-        merged_cost_events = merge_cost_events(load_cost_events(), incoming_cost_events)
+        existing_cost_events = load_cost_events()
+        keep_cost_events = [
+            row
+            for row in existing_cost_events
+            if not (
+                row.get("source") == "meter"
+                and (
+                    row.get("date"),
+                    row.get("provider_id"),
+                    row.get("tier"),
+                    row.get("task_id"),
+                    int(row.get("replicate", 1)),
+                )
+                in executed_meter_keys
+            )
+        ]
+        merged_cost_events = merge_cost_events(keep_cost_events, incoming_cost_events)
         save_cost_events(merged_cost_events)
 
     ok = sum(1 for row in new_rows if row["run_status"] == "ok")

@@ -692,13 +692,23 @@ class MeterCostEventWiringTest(unittest.TestCase):
             self.assertEqual(runner.main(), 0)
 
         self.assertEqual(len(saved_rows), 3)
-        self.assertEqual(saved_rows[0]["event_id"], "2026-09-03:meter:openai:workhorse:E:1:generation:2026-09-03:two:1:e1:1")
+        self.assertRegex(
+            saved_rows[0]["event_id"],
+            r"^2026-09-03:meter:openai:workhorse:E:1:generation:2026-09-03:two:1:a1:gpt-live:t1:n1:1$",
+        )
         self.assertEqual([row["turn"] for row in saved_rows], [1, 2, 3])
         self.assertTrue(all(row["request_kind"] == "generation" for row in saved_rows))
         self.assertEqual(
             [row["run_id"] for row in saved_rows],
-            ["2026-09-03:two:1:e1", "2026-09-03:two:1:e2", "2026-09-03:two:1:e3"],
+            [
+                "2026-09-03:two:1:a1:gpt-live:t1:n1",
+                "2026-09-03:two:1:a1:gpt-live:t2:n2",
+                "2026-09-03:two:1:a1:gpt-live:t3:n3",
+            ],
         )
+        self.assertEqual([row["attempt"] for row in saved_rows], [1, 1, 1])
+        self.assertTrue(all(row["canonical"] for row in saved_rows))
+        self.assertTrue(all(row["replicate"] == 1 for row in saved_rows))
         self.assertTrue(all(row["chat_corpus_version"] == runner.CHAT_CORPUS_VERSION for row in saved_rows))
         self.assertAlmostEqual(saved_rows[0]["estimated_cost_usd"], 10 / 1_000_000 * 1.1 + 20 / 1_000_000 * 2.2)
         self.assertEqual(len(saved_runs), 1)
@@ -748,6 +758,9 @@ class MeterCostEventWiringTest(unittest.TestCase):
         self.assertEqual(len(saved_rows), 1)
         self.assertIsNone(saved_rows[0]["turn"])
         self.assertIsNone(saved_rows[0]["chat_corpus_version"])
+        self.assertEqual(saved_rows[0]["attempt"], 1)
+        self.assertTrue(saved_rows[0]["canonical"])
+        self.assertEqual(saved_rows[0]["replicate"], 1)
         self.assertEqual(saved_rows[0]["pricing_snapshot_date"], "2026-08-31")
 
     def test_failed_non_e_task_emits_no_events(self) -> None:
@@ -844,6 +857,8 @@ class MeterCostEventWiringTest(unittest.TestCase):
         self.assertEqual(saved_rows[0]["api_model"], "old-model")
         self.assertIsNone(saved_rows[0]["estimated_cost_usd"])
         self.assertFalse(saved_rows[0]["complete"])
+        self.assertEqual(saved_rows[0]["attempt"], 1)
+        self.assertFalse(saved_rows[0]["canonical"])
         self.assertIsNone(saved_rows[0]["pricing_snapshot_date"])
 
     def test_failed_e_task_without_partial_success_emits_no_events(self) -> None:
@@ -985,7 +1000,186 @@ class MeterCostEventWiringTest(unittest.TestCase):
 
         self.assertEqual(len(saved_rows), 4)
         self.assertEqual([row["api_model"] for row in saved_rows], ["old-model", "new-model", "new-model", "new-model"])
+        self.assertEqual([row["attempt"] for row in saved_rows], [1, 2, 2, 2])
+        self.assertEqual([row["canonical"] for row in saved_rows], [False, True, True, True])
         self.assertAlmostEqual(saved_rows[0]["estimated_cost_usd"], 10 / 1_000_000 * 0.5 + 20 / 1_000_000 * 1.5)
+
+    def test_replay_replaces_prior_meter_event_group_and_stale_fallback(self) -> None:
+        model = {
+            "provider_id": "openai",
+            "model_id": "gpt-pinned",
+            "tier": "workhorse",
+            "input_price": 1.0,
+            "output_price": 2.0,
+        }
+        fake_eq = {
+            "pricing_snapshot_date": "2026-08-31",
+            "tasks": [{"task_id": "E", "output_cap": None}],
+            "selected_models_by_mode": {"two": [model], "three": [model]},
+        }
+        existing = [
+            {
+                "event_id": "2026-09-03:meter:openai:workhorse:E:1:generation:old-1:1",
+                "date": "2026-09-03",
+                "run_at": "2026-09-03T11:59:00Z",
+                "source": "meter",
+                "provider_id": "openai",
+                "tier": "workhorse",
+                "task_id": "E",
+                "turn": 1,
+                "request_kind": "generation",
+                "api_model": "old-model",
+                "input_tokens": 10,
+                "output_tokens": 20,
+                "input_price_per_1m": 0.5,
+                "output_price_per_1m": 1.5,
+                "input_cost_usd": 0.0,
+                "output_cost_usd": 0.0,
+                "estimated_cost_usd": 0.0,
+                "pricing_snapshot_date": "2026-08-31",
+                "corpus_version": "3.0.0",
+                "chat_corpus_version": "2.0.0",
+                "run_id": "2026-09-03:two:1:old",
+                "replicate": 1,
+                "attempt": 1,
+                "canonical": False,
+                "complete": True,
+            },
+            {
+                "event_id": "2026-09-03:meter:openai:workhorse:E:2:generation:old-2:1",
+                "date": "2026-09-03",
+                "run_at": "2026-09-03T11:59:01Z",
+                "source": "meter",
+                "provider_id": "openai",
+                "tier": "workhorse",
+                "task_id": "E",
+                "turn": 2,
+                "request_kind": "generation",
+                "api_model": "old-model",
+                "input_tokens": 30,
+                "output_tokens": 40,
+                "input_price_per_1m": 0.5,
+                "output_price_per_1m": 1.5,
+                "input_cost_usd": 0.0,
+                "output_cost_usd": 0.0,
+                "estimated_cost_usd": 0.0,
+                "pricing_snapshot_date": "2026-08-31",
+                "corpus_version": "3.0.0",
+                "chat_corpus_version": "2.0.0",
+                "run_id": "2026-09-03:two:1:old",
+                "replicate": 1,
+                "attempt": 1,
+                "canonical": False,
+                "complete": True,
+            },
+            {
+                "event_id": "keep-non-meter",
+                "date": "2026-09-03",
+                "run_at": "2026-09-03T11:00:00Z",
+                "source": "ledger",
+                "provider_id": "openai",
+                "tier": "workhorse",
+                "task_id": "E",
+                "turn": 1,
+                "request_kind": "count_endpoint",
+                "api_model": "gpt-live",
+                "input_tokens": 1,
+                "output_tokens": 0,
+                "input_price_per_1m": 0.0,
+                "output_price_per_1m": 0.0,
+                "input_cost_usd": 0.0,
+                "output_cost_usd": 0.0,
+                "estimated_cost_usd": 0.0,
+                "pricing_snapshot_date": "2026-08-31",
+                "corpus_version": "3.0.0",
+                "chat_corpus_version": None,
+                "run_id": "keep",
+                "replicate": 1,
+                "attempt": 1,
+                "canonical": True,
+                "complete": True,
+            },
+        ]
+        turns = [
+            runner.TurnResult(
+                1,
+                runner.Usage(11, 21, False, None, "new-1"),
+                [{"role": "user", "content": runner.E_USER_PROMPTS[0]}],
+                1.1,
+                2.2,
+                "new-model",
+            ),
+            runner.TurnResult(
+                2,
+                runner.Usage(31, 41, False, None, "new-2"),
+                [
+                    {"role": "user", "content": runner.E_USER_PROMPTS[0]},
+                    {"role": "assistant", "content": "new-1"},
+                    {"role": "user", "content": runner.E_USER_PROMPTS[1]},
+                ],
+                1.1,
+                2.2,
+                "new-model",
+            ),
+            runner.TurnResult(
+                3,
+                runner.Usage(51, 61, False, None, "new-3"),
+                [
+                    {"role": "user", "content": runner.E_USER_PROMPTS[0]},
+                    {"role": "assistant", "content": "new-1"},
+                    {"role": "user", "content": runner.E_USER_PROMPTS[1]},
+                    {"role": "assistant", "content": "new-2"},
+                    {"role": "user", "content": runner.E_USER_PROMPTS[2]},
+                ],
+                1.1,
+                2.2,
+                "new-model",
+            ),
+        ]
+        saved_rows: list[dict] = []
+        with (
+            mock.patch.object(
+                sys,
+                "argv",
+                [
+                    "run_equivalence_tasks.py",
+                    "--mode",
+                    "two",
+                    "--date",
+                    "2026-09-03",
+                    "--workhorse-replicates",
+                    "1",
+                ],
+            ),
+            mock.patch.object(runner, "METER_TASK_IDS", ("E",)),
+            mock.patch.object(runner, "load_equivalence", return_value=fake_eq),
+            mock.patch.object(runner, "load_existing_runs", return_value=[]),
+            mock.patch.object(runner, "load_cost_events", return_value=existing),
+            mock.patch.object(
+                runner,
+                "run_provider_conversation",
+                return_value=(
+                    runner.TaskResult("ok", 93, 123, None, "new-model", 1.1, 2.2),
+                    turns,
+                ),
+            ),
+            mock.patch.object(runner, "save_runs"),
+            mock.patch.object(runner, "save_cost_events", side_effect=lambda rows: saved_rows.extend(rows)),
+            mock.patch.object(runner, "now_iso_z", return_value="2026-09-03T12:00:00Z"),
+        ):
+            self.assertEqual(runner.main(), 0)
+
+        meter_rows = [row for row in saved_rows if row.get("source") == "meter"]
+        self.assertEqual(len(meter_rows), 3)
+        self.assertTrue(all(row["api_model"] == "new-model" for row in meter_rows))
+        self.assertTrue(any(row["event_id"] == "keep-non-meter" for row in saved_rows))
+        total = sum(row["estimated_cost_usd"] for row in meter_rows if row.get("estimated_cost_usd") is not None)
+        self.assertAlmostEqual(
+            total,
+            (11 / 1_000_000 * 1.1 + 21 / 1_000_000 * 2.2)
+            + (31 / 1_000_000 * 1.1 + 41 / 1_000_000 * 2.2)
+            + (51 / 1_000_000 * 1.1 + 61 / 1_000_000 * 2.2),
+        )
 
 
 class ErrorRedactionTest(unittest.TestCase):
@@ -1006,6 +1200,68 @@ class ErrorRedactionTest(unittest.TestCase):
         self.assertNotIn("bar", message)
         self.assertNotIn("sk-rawvalue", message)
         self.assertIn("Bearer [REDACTED]", message)
+
+    def test_redacts_json_and_key_formats(self) -> None:
+        response = _response(
+            400,
+            text=(
+                '{"api_key":"secret-1","token":"secret-2","jwt":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abc.def",'
+                '"google":"AIzaSyD123456789012345678901234567890123","aws":"AKIA1234567890ABCD12"}'
+            ),
+        )
+        exc = requests.HTTPError("boom", response=response)
+        redacted = runner._http_error_detail(exc)
+        self.assertNotIn("secret-1", redacted)
+        self.assertNotIn("secret-2", redacted)
+        self.assertNotIn("AIzaSyD123456789012345678901234567890123", redacted)
+        self.assertNotIn("AKIA1234567890ABCD12", redacted)
+        self.assertNotIn("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abc.def", redacted)
+
+    def test_generic_exception_text_is_redacted(self) -> None:
+        entry = {
+            "provider_id": "openai",
+            "model_id": "openai-pinned",
+            "tier": "workhorse",
+            "input_price": 1.0,
+            "output_price": 2.0,
+        }
+        with (
+            mock.patch.object(runner, "env_for_provider", return_value="k"),
+            mock.patch.object(runner, "candidate_plan", return_value=[("gpt-live", 1.0, 2.0)]),
+            mock.patch.object(
+                runner,
+                "_run_one",
+                side_effect=RuntimeError(
+                    'boom {"api_key":"secret","token":"abc","jwt":"eyJhbGciOiJIUzI1NiJ9.a.b"}'
+                ),
+            ),
+        ):
+            result = runner.run_provider_task(entry, "A", None, False)
+        self.assertEqual(result.status, "error")
+        self.assertNotIn("secret", result.error or "")
+        self.assertNotIn("abc", result.error or "")
+
+    def test_generic_conversation_exception_text_is_redacted(self) -> None:
+        entry = {
+            "provider_id": "openai",
+            "model_id": "openai-pinned",
+            "tier": "workhorse",
+            "input_price": 1.0,
+            "output_price": 2.0,
+        }
+        with (
+            mock.patch.object(runner, "env_for_provider", return_value="k"),
+            mock.patch.object(runner, "candidate_plan", return_value=[("gpt-live", 1.0, 2.0)]),
+            mock.patch.object(
+                runner,
+                "_run_messages",
+                side_effect=RuntimeError("Bearer sk-secret AIzaSyD123456789012345678901234567890123"),
+            ),
+        ):
+            result, turns = runner.run_provider_conversation(entry, None, False)
+        self.assertEqual(result.status, "error")
+        self.assertEqual(turns, [])
+        self.assertNotIn("sk-secret", result.error or "")
 
 
 if __name__ == "__main__":

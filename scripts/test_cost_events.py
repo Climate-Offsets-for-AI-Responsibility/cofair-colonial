@@ -49,6 +49,8 @@ def _generation_kwargs(**overrides) -> dict:
         "corpus_version": "3.0.0",
         "chat_corpus_version": "2.0.0",
         "run_id": "2026-09-03:two:1",
+        "attempt": 1,
+        "canonical": True,
     }
     base.update(overrides)
     return base
@@ -101,6 +103,9 @@ class BuildCostEventTest(unittest.TestCase):
             event["input_cost_usd"] + event["output_cost_usd"],
         )
         self.assertTrue(event["complete"])
+        self.assertEqual(event["replicate"], 1)
+        self.assertEqual(event["attempt"], 1)
+        self.assertTrue(event["canonical"])
 
     def test_incomplete_when_prices_missing(self) -> None:
         event = build_cost_event(

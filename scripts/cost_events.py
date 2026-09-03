@@ -34,6 +34,8 @@ _ALLOWED_BUILD_KWARGS = frozenset(
         "run_id",
         "billable",
         "replicate",
+        "attempt",
+        "canonical",
     }
 )
 
@@ -63,6 +65,8 @@ class CostEventInput:
     run_id: str
     billable: bool = True
     replicate: int = 1
+    attempt: int = 1
+    canonical: bool = True
 
 
 def cost_event_id(
@@ -137,6 +141,8 @@ def build_cost_event(
             "run_id": input_row.run_id,
             "billable": input_row.billable,
             "replicate": input_row.replicate,
+            "attempt": input_row.attempt,
+            "canonical": input_row.canonical,
         }
     else:
         unknown = set(kwargs) - _ALLOWED_BUILD_KWARGS
@@ -163,6 +169,8 @@ def build_cost_event(
     run_id = fields["run_id"]
     billable = fields.get("billable", True)
     replicate = fields.get("replicate", 1)
+    attempt = int(fields.get("attempt", 1))
+    canonical = bool(fields.get("canonical", True))
 
     complete = (
         input_tokens is not None
@@ -221,6 +229,9 @@ def build_cost_event(
         "corpus_version": corpus_version,
         "chat_corpus_version": chat_corpus_version,
         "run_id": run_id,
+        "replicate": replicate,
+        "attempt": attempt,
+        "canonical": canonical,
         "complete": complete,
     }
 

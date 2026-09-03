@@ -212,6 +212,7 @@ class BuildEquivalenceTest(unittest.TestCase):
         }
 
         eq = build_equivalence(models, index, live_model_map={})
+        self.assertEqual(eq["pricing_snapshot_date"], "2026-08-13")
         self.assertEqual(eq["tokenizer_ledger"]["cadence"], "daily")
         self.assertEqual(eq["wrapper_runs"]["cadence"], "daily")
         self.assertEqual(eq["tasks"][0]["task_id"], "A")
@@ -336,6 +337,47 @@ class BuildTokenRunsTest(unittest.TestCase):
         self.assertEqual(len(out), 1)
         self.assertEqual(out[0]["input_chars"], len(TASK_PROMPTS["A"]))
         self.assertFalse(out[0]["output_censored"])
+
+    def test_task_e_density_medians_per_replicate_ratios(self) -> None:
+        rows = [
+            {
+                "run_date": POST_EPOCH,
+                "provider_id": "openai",
+                "tier": "workhorse",
+                "task_id": "E",
+                "replicate": 1,
+                "tokens_in": 90,
+                "tokens_out": 10,
+                "input_chars": 900,
+                "run_status": "ok",
+            },
+            {
+                "run_date": POST_EPOCH,
+                "provider_id": "openai",
+                "tier": "workhorse",
+                "task_id": "E",
+                "replicate": 2,
+                "tokens_in": 180,
+                "tokens_out": 10,
+                "input_chars": 600,
+                "run_status": "ok",
+            },
+            {
+                "run_date": POST_EPOCH,
+                "provider_id": "openai",
+                "tier": "workhorse",
+                "task_id": "E",
+                "replicate": 3,
+                "tokens_in": 330,
+                "tokens_out": 10,
+                "input_chars": 3300,
+                "run_status": "ok",
+            },
+        ]
+        out = build_token_runs(rows)
+        self.assertEqual(len(out), 1)
+        # ratios are 100, 300, 100 -> median = 100
+        self.assertEqual(out[0]["tokens_in_per_1k_chars"], 100.0)
 
 
 class RunDateTest(unittest.TestCase):
