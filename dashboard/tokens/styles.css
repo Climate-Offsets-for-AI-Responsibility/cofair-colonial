@@ -1,5 +1,18 @@
-.section-heading {
-  margin: var(--cofair-space-6) 0 var(--cofair-space-2);
+/* Local measures. The design system ships no page-width token — its own shell
+   owns that — so this page names its own rather than scattering literals. */
+:root {
+  --tokens-page-measure: 76rem;
+}
+
+/* Constrain and centre every band of the page. The tables are wide, but at a
+   full 2560px viewport a chart and an eight-column table stretch until the
+   columns lose any relation to each other. */
+.page-header,
+.page,
+.page-footer {
+  max-width: var(--tokens-page-measure);
+  margin-inline: auto;
+  width: 100%;
 }
 
 /* Pack + measure share a full-width row under the provider chips so the pack
@@ -13,16 +26,15 @@
   min-width: 0;
 }
 
-.control-group--measure {
-  flex: 1 1 22rem;
-  min-width: 16rem;
-}
+/* Every select in the row is sized to its own longest option rather than to
+   the row's slack. `Measure` used to absorb it and read as the row's subject;
+   now that From/To sit beside it, four controls of honest width line up. */
+.control-group--measure { min-width: 0; }
 
-/* The task selects name a task and nothing more, so they are sized to their
-   longest option instead of taking the row's slack — `Measure` is the control
-   that benefits from the extra width. */
 #pack,
-#ledgerTask {
+#metric,
+#ledgerTask,
+.date-select {
   width: auto;
   max-width: 100%;
 }
@@ -42,58 +54,26 @@
 
 /* ── Narrative ─────────────────────────────────────────────────────────── */
 
-/* Capped to a reading measure. The tables above want the full page width; body
-   copy at that width is unreadable, so the prose block sets its own. */
-.prose {
-  max-width: 44rem;
+/* `.prose` itself is shared with /pricing and lives in ../styles.css. Only the
+   Task Corpus block below is particular to this page. */
+
+/* A table cannot be read centred, so the block is centred and its contents are
+   not. Full width of the measure, since the corpus explains the columns. */
+.prose__block {
+  margin: var(--cofair-space-6) auto 0;
+  text-align: left;
 }
 
-.prose__p {
-  margin: var(--cofair-space-3) 0 0;
+/* Auto layout and wrapping labels: the corpus is three short columns that
+   always fit the measure, so it never needs a horizontal scroll. */
+.task-table {
+  table-layout: auto;
+  width: 100%;
 }
 
-/* ── Insights signup ───────────────────────────────────────────────────── */
-
-.signup {
-  display: grid;
-  gap: var(--cofair-space-3);
-  margin: var(--cofair-space-6) 0;
-  padding: var(--cofair-space-5);
-}
-
-.signup__form {
-  display: grid;
-  gap: var(--cofair-space-4);
-}
-
-.signup__row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  gap: var(--cofair-space-4);
-}
-
-.signup__actions {
-  display: flex;
-  align-items: center;
-  gap: var(--cofair-space-3);
-}
-
-/* Off-screen rather than `display: none`: a bot that reads the DOM should still
-   find it, while nothing about it is offered to a person or a screen reader. */
-.signup__honeypot {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
-}
-
-.signup__status:empty {
-  display: none;
+.task-table .cofair-table__th,
+.task-table .cofair-table__td {
+  white-space: normal;
 }
 
 /* ── Costs tab ─────────────────────────────────────────────────────────── */
@@ -138,48 +118,40 @@
   color: var(--cofair-color-success);
 }
 
-/* The expand/caret/label rules that lived here went with the provider→task→
-   request tree (2026-09-04). Costs is a flat table on the Ledger's columns now,
-   so it inherits `.ledger-table`'s fixed layout and cell padding and only needs
-   a width for its own four numeric columns. */
-
-.cost-meta {
-  margin: var(--cofair-space-px) 0 0;
-  color: var(--cofair-color-text-muted);
-}
-
-/* Four money columns instead of the Ledger's two, so the shared fixed layout
-   needs them narrower than `.ledger-col-in` to keep Model from being squeezed. */
-.cost-table .cost-col-num { width: 6rem; }
-
-.cost-table .ledger-col-task { width: 10rem; }
-
-/* Ledger: fit the page width. Shared `.cofair-table` cells are nowrap, which
-   forces a horizontal scroll once model ids and task labels sit side by side. */
+/* Ledger and Costs: fit the page width. Shared `.cofair-table` cells are
+   nowrap, which forces a horizontal scroll once model ids and task labels sit
+   side by side. */
 .ledger-scroll { overflow-x: hidden; }
 
+/* Auto layout, so each column takes the width its own content needs. The
+   per-column widths that used to live here were tuned for the Ledger's six
+   columns and left Costs' eight either cramped or padded; letting the browser
+   distribute them keeps both tables honest as models and task labels change
+   length. Date and Provider stay nowrap so the two identity columns cannot be
+   the ones that wrap. */
 .ledger-table {
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
 }
 
 .ledger-table .cofair-table__th,
 .ledger-table .cofair-table__td {
   padding: var(--cofair-space-1) var(--cofair-space-2);
-}
-
-.ledger-col-date { width: 7.5rem; }
-.ledger-col-provider { width: 10.5rem; }
-.ledger-col-task {
-  width: 11.5rem;
   white-space: normal;
 }
-.ledger-col-in { width: 6.5rem; }
-.ledger-col-density { width: 5.5rem; }
 
-.ledger-col-model {
-  overflow: hidden;
-  text-overflow: ellipsis;
+.ledger-table .col-nowrap { white-space: nowrap; }
+
+/* Where the identity columns end and the measurements begin. */
+.ledger-table .col-divide {
+  border-left: var(--cofair-border-width-thin) solid var(--cofair-color-border-subtle);
+}
+
+/* "flagship" / "workhorse" qualify the provider badge rather than competing
+   with it, so they sit back in italic at muted weight. */
+.tier-tag {
+  color: var(--cofair-color-text-muted);
+  font-style: italic;
 }
 
 /* The last tier left showing cannot be removed, so the pill drops its pointer
@@ -273,70 +245,15 @@
   white-space: nowrap;
 }
 
-/* ── "What it probes" tooltip ──────────────────────────────────────────── */
+/* ── Task cell ─────────────────────────────────────────────────────────── */
 
+/* The "?" tooltip that sat beside the link is gone (2026-09-04): "what it
+   probes" is one click away in the task drawer, and the icon added a second
+   interactive target to every row of a table that only documents the corpus. */
 .task-cell {
   display: inline-flex;
   align-items: center;
   gap: var(--cofair-space-2);
-}
-
-.task-info {
-  position: relative;
-  display: inline-flex;
-}
-
-.task-info__trigger {
-  width: var(--cofair-space-4);
-  height: var(--cofair-space-4);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: var(--cofair-border-width-thin) solid var(--cofair-color-border);
-  border-radius: var(--cofair-radius-pill);
-  background: transparent;
-  color: var(--cofair-color-text-muted);
-  font-family: var(--cofair-font-sans);
-  font-size: var(--cofair-font-size-xs);
-  line-height: 1;
-  cursor: help;
-}
-
-.task-info__trigger:hover {
-  border-color: var(--cofair-color-primary);
-  color: var(--cofair-color-primary);
-}
-
-.task-info__trigger:focus-visible {
-  outline: var(--cofair-border-width-medium) solid var(--cofair-color-primary);
-  outline-offset: var(--cofair-space-px);
-}
-
-/* Hidden from sight but not from the accessibility tree, so the `aria-describedby`
-   on the trigger still reads the text out when the tooltip is not shown. */
-/* Left-anchored rather than centred on the icon: the first column sits close to
-   the viewport edge, and a centred bubble runs off it and truncates the text. */
-.task-info__bubble {
-  position: absolute;
-  bottom: calc(100% + var(--cofair-space-1));
-  left: 0;
-  width: max-content;
-  max-width: min(28rem, 60vw);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 120ms ease-out;
-  pointer-events: none;
-}
-
-.task-info:hover .task-info__bubble,
-.task-info__trigger:focus-visible + .task-info__bubble {
-  opacity: 1;
-  visibility: visible;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .task-info__bubble { transition: none; }
 }
 
 /* ── Task link ─────────────────────────────────────────────────────────── */
@@ -470,3 +387,17 @@
 @media (max-width: 40rem) {
   .cost-cards { grid-template-columns: 1fr; }
 }
+
+/* ── Footer ────────────────────────────────────────────────────────────── */
+
+/* The marketing site's footer, reproduced from `@cofair/ui`'s `SiteFooter`
+   skin plus the `.footer-content` stack that wraps it there, so /tokens closes
+   the same way every other COFAIR surface does. */
+.footer-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cofair-space-2);
+  max-width: var(--dash-prose-measure);
+}
+
+.footer-content__link { color: var(--cofair-color-primary); }

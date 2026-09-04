@@ -14,6 +14,7 @@ import {
   priceAtOrBefore,
   sortDatasetsForDate,
 } from "./labels.js";
+import { setupSignupForm } from "./signup.js";
 
 const Chart = window.Chart;
 
@@ -1085,6 +1086,10 @@ function bindControls() {
 // ---- init ------------------------------------------------------------------
 
 async function main() {
+  // Bound before the data load, which can bail out: the narrative and its
+  // signup are static and should still work on a day the artifacts don't.
+  setupSignupForm("pricing");
+
   try {
     await loadData();
   } catch (e) {

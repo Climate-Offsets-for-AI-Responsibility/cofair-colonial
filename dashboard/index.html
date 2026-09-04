@@ -125,6 +125,85 @@
             <ul class="chart-legend__list" id="trendLegendList"></ul>
           </aside>
         </div>
+
+        <section class="prose" aria-labelledby="tracking-heading">
+          <h2 class="cofair-heading cofair-heading--3 section-heading" id="tracking-heading">
+            What we&rsquo;re tracking
+          </h2>
+          <p class="cofair-text cofair-text--xs cofair-text--muted prose__updated">
+            (updated September 4th, 2026)
+          </p>
+          <p class="cofair-text prose__p">
+            Our claim is that we are in the subsidiary phase of Artificial Intelligence providers.
+            Providers are scrambling to
+            <a class="prose__link" href="https://cofair.org/datacenters">build as much
+            infrastructure</a> as they can afford to accommodate increased demand down the road as
+            AI becomes more and more ubiquitous. As we saw in ride-sharing and delivery services
+            companies in the early and mid-2010s, prices for these services were artificially low
+            in an effort to gain market share.
+          </p>
+          <p class="cofair-text prose__p">
+            These pricing metrics are all publicly-available as a &lsquo;cost per 1m tokens&rsquo;
+            on each provider&rsquo;s pricing pages and documentation. However, this is only half the
+            metric to determine which models are indeed &lsquo;low cost&rsquo;. Total cost factors
+            in <a class="prose__link" href="https://cofair.org/tokens">how efficient they are in
+            providing responses</a>, as the price per token multiplied by tokens consumed is the
+            true measure of consumer spend.
+          </p>
+
+          <div class="cofair-card signup" id="signupCard">
+            <h3 class="cofair-heading cofair-heading--4" id="signup-heading">
+              Receive insights and updates
+            </h3>
+            <form class="signup__form" id="signupForm" novalidate>
+              <div class="signup__row">
+                <div class="cofair-field">
+                  <label class="cofair-label" for="signupName">
+                    Your name<span class="cofair-label__required" aria-hidden="true">*</span>
+                  </label>
+                  <input class="cofair-input" id="signupName" name="name"
+                         autocomplete="name" required />
+                </div>
+                <div class="cofair-field">
+                  <label class="cofair-label" for="signupEmail">
+                    Work email<span class="cofair-label__required" aria-hidden="true">*</span>
+                  </label>
+                  <input class="cofair-input" id="signupEmail" name="email" type="email"
+                         autocomplete="email" required />
+                </div>
+              </div>
+              <p class="signup__honeypot" aria-hidden="true">
+                <label>
+                  Leave this field empty
+                  <input type="text" name="bot-field" tabindex="-1" autocomplete="off" />
+                </label>
+              </p>
+              <div class="signup__actions">
+                <button type="submit" class="cofair-btn cofair-btn--accent cofair-btn--lg"
+                        id="signupSubmit">
+                  Send
+                </button>
+              </div>
+            </form>
+            <div class="signup__status" id="signupStatus" role="status" aria-live="polite"></div>
+          </div>
+
+          <h3 class="cofair-heading cofair-heading--4 section-heading">Early findings</h3>
+          <p class="cofair-text prose__p">
+            There is not as much change as I had anticipated. The models become obsolete and retired
+            before they drop in price. As of writing, only OpenAI actually drops prices in advance
+            of a retiring model. Instead, the industry standard tends to be to introduce a new model
+            (at a slightly higher price per 1m tokens) and retire the old one.
+          </p>
+          <p class="cofair-text prose__p">
+            Anthropic&rsquo;s flagship models are consistently the priciest on the board, rivaling
+            Image creation and realtime audio models from Google and OpenAI. On the other side of
+            the spectrum, Amazon&rsquo;s Titan and Nova models are pennies on the dollar in
+            comparison. It is still early days, and we&rsquo;re still in an expanding industry.
+            Check back here for details &ndash; we scrape everyday and will keep this page
+            up-to-date.
+          </p>
+        </section>
       </div>
 
       <div class="cofair-tabs__panel" role="tabpanel" id="panel-changes"

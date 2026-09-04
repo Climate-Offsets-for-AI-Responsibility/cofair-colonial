@@ -95,6 +95,14 @@
                 <option value="ledger_fixed_overhead">Fixed request overhead</option>
               </select>
             </div>
+            <div class="cofair-field control-group">
+              <label class="cofair-label" for="trendFrom">From</label>
+              <select class="cofair-select date-select" id="trendFrom"></select>
+            </div>
+            <div class="cofair-field control-group">
+              <label class="cofair-label" for="trendTo">To</label>
+              <select class="cofair-select date-select" id="trendTo"></select>
+            </div>
           </div>
         </div>
 
@@ -117,11 +125,35 @@
         </div>
         <p class="cofair-help metric-note" id="metricNote"></p>
 
-        <section>
-          <h2 class="cofair-heading cofair-heading--4 section-heading">Task Corpus</h2>
-          <div class="cofair-card">
-            <div class="cofair-table__scroll">
-              <table class="cofair-table cofair-table--striped">
+        <section class="prose" aria-labelledby="tracking-heading">
+          <h2 class="cofair-heading cofair-heading--3 section-heading" id="tracking-heading">
+            What we&rsquo;re tracking
+          </h2>
+          <p class="cofair-text cofair-text--xs cofair-text--muted prose__updated">
+            (updated September 4th, 2026)
+          </p>
+          <p class="cofair-text prose__p">
+            Our claim is that we are in the subsidiary phase of Artificial Intelligence providers.
+            Providers are scrambling to
+            <a class="prose__link" href="https://cofair.org/datacenters">build as much
+            infrastructure</a> as they can afford to accommodate increased demand down the road as
+            AI becomes more and more ubiquitous. As we saw in ride-sharing and delivery services
+            companies in the early and mid-2010s, prices for these services were artificially low
+            in an effort to gain market share.
+          </p>
+          <p class="cofair-text prose__p">
+            These pricing metrics are all publicly-available as a
+            <a class="prose__link" href="https://cofair.org/pricing">&lsquo;cost per 1m
+            tokens&rsquo;</a> on each provider&rsquo;s pricing pages and documentation. However,
+            this is only half the metric to determine which models are indeed &lsquo;low
+            cost&rsquo;. Total cost factors in how efficient they are in providing responses, as
+            the price per token multiplied by tokens consumed is the true measure of consumer
+            spend.
+          </p>
+          <div class="prose__block">
+            <h3 class="cofair-heading cofair-heading--4 section-heading">Task Corpus</h3>
+            <div class="cofair-card">
+              <table class="cofair-table cofair-table--striped task-table">
                 <thead class="cofair-table__head">
                   <tr class="cofair-table__row">
                     <th class="cofair-table__th" scope="col">Task</th>
@@ -133,25 +165,7 @@
               </table>
             </div>
           </div>
-        </section>
 
-        <section class="prose" aria-labelledby="tracking-heading">
-          <h2 class="cofair-heading cofair-heading--3 section-heading" id="tracking-heading">
-            What we&rsquo;re tracking
-          </h2>
-          <p class="cofair-text prose__p">
-            Our claim is that we are in the subsidiary phase of Artificial Intelligence providers.
-            Providers are scrambling to build as much infrastructure as they can afford to
-            accommodate increased demand down the road as AI becomes more and more ubiquitous.
-          </p>
-          <p class="cofair-text prose__p">
-            As we saw in ride-sharing and delivery services companies in the early and mid-2010s,
-            society was granted a subsidiary phase in an effort to gain market share. However,
-            unlike the publicly-available cost per 1m tokens on provider&rsquo;s pricing pages and
-            documentation, this is only half the metric in determining which models are &lsquo;low
-            cost&rsquo;. It is how efficient they are in providing responses as well, as the price
-            per token multiplied by tokens consumed is the true measure of consumer cost.
-          </p>
           <p class="cofair-text prose__p">
             We&rsquo;ve standardized six different tasks that test different dimensions of language
             models. Tasks of rationalization, logic, call-and-response are issued to both a flagship
@@ -195,7 +209,8 @@
                 </label>
               </p>
               <div class="signup__actions">
-                <button type="submit" class="cofair-btn cofair-btn--accent" id="signupSubmit">
+                <button type="submit" class="cofair-btn cofair-btn--accent cofair-btn--lg"
+                        id="signupSubmit">
                   Send
                 </button>
               </div>
@@ -214,15 +229,20 @@
             number of expended tokens increase as well?
           </p>
 
-          <h3 class="cofair-heading cofair-heading--4 section-heading">
-            Cost alignment, but token drift
-          </h3>
+          <h3 class="cofair-heading cofair-heading--4 section-heading">Early findings</h3>
           <p class="cofair-text prose__p">
             We are still in the early stages of our analysis, but there exists a significant
             difference in the token expenditure across these half-dozen providers. A 10x
-            differential in token expenditure between the models from Grok/xAI and Google suggests
-            that, despite a relative pricing alignment on Flagship vs Workhorse (~15% variance)
-            there exists a significant difference in cost-per-usage.
+            differential in token expenditure for Full Suite of Tasks between the models from
+            Grok/xAI and Google suggests that, despite a relative pricing alignment on Flagship vs
+            Workhorse (~15% variance) there exists a significant difference in cost-per-usage.
+          </p>
+          <p class="cofair-text prose__p">
+            DeepSeek is an absolute &lsquo;token hog&rsquo; when it comes to Task C, the coding
+            task. Its consumption of ~33k tokens is nearly 10x of the majority of other providers.
+            Again, we make no assumption of quality through these exercises, but is this
+            discrepancy an indication of the proficiency for different models against specific task
+            types?
           </p>
         </section>
       </div>
@@ -245,11 +265,11 @@
             </div>
             <div class="cofair-field control-group">
               <label class="cofair-label" for="ledgerFrom">From</label>
-              <input class="cofair-input" type="date" id="ledgerFrom" />
+              <select class="cofair-select date-select" id="ledgerFrom"></select>
             </div>
             <div class="cofair-field control-group">
               <label class="cofair-label" for="ledgerTo">To</label>
-              <input class="cofair-input" type="date" id="ledgerTo" />
+              <select class="cofair-select date-select" id="ledgerTo"></select>
             </div>
           </div>
         </div>
@@ -258,12 +278,12 @@
             <table class="cofair-table cofair-table--striped ledger-table">
               <thead class="cofair-table__head">
                 <tr class="cofair-table__row">
-                  <th class="cofair-table__th ledger-col-date" scope="col">Date</th>
-                  <th class="cofair-table__th ledger-col-provider" scope="col">Provider</th>
-                  <th class="cofair-table__th ledger-col-model" scope="col">Model</th>
-                  <th class="cofair-table__th ledger-col-task" scope="col">Task</th>
-                  <th class="cofair-table__th cofair-table__th--num ledger-col-in" scope="col">Prompt tokens</th>
-                  <th class="cofair-table__th cofair-table__th--num ledger-col-density" scope="col">/ 1K chars</th>
+                  <th class="cofair-table__th" scope="col">Date</th>
+                  <th class="cofair-table__th" scope="col">Provider</th>
+                  <th class="cofair-table__th" scope="col">Model</th>
+                  <th class="cofair-table__th" scope="col">Task</th>
+                  <th class="cofair-table__th cofair-table__th--num col-divide" scope="col">Prompt tokens</th>
+                  <th class="cofair-table__th cofair-table__th--num" scope="col">/ 1K chars</th>
                 </tr>
               </thead>
               <tbody class="cofair-table__body" id="ledgerBody"></tbody>
@@ -307,11 +327,11 @@
           <div class="pack-measure ledger-filters">
             <div class="cofair-field control-group">
               <label class="cofair-label" for="costFrom">From</label>
-              <input class="cofair-input" type="date" id="costFrom" />
+              <select class="cofair-select date-select" id="costFrom"></select>
             </div>
             <div class="cofair-field control-group">
               <label class="cofair-label" for="costTo">To</label>
-              <input class="cofair-input" type="date" id="costTo" />
+              <select class="cofair-select date-select" id="costTo"></select>
             </div>
           </div>
         </div>
@@ -322,14 +342,14 @@
             <table class="cofair-table cofair-table--striped ledger-table cost-table">
               <thead class="cofair-table__head">
                 <tr class="cofair-table__row">
-                  <th class="cofair-table__th ledger-col-date" scope="col">Date</th>
-                  <th class="cofair-table__th ledger-col-provider" scope="col">Provider</th>
-                  <th class="cofair-table__th ledger-col-model" scope="col">Model</th>
-                  <th class="cofair-table__th ledger-col-task" scope="col">Task</th>
-                  <th class="cofair-table__th cofair-table__th--num cost-col-num" scope="col">Input</th>
-                  <th class="cofair-table__th cofair-table__th--num cost-col-num" scope="col">Output</th>
-                  <th class="cofair-table__th cofair-table__th--num cost-col-num" scope="col">Supporting</th>
-                  <th class="cofair-table__th cofair-table__th--num cost-col-num" scope="col">Total</th>
+                  <th class="cofair-table__th" scope="col">Date</th>
+                  <th class="cofair-table__th" scope="col">Provider</th>
+                  <th class="cofair-table__th" scope="col">Model</th>
+                  <th class="cofair-table__th" scope="col">Task</th>
+                  <th class="cofair-table__th cofair-table__th--num col-divide" scope="col">Input</th>
+                  <th class="cofair-table__th cofair-table__th--num" scope="col">Output</th>
+                  <th class="cofair-table__th cofair-table__th--num" scope="col">Supporting</th>
+                  <th class="cofair-table__th cofair-table__th--num" scope="col">Total</th>
                 </tr>
               </thead>
               <tbody class="cofair-table__body" id="costBody"></tbody>
@@ -344,6 +364,23 @@
       </div>
     </div>
   </main>
+
+  <footer class="cofair-site-footer page-footer">
+    <div class="footer-content">
+      <p class="cofair-text cofair-text--muted">
+        COFAIR is a donor&ndash;recipient AI token exchange for climate non-profits. Organizations
+        donate unused tokens, and registered 501(c)(3) environmental non-profits receive subsidized
+        access to frontier-tier models.
+      </p>
+      <p class="cofair-text cofair-text--muted">
+        Contact:
+        <a class="footer-content__link page-footer__link" href="mailto:hello@cofair.org">hello@cofair.org</a>
+      </p>
+      <p class="cofair-text cofair-text--muted">
+        &copy; <span id="footerYear">2026</span> COFAIR. All rights reserved.
+      </p>
+    </div>
+  </footer>
 
   <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
   <aside

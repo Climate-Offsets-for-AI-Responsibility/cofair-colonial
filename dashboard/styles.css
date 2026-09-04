@@ -457,6 +457,87 @@ a { color: var(--cofair-color-primary); }
   max-width: var(--cofair-content-max-width-narrow);
 }
 
+/* ── Narrative + insights signup (shared with /tokens) ─────────────────── */
+
+/* No page-width token ships with the design system — its own shell owns that —
+   so the reading measure is named here rather than scattered as literals. */
+:root {
+  --dash-prose-measure: 44rem;
+  --dash-prose-leading: 1.65;
+}
+
+.section-heading {
+  margin: var(--cofair-space-6) 0 var(--cofair-space-2);
+}
+
+/* Centred in the page and capped to a reading measure. The narrative is the
+   page's editorial voice rather than another data surface, so it is set
+   centred, one column, a step up from the UI's body size. */
+.prose {
+  max-width: var(--dash-prose-measure);
+  margin-inline: auto;
+  text-align: center;
+}
+
+.prose__p {
+  margin: var(--cofair-space-4) auto 0;
+  font-size: var(--cofair-font-size-lg);
+  line-height: var(--dash-prose-leading);
+}
+
+.prose__link { color: var(--cofair-color-primary); }
+
+/* The as-of date belongs to the heading above it, so it sits tight to it and
+   reads as a caption rather than as the first line of the narrative. */
+.prose__updated {
+  margin: 0;
+}
+
+/* Labels and inputs are left-aligned even inside the centred narrative — a
+   form is filled in, not read. */
+.signup {
+  display: grid;
+  gap: var(--cofair-space-3);
+  margin: var(--cofair-space-6) 0;
+  padding: var(--cofair-space-5);
+  text-align: left;
+}
+
+.signup__form {
+  display: grid;
+  gap: var(--cofair-space-4);
+}
+
+.signup__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--cofair-space-4);
+}
+
+.signup__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--cofair-space-3);
+}
+
+/* Off-screen rather than `display: none`: a bot that reads the DOM should still
+   find it, while nothing about it is offered to a person or a screen reader. */
+.signup__honeypot {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.signup__status:empty {
+  display: none;
+}
+
 /* ── Footer ────────────────────────────────────────────────────────────── */
 
 .page-footer {

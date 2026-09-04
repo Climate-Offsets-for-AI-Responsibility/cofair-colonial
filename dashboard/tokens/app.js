@@ -16,6 +16,7 @@ import {
   resolveCostDetailRequestState,
   sortDatasetsForDate,
 } from "../labels.js";
+import { setupSignupForm } from "../signup.js";
 
 const Chart = window.Chart;
 
@@ -35,6 +36,9 @@ const state = {
   // and the recipient pays for. Density and the overhead/content split explain a
   // move; they are diagnostics under the headline, not the headline.
   metric: "tokens_total",
+  // Trends tab date window, on the same From/To model as the other two tabs.
+  trendFrom: "",
+  trendTo: "",
   // Ledger tab filters. `ledgerTask` is "" for every task; the dates are
   // ISO days clamped to the observed ledger window (see ledgerDates()).
   ledgerTask: "",
@@ -263,6 +267,62 @@ function fmtDate(value) {
   return Number.isNaN(parsed.getTime()) ? value : DATE_FMT.format(parsed);
 }
 
+/** Today as a local ISO day, matching the form the pipeline writes dates in. */
+function todayIso() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+/**
+ * The days a From/To picker may offer: every observed day, plus today.
+ *
+ * Observed days only, because a picker offering a date the pipeline never ran
+ * reads as a gap in the calendar rather than a gap in the record. Today is
+ * always included so "To" can sit on it before the day's run has landed.
+ */
+function dateSelectOptions(dates) {
+  return [...new Set([...dates, todayIso()].filter(Boolean))].sort();
+}
+
+/**
+ * Clamp a From/To pair to the offerable days, newest day standing in for "now".
+ *
+ * `to` falls to the newest option — today — whenever the reader has not chosen
+ * otherwise, so a fresh visit reads as "everything up to today" rather than
+ * "up to whenever the last run happened to land". An inverted range would
+ * silently show nothing, so the edited bound carries the other one with it.
+ */
+function resolveDateRange(from, to, options) {
+  if (!options.length) return { from: "", to: "" };
+  const next = {
+    from: options.includes(from) ? from : options[0],
+    to: options.includes(to) ? to : options[options.length - 1],
+  };
+  if (next.from > next.to) next.to = next.from;
+  return next;
+}
+
+/**
+ * Fill a date `<select>`, labelled exactly as the tables label dates.
+ *
+ * A native `<input type="date">` renders per-locale — `09/04/2026` — which is a
+ * different vocabulary from the `Sep 4, 2026` in every cell beside it, so the
+ * control is a select over known days instead.
+ */
+function fillDateSelect(id, options, value) {
+  const select = document.getElementById(id);
+  if (!select) return;
+  select.innerHTML = options
+    .slice()
+    .reverse()
+    .map((date) => `<option value="${esc(date)}">${esc(fmtDate(date))}</option>`)
+    .join("");
+  select.value = value;
+  select.disabled = !options.length;
+}
+
 function packTaskIds() {
   return state.eq?.task_packs?.[state.pack] || [];
 }
@@ -276,9 +336,21 @@ function meterTaskIds() {
   return packTaskIds().filter((id) => generating.has(id));
 }
 
-function packTasks() {
-  const byId = new Map((state.eq?.tasks || []).map((task) => [task.task_id, task]));
-  return packTaskIds().map((id) => byId.get(id)).filter(Boolean);
+/**
+ * The whole task corpus, in suite order.
+ *
+ * Pack-independent on purpose: the Task Corpus table documents what the suite
+ * is made of, so narrowing the chart to one task should not shrink the table
+ * that explains the other five.
+ */
+function corpusTasks() {
+  const tasks = state.eq?.tasks || [];
+  const byId = new Map(tasks.map((task) => [task.task_id, task]));
+  const ordered = (state.eq?.task_packs?.suiteLong || [])
+    .map((id) => byId.get(id))
+    .filter(Boolean);
+  const seen = new Set(ordered.map((task) => task.task_id));
+  return [...ordered, ...tasks.filter((task) => !seen.has(task.task_id))];
 }
 
 // ---- provider visibility ---------------------------------------------------
@@ -337,6 +409,30 @@ function cycleProviderMode(providerId) {
  * Meter: require every task in the pack; density recomputed from summed tokens.
  * Fit: fitted overhead from daily tokenizer ledger.
  */
+/** Every day the chart could plot, from either of its two sources. */
+function trendDates() {
+  const dates = new Set();
+  for (const row of state.eq?.token_runs || []) if (row.date) dates.add(row.date);
+  for (const fit of state.eq?.tokenizer_ledger?.fits || []) if (fit.date) dates.add(fit.date);
+  return [...dates].sort();
+}
+
+function inTrendRange(date) {
+  return (
+    (!state.trendFrom || (date || "") >= state.trendFrom) &&
+    (!state.trendTo || (date || "") <= state.trendTo)
+  );
+}
+
+function setupTrendFilters() {
+  const options = dateSelectOptions(trendDates());
+  const range = resolveDateRange(state.trendFrom, state.trendTo, options);
+  state.trendFrom = range.from;
+  state.trendTo = range.to;
+  fillDateSelect("trendFrom", options, range.from);
+  fillDateSelect("trendTo", options, range.to);
+}
+
 function aggregate() {
   const metric = METRICS[state.metric];
   const source = metric.source || "meter";
@@ -355,7 +451,9 @@ function aggregate() {
  */
 function aggregateFit() {
   const points = (state.eq?.tokenizer_ledger?.fits || [])
-    .filter((fit) => fit.fit_ok && panelVisible(fit.provider_id, fit.tier))
+    .filter(
+      (fit) => fit.fit_ok && inTrendRange(fit.date) && panelVisible(fit.provider_id, fit.tier),
+    )
     .map((fit) => ({
       date: fit.date,
       provider_id: fit.provider_id,
@@ -384,6 +482,7 @@ function aggregateMeter() {
 
   for (const row of state.eq?.token_runs || []) {
     if (!wanted.has(row.task_id)) continue;
+    if (!inTrendRange(row.date)) continue;
     if (!panelVisible(row.provider_id, row.tier)) continue;
 
     const key = `${row.date}|${row.provider_id}|${row.tier}`;
@@ -1050,34 +1149,29 @@ function renderChart(points) {
   canvas.addEventListener("mouseleave", clearChartHover);
 }
 
-/**
- * "What it probes" as a hover/focus tooltip beside the task link.
- *
- * Reuses the design system's `.cofair-tooltip` skin rather than introducing a
- * tooltip of its own (hub R13); only the trigger and positioning are local.
- */
-function probeTooltip(taskId, probes) {
-  const id = `probes-${taskId}`;
-  return `<span class="task-info">
-    <button type="button" class="task-info__trigger" aria-describedby="${esc(id)}"
-            aria-label="What task ${esc(taskId)} probes">?</button>
-    <span class="cofair-tooltip task-info__bubble" role="tooltip" id="${esc(id)}">${esc(probes)}</span>
-  </span>`;
-}
-
-function taskRowHtml({ taskId, label, probes, inputChars, inputWords }) {
+/** "What it probes" is reached by opening the task, not by a tooltip beside it. */
+function taskRowHtml({ taskId, label, inputChars, inputWords }) {
   return `<tr class="cofair-table__row">
     <td class="cofair-table__td">
       <span class="task-cell">
         <button type="button" class="task-link" data-task="${esc(taskId)}">
           ${esc(taskId)} · ${esc(label)}
         </button>
-        ${probeTooltip(taskId, probes)}
       </span>
     </td>
     <td class="cofair-table__td cofair-table__td--num">${inputChars.toLocaleString()}</td>
     <td class="cofair-table__td cofair-table__td--num">${inputWords.toLocaleString()}</td>
   </tr>`;
+}
+
+/**
+ * The tier beside a provider badge.
+ *
+ * Italic and muted because the badge is what identifies the row; "flagship" and
+ * "workhorse" qualify it, and reading at the same weight they competed with it.
+ */
+function tierTag(tier) {
+  return `<em class="tier-tag">${esc(tier || "")}</em>`;
 }
 
 function ledgerTaskLabels() {
@@ -1129,7 +1223,7 @@ function ledgerDates() {
 function setupLedgerFilters() {
   const rows = ledgerAllRows();
   const labels = ledgerTaskLabels();
-  const { first, last } = ledgerDates();
+  const { all } = ledgerDates();
 
   const select = document.getElementById("ledgerTask");
   if (select) {
@@ -1144,18 +1238,12 @@ function setupLedgerFilters() {
     select.value = state.ledgerTask;
   }
 
-  state.ledgerFrom = first;
-  state.ledgerTo = last;
-  for (const [id, value] of [
-    ["ledgerFrom", first],
-    ["ledgerTo", last],
-  ]) {
-    const input = document.getElementById(id);
-    if (!input) continue;
-    input.min = first;
-    input.max = last;
-    input.value = value;
-  }
+  const options = dateSelectOptions(all);
+  const range = resolveDateRange(state.ledgerFrom, state.ledgerTo, options);
+  state.ledgerFrom = range.from;
+  state.ledgerTo = range.to;
+  fillDateSelect("ledgerFrom", options, range.from);
+  fillDateSelect("ledgerTo", options, range.to);
 }
 
 function renderLedger() {
@@ -1187,12 +1275,12 @@ function renderLedger() {
       const task = taskLabel ? `${row.task_id} · ${taskLabel}` : row.task_id;
       const model = row.model || "—";
       return `<tr class="cofair-table__row">
-        <td class="cofair-table__td ledger-col-date">${esc(fmtDate(row.date))}</td>
-        <td class="cofair-table__td ledger-col-provider">${providerBadge(row.provider_id)} ${esc(row.tier)}</td>
-        <td class="cofair-table__td ledger-col-model" title="${esc(model)}">${esc(model)}</td>
-        <td class="cofair-table__td ledger-col-task">${esc(task)}</td>
-        <td class="cofair-table__td cofair-table__td--num ledger-col-in">${Number(row.tokens_in || 0).toLocaleString()}</td>
-        <td class="cofair-table__td cofair-table__td--num ledger-col-density">${esc(density)}</td>
+        <td class="cofair-table__td col-nowrap">${esc(fmtDate(row.date))}</td>
+        <td class="cofair-table__td col-nowrap">${providerBadge(row.provider_id)} ${tierTag(row.tier)}</td>
+        <td class="cofair-table__td">${esc(model)}</td>
+        <td class="cofair-table__td">${esc(task)}</td>
+        <td class="cofair-table__td cofair-table__td--num col-divide">${Number(row.tokens_in || 0).toLocaleString()}</td>
+        <td class="cofair-table__td cofair-table__td--num">${esc(density)}</td>
       </tr>`;
     })
     .join("");
@@ -1200,12 +1288,11 @@ function renderLedger() {
 
 function renderTaskTable() {
   const body = document.getElementById("taskBody");
-  const rows = packTasks()
+  const rows = corpusTasks()
     .map((task) =>
       taskRowHtml({
         taskId: task.task_id,
         label: task.label,
-        probes: task.probes,
         inputChars: task.input_chars,
         inputWords: task.input_words,
       }),
@@ -1214,7 +1301,7 @@ function renderTaskTable() {
 
   body.innerHTML =
     rows ||
-    `<tr class="cofair-table__row"><td class="cofair-table__td" colspan="3">No tasks in this pack.</td></tr>`;
+    `<tr class="cofair-table__row"><td class="cofair-table__td" colspan="3">No tasks published yet.</td></tr>`;
 
   body.querySelectorAll(".task-link").forEach((button) => {
     button.addEventListener("click", () => openDrawer(button.dataset.task, button));
@@ -1338,37 +1425,8 @@ function costComparisonTone(comparison) {
   return delta > 0 ? "increase" : "decrease";
 }
 
-function diagnosticCount(node, field) {
-  const explicit = parseOptionalNumber(node?.[`${field}_count`]);
-  if (explicit != null) return explicit;
-  const list = node?.[`${field}s`];
-  return Array.isArray(list) ? list.length : 0;
-}
-
-function costDiagnosticText(node) {
-  const parts = [];
-  const missing = diagnosticCount(node, "missing_request");
-  const duplicate = diagnosticCount(node, "duplicate_request");
-  const unexpected = diagnosticCount(node, "unexpected_request");
-  const incomplete = parseOptionalNumber(node?.incomplete_event_count) || 0;
-  if (missing) parts.push(`${missing} missing scheduled request${missing === 1 ? "" : "s"}`);
-  if (duplicate) parts.push(`${duplicate} duplicate request${duplicate === 1 ? "" : "s"}`);
-  if (unexpected) parts.push(`${unexpected} unexplained charge${unexpected === 1 ? "" : "s"}`);
-  if (incomplete) parts.push(`${incomplete} unpriced request${incomplete === 1 ? "" : "s"}`);
-  return parts.join(" · ");
-}
-
 function costDetailDates() {
   return state.costDetailIndex?.dates || [];
-}
-
-/** The published cost window — what the date pickers may legitimately offer. */
-function costDateBounds() {
-  const dates = costDetailDates()
-    .map((entry) => entry.date)
-    .filter(Boolean)
-    .sort();
-  return { first: dates[0] || "", last: dates[dates.length - 1] || "" };
 }
 
 /** Published dates inside the selected From/To range, oldest first. */
@@ -1483,24 +1541,21 @@ async function loadCostDetail(date) {
  * pipeline never ran.
  */
 function setupCostFilters() {
-  const { first, last } = costDateBounds();
-  if (!state.costFrom || state.costFrom < first || state.costFrom > last) state.costFrom = first;
-  if (!state.costTo || state.costTo > last || state.costTo < first) state.costTo = last;
-  // A range the reader inverted would silently show nothing; treat the edited
-  // bound as the intent and carry the other one with it.
-  if (state.costFrom && state.costTo && state.costFrom > state.costTo) state.costTo = state.costFrom;
+  const published = costDetailDates()
+    .map((entry) => entry.date)
+    .filter(Boolean);
+  // The index arrives over the network, and the loading render runs first. With
+  // no published days yet the only option is today, so resolving now would pin
+  // From to today and then keep it there — `to` looks valid once the real days
+  // land, so nothing would move it back. Leave the range unbounded until then.
+  if (!published.length) return;
 
-  for (const [id, value] of [
-    ["costFrom", state.costFrom],
-    ["costTo", state.costTo],
-  ]) {
-    const input = document.getElementById(id);
-    if (!input) continue;
-    input.min = first;
-    input.max = last;
-    input.value = value;
-    input.disabled = !first;
-  }
+  const options = dateSelectOptions(published);
+  const range = resolveDateRange(state.costFrom, state.costTo, options);
+  state.costFrom = range.from;
+  state.costTo = range.to;
+  fillDateSelect("costFrom", options, range.from);
+  fillDateSelect("costTo", options, range.to);
 }
 
 async function ensureCostsReady() {
@@ -1577,37 +1632,26 @@ function renderCostRows(dates) {
     for (const providerTier of detail.provider_tiers || []) {
       if (!panelVisible(providerTier.provider_id, providerTier.tier)) continue;
       for (const task of providerTier.tasks || []) {
-        const notes = [];
-        if (!task.complete) notes.push("Incomplete");
-        const diagnostics = costDiagnosticText(task);
-        if (diagnostics) notes.push(diagnostics);
         const label = tasksById.get(task.task_id);
         const taskText = label ? `${task.task_id} · ${label}` : task.task_id;
         const model = taskModelLabel(task, providerTier);
         rows.push(`<tr class="cofair-table__row">
-          <td class="cofair-table__td ledger-col-date">${esc(fmtDate(date))}</td>
-          <td class="cofair-table__td ledger-col-provider">${providerBadge(
+          <td class="cofair-table__td col-nowrap">${esc(fmtDate(date))}</td>
+          <td class="cofair-table__td col-nowrap">${providerBadge(
             providerTier.provider_id,
-          )} ${esc(providerTier.tier)}</td>
-          <td class="cofair-table__td ledger-col-model" title="${esc(model)}">${esc(model)}</td>
-          <td class="cofair-table__td ledger-col-task">
-            ${esc(taskText)}
-            ${
-              notes.length
-                ? `<p class="cofair-text cofair-text--xs cost-meta">${esc(notes.join(" · "))}</p>`
-                : ""
-            }
-          </td>
-          <td class="cofair-table__td cofair-table__td--num cost-col-num">${esc(
+          )} ${tierTag(providerTier.tier)}</td>
+          <td class="cofair-table__td">${esc(model)}</td>
+          <td class="cofair-table__td">${esc(taskText)}</td>
+          <td class="cofair-table__td cofair-table__td--num col-divide">${esc(
             formatEstimatedSpend(task.input_cost_usd),
           )}</td>
-          <td class="cofair-table__td cofair-table__td--num cost-col-num">${esc(
+          <td class="cofair-table__td cofair-table__td--num">${esc(
             formatEstimatedSpend(task.output_cost_usd),
           )}</td>
-          <td class="cofair-table__td cofair-table__td--num cost-col-num">${esc(
+          <td class="cofair-table__td cofair-table__td--num">${esc(
             formatEstimatedSpend(task.supporting_cost_usd),
           )}</td>
-          <td class="cofair-table__td cofair-table__td--num cost-col-num">${esc(
+          <td class="cofair-table__td cofair-table__td--num">${esc(
             formatEstimatedSpend(task.estimated_spend_usd),
           )}</td>
         </tr>`);
@@ -1687,83 +1731,6 @@ function renderCosts() {
   renderCostsStatus(statusText);
 }
 
-// ---- insights signup -------------------------------------------------------
-
-// The handler lives on cofair-marketing, not here: this page is static and
-// colonial has no mail or sheet credentials, while marketing already holds the
-// Resend key and is the origin `cofair.org/tokens/` is served through. Absolute
-// on purpose — the page is also reachable at cofair-colonial.netlify.app, where
-// a relative path would post into a site with no such route (the function sends
-// CORS headers for that case).
-const SIGNUP_ENDPOINT = "https://cofair.org/api/insights-signup";
-
-function setSignupStatus(tone, title, body) {
-  const status = document.getElementById("signupStatus");
-  if (!status) return;
-  if (!tone) {
-    status.innerHTML = "";
-    return;
-  }
-  status.innerHTML = `<div class="cofair-callout cofair-callout--${esc(tone)}">
-    <p class="cofair-callout__title">${esc(title)}</p>
-    ${body ? `<p class="cofair-callout__body">${esc(body)}</p>` : ""}
-  </div>`;
-}
-
-function setupSignupForm() {
-  const form = document.getElementById("signupForm");
-  const submit = document.getElementById("signupSubmit");
-  if (!form || !submit) return;
-
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    // `novalidate` is set so the callout carries the message rather than a
-    // browser bubble, which means the check has to be made here.
-    if (!form.reportValidity()) return;
-
-    const data = new FormData(form);
-    // A filled honeypot is a bot. Answer exactly as success does, so nothing is
-    // learned from the difference.
-    if (String(data.get("bot-field") || "").trim()) {
-      form.reset();
-      setSignupStatus("success", "Thanks — we have your details.", "We'll be in touch.");
-      return;
-    }
-
-    submit.disabled = true;
-    submit.textContent = "Sending…";
-    setSignupStatus(null);
-
-    try {
-      const response = await fetch(SIGNUP_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: String(data.get("name") || "").trim(),
-          email: String(data.get("email") || "").trim(),
-          source: "tokens",
-        }),
-      });
-      if (!response.ok) throw new Error(`Submission failed: ${response.status}`);
-      form.hidden = true;
-      setSignupStatus(
-        "success",
-        "Thanks — we have your details.",
-        "We'll email you when there is something worth reading. No newsletter, no list sharing.",
-      );
-    } catch (error) {
-      console.error("Insights signup failed", error);
-      setSignupStatus(
-        "danger",
-        "That didn't send.",
-        "Something went wrong on our end. Email nick@cofair.org and we'll pick it up from there.",
-      );
-    } finally {
-      submit.disabled = false;
-      submit.textContent = "Send";
-    }
-  });
-}
 
 // ---- render ----------------------------------------------------------------
 
@@ -1816,27 +1783,41 @@ function setupTabs() {
 }
 
 async function main() {
+  // Bound before the data load, which can throw: the narrative and its signup
+  // are static and should still work on a day the artifacts don't.
+  setupSignupForm("tokens");
+
   const res = await fetch("../data/equivalence.json");
   const eq = await res.json();
   state.eq = eq;
 
   renderProviderChips();
   setupTabs();
+  setupTrendFilters();
   setupLedgerFilters();
-  setupSignupForm();
+
+  const footerYear = document.getElementById("footerYear");
+  if (footerYear) footerYear.textContent = String(new Date().getFullYear());
 
   document.getElementById("ledgerTask").addEventListener("change", (e) => {
     state.ledgerTask = e.target.value;
     renderLedger();
   });
-  document.getElementById("ledgerFrom").addEventListener("change", (e) => {
-    state.ledgerFrom = e.target.value;
-    renderLedger();
-  });
-  document.getElementById("ledgerTo").addEventListener("change", (e) => {
-    state.ledgerTo = e.target.value;
-    renderLedger();
-  });
+  for (const field of ["ledgerFrom", "ledgerTo"]) {
+    document.getElementById(field).addEventListener("change", (e) => {
+      state[field] = e.target.value;
+      // Back through setup so an inverted range is carried rather than emptied.
+      setupLedgerFilters();
+      renderLedger();
+    });
+  }
+  for (const field of ["trendFrom", "trendTo"]) {
+    document.getElementById(field).addEventListener("change", (e) => {
+      state[field] = e.target.value;
+      setupTrendFilters();
+      render();
+    });
+  }
   for (const [id, field] of [
     ["costFrom", "costFrom"],
     ["costTo", "costTo"],
