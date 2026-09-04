@@ -114,6 +114,63 @@ export function sortDatasetsForDate(datasets, dateStr) {
   });
 }
 
+/**
+ * Where a series identity changes from one observation to the next.
+ *
+ * `true` at index `i` means "the thing measured at `i` is not the thing measured
+ * at `i - 1`", which is what the trend chart breaks its line on.
+ *
+ * `requireCurrent` guards the derived bases (fit basis, corpus): a point whose
+ * own basis is unrecorded cannot assert a change, so a value going *missing*
+ * leaves the line intact. A basis appearing where there was none still breaks —
+ * that is the case where a day's prompts or fit inputs are newly pinned and the
+ * two halves genuinely are not comparable. Model identity carries no guard: it
+ * has been recorded since the first run, so either direction is a real break.
+ */
+export function basisChangeFlags(values, { requireCurrent = false } = {}) {
+  const list = values || [];
+  return list.map(
+    (value, i) =>
+      i > 0 && value !== list[i - 1] && (!requireCurrent || Boolean(value)),
+  );
+}
+
+/**
+ * The segment boundaries for one provider-tier line, in observation order.
+ *
+ * Three independent things can make two adjacent points incomparable, and all
+ * three have to break the line rather than be drawn as drift:
+ *
+ * - `model` — the provider re-pinned the panel's flagship or workhorse, so the
+ *   series continues under a different model. This is the one the reader sees
+ *   most often, because flagship and workhorse both version over time.
+ * - `fitBasis` — the fitted overhead/content split was estimated from a
+ *   different task set, so the parameter is not quite the same quantity.
+ * - `corpus` — the prompts themselves were replaced, so a pack total is a sum
+ *   over different text. The strongest break: the other two mean the
+ *   measurement moved, this one means the thing measured did.
+ *
+ * `model` is compared as a *basis* — the set of models the point aggregates, not
+ * whichever row happened to be summed first. A day that served two model
+ * versions across one pack is genuinely a different identity from a day that
+ * served one, and reading the first row alone hid exactly that.
+ */
+export function computeSeriesBreaks(points) {
+  const list = points || [];
+  const modelAt = list.map((p) => p?.model_basis || p?.api_model || p?.model_id || "");
+  const newModelAt = basisChangeFlags(modelAt);
+  const newBasisAt = basisChangeFlags(
+    list.map((p) => p?.fit_basis || ""),
+    { requireCurrent: true },
+  );
+  const newCorpusAt = basisChangeFlags(
+    list.map((p) => p?.corpus_basis || ""),
+    { requireCurrent: true },
+  );
+  const breakAt = newModelAt.map((changed, i) => changed || newBasisAt[i] || newCorpusAt[i]);
+  return { modelAt, newModelAt, newBasisAt, newCorpusAt, breakAt };
+}
+
 export function parseOptionalNumber(value) {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
@@ -154,26 +211,10 @@ export function formatCostDelta(comparison) {
   return `${direction} · ${pct} · ${usd}`;
 }
 
-export function splitLeafCostColumns(detail) {
-  const total = parseOptionalNumber(detail?.estimated_cost_usd);
-  if (detail?.source === "ledger") {
-    return { input: null, output: null, supporting: total, total };
-  }
-  if (detail?.source === "meter") {
-    return {
-      input: parseOptionalNumber(detail?.input_cost_usd),
-      output: parseOptionalNumber(detail?.output_cost_usd),
-      supporting: null,
-      total,
-    };
-  }
-  return {
-    input: parseOptionalNumber(detail?.input_cost_usd),
-    output: parseOptionalNumber(detail?.output_cost_usd),
-    supporting: parseOptionalNumber(detail?.supporting_cost_usd),
-    total,
-  };
-}
+// `splitLeafCostColumns` removed 2026-09-04 with the request-level rows it fed.
+// Costs is a flat date/provider/model/task table now, and the builder already
+// publishes those four cost columns on the task node, so mapping a single
+// request's `estimated_cost_usd` onto a column by its source had no caller left.
 
 export function resolveCostDetailRequestState({ hasCachedDetail, hasPath }) {
   if (hasCachedDetail) {
@@ -197,29 +238,12 @@ export function resolveCostDetailRequestState({ hasCachedDetail, hasPath }) {
   };
 }
 
-function diagnosticCount(node, field) {
-  const explicit = parseOptionalNumber(node?.[`${field}_count`]);
-  if (explicit != null) return explicit;
-  const list = node?.[`${field}s`];
-  return Array.isArray(list) ? list.length : 0;
-}
-
-export function formatCostDetailWithheldStatus(detail) {
-  if (!detail || detail.complete !== false) return "";
-  const parts = [];
-  const missing = diagnosticCount(detail, "missing_request");
-  const duplicate = diagnosticCount(detail, "duplicate_request");
-  const unexpected = diagnosticCount(detail, "unexpected_request");
-  const incomplete = parseOptionalNumber(detail.incomplete_event_count) || 0;
-
-  if (missing) parts.push(`${missing} missing scheduled request${missing === 1 ? "" : "s"}`);
-  if (duplicate) parts.push(`${duplicate} duplicate request${duplicate === 1 ? "" : "s"}`);
-  if (unexpected) parts.push(`${unexpected} unexplained charge${unexpected === 1 ? "" : "s"}`);
-  if (incomplete) parts.push(`${incomplete} unpriced request${incomplete === 1 ? "" : "s"}`);
-
-  if (!parts.length) return "Selected run date is withheld until complete.";
-  return `Selected run date is withheld until complete: ${parts.join(" · ")}.`;
-}
+// `formatCostDetailWithheldStatus` removed 2026-09-04 along with the day-level
+// status sentence it wrote. Completeness is still enforced and still stated: the
+// cards read from `costs.comparisons`, which withholds a period total until
+// every scheduled request in it is priced exactly once (D81), and each table row
+// carries its own "Incomplete" note plus the counts behind it. What is gone is
+// the second, whole-day restatement of that above the table.
 
 function panelKey(row) {
   return `${row?.provider_id || ""}|${row?.tier || ""}`;

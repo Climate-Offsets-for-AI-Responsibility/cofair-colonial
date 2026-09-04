@@ -1,8 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  basisChangeFlags,
+  computeSeriesBreaks,
   drawerObservedColumns,
-  formatCostDetailWithheldStatus,
   formatSuiteBaselineAwaitingStatus,
   scrubDisplayName,
   isFutureSchedulePlaceholder,
@@ -15,7 +16,6 @@ import {
   formatCostDelta,
   parseOptionalNumber,
   resolveCostDetailRequestState,
-  splitLeafCostColumns,
   priceAtOrBefore,
   sortDatasetsForDate,
 } from "./labels.js";
@@ -206,44 +206,6 @@ describe("cost formatters", () => {
   });
 });
 
-describe("cost leaf splits", () => {
-  it("splits meter leaves into input/output only", () => {
-    assert.deepEqual(
-      splitLeafCostColumns({
-        source: "meter",
-        input_cost_usd: 0.0012,
-        output_cost_usd: 0.0024,
-        estimated_cost_usd: 0.0036,
-      }),
-      { input: 0.0012, output: 0.0024, supporting: null, total: 0.0036 },
-    );
-  });
-
-  it("splits ledger leaves into supporting only", () => {
-    assert.deepEqual(
-      splitLeafCostColumns({
-        source: "ledger",
-        input_cost_usd: 99,
-        output_cost_usd: 99,
-        estimated_cost_usd: 0.0008,
-      }),
-      { input: null, output: null, supporting: 0.0008, total: 0.0008 },
-    );
-  });
-
-  it("keeps missing leaf totals as null", () => {
-    assert.deepEqual(
-      splitLeafCostColumns({
-        source: "meter",
-        input_cost_usd: null,
-        output_cost_usd: undefined,
-        estimated_cost_usd: "",
-      }),
-      { input: null, output: null, supporting: null, total: null },
-    );
-  });
-});
-
 describe("cost detail request state", () => {
   it("marks cached selections as not loading", () => {
     assert.deepEqual(
@@ -270,32 +232,6 @@ describe("cost detail request state", () => {
     assert.equal(stateA.loading, true);
     assert.equal(stateB.loading, true);
     assert.equal(backToCachedA.loading, false);
-  });
-});
-
-describe("cost detail withheld status", () => {
-  it("announces incomplete day-level withheld counts", () => {
-    assert.equal(
-      formatCostDetailWithheldStatus({
-        complete: false,
-        missing_request_count: 2,
-        duplicate_request_count: 1,
-        unexpected_request_count: 3,
-        incomplete_event_count: 4,
-      }),
-      "Selected run date is withheld until complete: 2 missing scheduled requests · 1 duplicate request · 3 unexplained charges · 4 unpriced requests.",
-    );
-  });
-
-  it("returns blank for complete days", () => {
-    assert.equal(
-      formatCostDetailWithheldStatus({
-        complete: true,
-        missing_request_count: 9,
-        duplicate_request_count: 9,
-      }),
-      "",
-    );
   });
 });
 
@@ -329,6 +265,90 @@ describe("suite baseline awaiting status", () => {
       }),
       "Complete A-F baseline is still awaiting collection: 2 panel rows are missing canonical task E rows for chat corpus v3.0.0 on the latest run date.",
     );
+  });
+});
+
+describe("series breaks", () => {
+  const dayAt = (date, model, extra = {}) => ({ date, model_basis: model, ...extra });
+
+  it("breaks the line where a provider re-pins its model", () => {
+    const { breakAt, newModelAt } = computeSeriesBreaks([
+      dayAt("2026-09-01", "grok-4.5"),
+      dayAt("2026-09-02", "grok-4.5"),
+      dayAt("2026-09-03", "grok-4.6"),
+      dayAt("2026-09-04", "grok-4.6"),
+    ]);
+    assert.deepEqual(newModelAt, [false, false, true, false]);
+    assert.deepEqual(breakAt, [false, false, true, false]);
+  });
+
+  it("breaks flagship and workhorse independently on their own versions", () => {
+    const flagship = computeSeriesBreaks([
+      dayAt("2026-09-01", "claude-opus-4"),
+      dayAt("2026-09-02", "claude-opus-5"),
+    ]);
+    const workhorse = computeSeriesBreaks([
+      dayAt("2026-09-01", "claude-haiku-4-5"),
+      dayAt("2026-09-02", "claude-haiku-4-5"),
+    ]);
+    assert.deepEqual(flagship.breakAt, [false, true]);
+    assert.deepEqual(workhorse.breakAt, [false, false]);
+  });
+
+  it("treats a day that spans two model versions as its own identity", () => {
+    // The regression this fixes: the aggregate used to report whichever task's
+    // row was summed first, so the mixed day looked like a plain continuation.
+    const { breakAt } = computeSeriesBreaks([
+      dayAt("2026-09-02", "gemini-flash-latest"),
+      dayAt("2026-09-03", "gemini-flash-latest,gemini-flash-latest-high-res-exp"),
+      dayAt("2026-09-04", "gemini-flash-latest-high-res-exp"),
+    ]);
+    assert.deepEqual(breakAt, [false, true, true]);
+  });
+
+  it("falls back to api_model then model_id when no basis is recorded", () => {
+    const { modelAt } = computeSeriesBreaks([
+      { api_model: "gpt-5.6-luna" },
+      { model_id: "chat-latest" },
+    ]);
+    assert.deepEqual(modelAt, ["gpt-5.6-luna", "chat-latest"]);
+  });
+
+  it("breaks on a changed fit basis and on replaced prompts", () => {
+    const fit = computeSeriesBreaks([
+      { model_basis: "m", fit_basis: "A,B,C,D" },
+      { model_basis: "m", fit_basis: "A,B,C,F" },
+    ]);
+    const corpus = computeSeriesBreaks([
+      { model_basis: "m", corpus_basis: "1.0.0" },
+      { model_basis: "m", corpus_basis: "2.0.0" },
+    ]);
+    assert.deepEqual(fit.newBasisAt, [false, true]);
+    assert.deepEqual(fit.breakAt, [false, true]);
+    assert.deepEqual(corpus.newCorpusAt, [false, true]);
+    assert.deepEqual(corpus.breakAt, [false, true]);
+  });
+
+  it("keeps the line intact when a derived basis goes missing", () => {
+    // A point that failed to record its own basis cannot assert a change; only
+    // the model is allowed to break a line on a transition to blank.
+    const { breakAt } = computeSeriesBreaks([
+      { model_basis: "m", fit_basis: "A,B,C", corpus_basis: "2.0.0" },
+      { model_basis: "m", fit_basis: "", corpus_basis: "" },
+    ]);
+    assert.deepEqual(breakAt, [false, false]);
+  });
+
+  it("never breaks the first point, and tolerates empty input", () => {
+    assert.deepEqual(computeSeriesBreaks([dayAt("2026-09-01", "m")]).breakAt, [false]);
+    assert.deepEqual(computeSeriesBreaks([]).breakAt, []);
+    assert.deepEqual(computeSeriesBreaks(undefined).breakAt, []);
+  });
+
+  it("flags a transition to or from an unrecorded model", () => {
+    assert.deepEqual(basisChangeFlags(["", "grok-4.6"]), [false, true]);
+    assert.deepEqual(basisChangeFlags(["grok-4.6", ""]), [false, true]);
+    assert.deepEqual(basisChangeFlags(["", ""]), [false, false]);
   });
 });
 

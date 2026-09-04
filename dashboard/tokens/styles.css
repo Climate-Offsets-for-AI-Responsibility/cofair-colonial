@@ -36,12 +36,64 @@
   width: auto;
 }
 
-#ledgerRange {
+.metric-note {
   margin: var(--cofair-space-2) 0 0;
 }
 
-.metric-note {
-  margin: var(--cofair-space-2) 0 0;
+/* ── Narrative ─────────────────────────────────────────────────────────── */
+
+/* Capped to a reading measure. The tables above want the full page width; body
+   copy at that width is unreadable, so the prose block sets its own. */
+.prose {
+  max-width: 44rem;
+}
+
+.prose__p {
+  margin: var(--cofair-space-3) 0 0;
+}
+
+/* ── Insights signup ───────────────────────────────────────────────────── */
+
+.signup {
+  display: grid;
+  gap: var(--cofair-space-3);
+  margin: var(--cofair-space-6) 0;
+  padding: var(--cofair-space-5);
+}
+
+.signup__form {
+  display: grid;
+  gap: var(--cofair-space-4);
+}
+
+.signup__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--cofair-space-4);
+}
+
+.signup__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--cofair-space-3);
+}
+
+/* Off-screen rather than `display: none`: a bot that reads the DOM should still
+   find it, while nothing about it is offered to a person or a screen reader. */
+.signup__honeypot {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.signup__status:empty {
+  display: none;
 }
 
 /* ── Costs tab ─────────────────────────────────────────────────────────── */
@@ -56,6 +108,7 @@
 .cost-card {
   display: grid;
   gap: var(--cofair-space-1);
+  text-align: center;
 }
 
 .cost-card__eyebrow {
@@ -70,6 +123,9 @@
 .cost-card__comparison {
   display: flex;
   flex-wrap: wrap;
+  /* The card is centre-justified, and a flex row ignores the inherited
+     `text-align`, so the centring has to be restated on the main axis. */
+  justify-content: center;
   gap: var(--cofair-space-2);
   color: var(--cofair-color-text-muted);
 }
@@ -82,49 +138,21 @@
   color: var(--cofair-color-success);
 }
 
-#costRange {
-  margin: var(--cofair-space-2) 0;
-}
-
-.cost-expand {
-  width: 100%;
-  display: inline-flex;
-  align-items: flex-start;
-  gap: var(--cofair-space-2);
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.cost-expand:focus-visible {
-  outline: var(--cofair-border-width-medium) solid var(--cofair-color-primary);
-  outline-offset: var(--cofair-space-px);
-  border-radius: var(--cofair-radius-sm);
-}
-
-.cost-expand__caret {
-  width: var(--cofair-space-3);
-  color: var(--cofair-color-text-muted);
-}
-
-.cost-label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cofair-space-2);
-}
+/* The expand/caret/label rules that lived here went with the provider→task→
+   request tree (2026-09-04). Costs is a flat table on the Ledger's columns now,
+   so it inherits `.ledger-table`'s fixed layout and cell padding and only needs
+   a width for its own four numeric columns. */
 
 .cost-meta {
   margin: var(--cofair-space-px) 0 0;
   color: var(--cofair-color-text-muted);
 }
 
-.cost-row--task .cost-expand { padding-left: var(--cofair-space-6); }
-.cost-row--task .cofair-table__td > .cost-label { padding-left: var(--cofair-space-6); }
-.cost-row--detail .cost-label { padding-left: var(--cofair-space-12); }
+/* Four money columns instead of the Ledger's two, so the shared fixed layout
+   needs them narrower than `.ledger-col-in` to keep Model from being squeezed. */
+.cost-table .cost-col-num { width: 6rem; }
+
+.cost-table .ledger-col-task { width: 10rem; }
 
 /* Ledger: fit the page width. Shared `.cofair-table` cells are nowrap, which
    forces a horizontal scroll once model ids and task labels sit side by side. */

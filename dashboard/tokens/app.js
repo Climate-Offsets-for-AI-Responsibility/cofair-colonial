@@ -5,16 +5,15 @@
 // --cofair-* token, nothing visual is hard-coded here (hub R13).
 
 import {
+  computeSeriesBreaks,
   drawerObservedColumns,
   formatCostDelta,
-  formatCostDetailWithheldStatus,
   formatEstimatedSpend,
   formatSuiteBaselineAwaitingStatus,
   hexToHsl,
   parseOptionalNumber,
   pointAtOrBefore,
   resolveCostDetailRequestState,
-  splitLeafCostColumns,
   sortDatasetsForDate,
 } from "../labels.js";
 
@@ -53,14 +52,14 @@ const state = {
   costDetailIndex: null,
   costDetailsByDate: new Map(),
   costDetailErrors: new Map(),
-  costDate: "",
-  costExpandedRows: new Set(),
-  costExpandedTasks: new Set(),
+  // Costs spans a date range rather than one run date, on the same From/To
+  // model as the Ledger, so the two tables are read the same way.
+  costFrom: "",
+  costTo: "",
   costInFlightDates: new Set(),
   costIndexLoading: false,
   costIndexError: null,
   costLastStatus: "",
-  costFocusTarget: null,
 };
 
 const SERIES_COUNT = 7;
@@ -363,6 +362,9 @@ function aggregateFit() {
       tier: fit.tier,
       model_id: fit.model_id,
       api_model: fit.api_model,
+      // One fit is estimated from one model, so its basis is just that model.
+      // Named the same as the meter's so the break helper reads one field.
+      model_basis: fit.api_model || fit.model_id || "",
       // Which tasks produced these two parameters. An intercept estimated with
       // task D is not strictly the same quantity as one estimated without it, so
       // the chart breaks the line where this changes.
@@ -394,6 +396,12 @@ function aggregateMeter() {
         model_id: row.model_id,
         api_model: row.api_model,
         tasks: new Set(),
+        // Every model this total was summed over, not just whichever task's row
+        // arrived first. A provider can re-pin mid-pack — Google served both
+        // `gemini-flash-latest` and `…-high-res-exp` inside one day's suite — and
+        // first-row-wins reported that day as a plain continuation of the day
+        // before, hiding the very re-pin the broken segments exist to show.
+        models: new Set(),
         // The corpus each task in this total was collected under. A pack total
         // is a sum over fixed prompts, so when a prompt is replaced the sum is
         // a different quantity rather than a continuation — task D's context
@@ -411,6 +419,8 @@ function aggregateMeter() {
       groups.set(key, group);
     }
     group.tasks.add(row.task_id);
+    const rowModel = row.api_model || row.model_id || "";
+    if (rowModel) group.models.add(rowModel);
     if (row.corpus_version) group.corpora.add(row.corpus_version);
     group.tokens_in += row.tokens_in;
     group.tokens_out += row.tokens_out;
@@ -428,6 +438,11 @@ function aggregateMeter() {
       continue;
     }
     group.corpus_basis = [...group.corpora].sort().join(",");
+    const models = [...group.models].sort();
+    group.model_basis = models.join(",");
+    // Named honestly when a day spans a re-pin: reporting one of the two would
+    // attribute the whole pack total to a model that produced part of it.
+    if (models.length > 1) group.api_model = models.join(" + ");
     complete.push(group);
   }
   complete.sort((a, b) => a.date.localeCompare(b.date));
@@ -900,31 +915,16 @@ function renderChart(points) {
     const color = tierColor(providerId, tier);
     const dash = tier === "flagship" ? [] : [5, 4];
     const ordered = [...linePoints].sort((a, b) => a.date.localeCompare(b.date));
-    // A provider releasing a new flagship or workhorse re-points the panel, so the
-    // series continues under a different model. Joining across that boundary would
-    // draw one model's drift where there are two models — the same mistake as
-    // reading a censored point as a natural stop. Flag the boundary here and the
-    // line is broken at it below.
-    const modelAt = ordered.map((p) => p.api_model || p.model_id || "");
-    const newModelAt = modelAt.map((m, i) => i > 0 && m !== modelAt[i - 1]);
-    // The same argument applies to the fit's own basis. When task F joined the
-    // suite the fitted parameters stopped being estimated from task D, and an
-    // intercept estimated without a high-leverage degenerate point is not the
-    // same quantity as one estimated with it. Drawing that switch as a continuous
-    // line would read as provider drift on the exact measure whose job is to
-    // detect provider drift.
+    // A provider releasing a new flagship or workhorse re-points the panel, so
+    // the series continues under a different model. Joining across that boundary
+    // would draw one model's drift where there are two models — the same mistake
+    // as reading a censored point as a natural stop. `computeSeriesBreaks` finds
+    // every such boundary (model, fit basis, corpus); the line is broken at them
+    // by the `segment` callback below.
+    const { modelAt, newModelAt, newBasisAt, newCorpusAt, breakAt } =
+      computeSeriesBreaks(ordered);
     const basisAt = ordered.map((p) => p.fit_basis || "");
-    const newBasisAt = basisAt.map((b, i) => i > 0 && b !== basisAt[i - 1] && Boolean(b));
-    // And once more for the prompts themselves. Everything above is about the
-    // measuring apparatus changing; this is about the thing being measured
-    // changing. Task D's context was replaced in corpus 2.0.0, so a pack total
-    // containing D is a sum over different text before and after — the two
-    // halves are each valid and must not be read across.
     const corpusAt = ordered.map((p) => p.corpus_basis || "");
-    const newCorpusAt = corpusAt.map((c, i) => i > 0 && c !== corpusAt[i - 1] && Boolean(c));
-    const breakAt = newModelAt.map(
-      (changed, i) => changed || newBasisAt[i] || newCorpusAt[i]
-    );
     datasets.push({
       label: `${providerLabel(providerId)} · ${tier}`,
       data: ordered.map((p, i) => ({
@@ -1151,13 +1151,6 @@ function setupLedgerFilters() {
     input.max = last;
     input.value = value;
   }
-
-  const note = document.getElementById("ledgerRange");
-  if (note) {
-    note.textContent = first
-      ? `Ledger covers ${fmtDate(first)} – ${fmtDate(last)}.`
-      : "The ledger has no observations yet.";
-  }
 }
 
 function renderLedger() {
@@ -1364,12 +1357,26 @@ function costDetailDates() {
   return state.costDetailIndex?.dates || [];
 }
 
-function defaultCostDate() {
-  const dates = costDetailDates();
-  if (!dates.length) return "";
-  const preferred = state.eq?.costs?.latest_complete_date;
-  if (preferred && dates.some((entry) => entry.date === preferred)) return preferred;
-  return dates[dates.length - 1]?.date || "";
+/** The published cost window — what the date pickers may legitimately offer. */
+function costDateBounds() {
+  const dates = costDetailDates()
+    .map((entry) => entry.date)
+    .filter(Boolean)
+    .sort();
+  return { first: dates[0] || "", last: dates[dates.length - 1] || "" };
+}
+
+/** Published dates inside the selected From/To range, oldest first. */
+function costDatesInRange() {
+  return costDetailDates()
+    .map((entry) => entry.date)
+    .filter(
+      (date) =>
+        date &&
+        (!state.costFrom || date >= state.costFrom) &&
+        (!state.costTo || date <= state.costTo),
+    )
+    .sort();
 }
 
 function costDetailPath(date) {
@@ -1463,10 +1470,41 @@ async function loadCostDetail(date) {
   return promise;
 }
 
+/**
+ * Clamp the pickers to the published window, defaulting to all of it.
+ *
+ * Mirrors `setupLedgerFilters`: the bounds are derived from what was actually
+ * published rather than from the calendar, so a picker never offers a day the
+ * pipeline never ran.
+ */
+function setupCostFilters() {
+  const { first, last } = costDateBounds();
+  if (!state.costFrom || state.costFrom < first || state.costFrom > last) state.costFrom = first;
+  if (!state.costTo || state.costTo > last || state.costTo < first) state.costTo = last;
+  // A range the reader inverted would silently show nothing; treat the edited
+  // bound as the intent and carry the other one with it.
+  if (state.costFrom && state.costTo && state.costFrom > state.costTo) state.costTo = state.costFrom;
+
+  for (const [id, value] of [
+    ["costFrom", state.costFrom],
+    ["costTo", state.costTo],
+  ]) {
+    const input = document.getElementById(id);
+    if (!input) continue;
+    input.min = first;
+    input.max = last;
+    input.value = value;
+    input.disabled = !first;
+  }
+}
+
 async function ensureCostsReady() {
   await loadCostDetailIndex();
-  if (!state.costDate) state.costDate = defaultCostDate();
-  if (state.costDate) await loadCostDetail(state.costDate);
+  setupCostFilters();
+  // Every day in view needs its own detail file, so the range fans out into one
+  // fetch per published date. They are cached by date, so widening the range
+  // only pays for the days that were not already loaded.
+  await Promise.all(costDatesInRange().map((date) => loadCostDetail(date)));
 }
 
 function costPendingMessage() {
@@ -1487,17 +1525,6 @@ function costPendingMessage() {
   return "No published run detail is available for the selected date.";
 }
 
-function detailLabel(detail) {
-  const bits = [];
-  bits.push(detail.source === "meter" ? "meter" : detail.source || "request");
-  if (detail.turn != null) bits.push(`turn ${detail.turn}`);
-  if (detail.request_kind) bits.push(detail.request_kind);
-  if (parseOptionalNumber(detail.attempt) > 1) bits.push(`attempt ${detail.attempt}`);
-  if (parseOptionalNumber(detail.replicate) > 1) bits.push(`replicate ${detail.replicate}`);
-  if (detail.canonical === false) bits.push("non-canonical");
-  return bits.join(" · ");
-}
-
 function renderCostsStatus(statusText) {
   if (!costsPanelVisible()) return;
   const status = document.getElementById("costStatus");
@@ -1512,102 +1539,72 @@ function renderCostsIfVisible() {
   if (costsPanelVisible()) renderCosts();
 }
 
-function rememberCostFocus(kind, key) {
-  state.costFocusTarget = { kind, key };
+/**
+ * The model a flattened row should name.
+ *
+ * Read from the requests that actually produced the row, not from the
+ * provider-tier header, because a re-pin mid-day makes the header a single
+ * identity for two models. Joined when a task genuinely spanned both.
+ */
+function taskModelLabel(task, providerTier) {
+  const models = [
+    ...new Set((task.details || []).map((detail) => detail.api_model).filter(Boolean)),
+  ].sort();
+  if (models.length) return models.join(" + ");
+  return providerTier.model_id || providerTier.display_name || "—";
 }
 
-function restoreCostFocus() {
-  if (!state.costFocusTarget) return;
-  const { kind, key } = state.costFocusTarget;
-  const selector = kind === "row" ? `[data-cost-row="${CSS.escape(key)}"]` : `[data-cost-task="${CSS.escape(key)}"]`;
-  const target = document.querySelector(selector);
-  if (target) target.focus();
-  state.costFocusTarget = null;
-}
-
-function renderCostRows(detail) {
+/**
+ * One row per date · provider · model · task, on the Ledger's column order.
+ *
+ * Deliberately flat. The provider→task→request tree it replaces put three kinds
+ * of row in one column and made a reader expand twice to compare two days; the
+ * date being a column instead of a selector is what lets the range be read at
+ * all. Request-level detail stays in the published `costs/<date>.json`.
+ */
+function renderCostRows(dates) {
   const tasksById = new Map((state.eq?.tasks || []).map((task) => [task.task_id, task.label]));
   const rows = [];
-  for (const row of detail.provider_tiers || []) {
-    const rowKey = `${row.provider_id}|${row.tier}`;
-    const expanded = state.costExpandedRows.has(rowKey);
-    const notes = [];
-    if (!row.complete) notes.push("Incomplete");
-    const diagnostics = costDiagnosticText(row);
-    if (diagnostics) notes.push(diagnostics);
-    const model = row.display_name || row.model_id || "Model unavailable";
-    rows.push(`<tr class="cofair-table__row cost-row cost-row--parent">
-      <td class="cofair-table__td">
-        <button type="button" class="cost-expand" aria-expanded="${expanded}"
-                aria-controls="costBody"
-                data-cost-row="${esc(rowKey)}">
-          <span class="cost-expand__caret" aria-hidden="true">${expanded ? "▾" : "▸"}</span>
-          <span class="cost-label">${providerBadge(row.provider_id)} ${esc(row.tier)}</span>
-        </button>
-        <p class="cofair-text cofair-text--xs cost-meta">${esc(model)}</p>
-        ${
-          notes.length
-            ? `<p class="cofair-text cofair-text--xs cost-meta">${esc(notes.join(" · "))}</p>`
-            : ""
-        }
-      </td>
-      <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(row.input_cost_usd))}</td>
-      <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(row.output_cost_usd))}</td>
-      <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(row.supporting_cost_usd))}</td>
-      <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(row.estimated_spend_usd))}</td>
-    </tr>`);
-    if (!expanded) continue;
 
-    for (const task of row.tasks || []) {
-      const taskKey = `${rowKey}|${task.task_id}`;
-      const detailRows = task.details || [];
-      const expandable = detailRows.length > 1;
-      const taskExpanded = expandable && state.costExpandedTasks.has(taskKey);
-      const taskNotes = [];
-      if (!task.complete) taskNotes.push("Incomplete");
-      const taskDiagnostics = costDiagnosticText(task);
-      if (taskDiagnostics) taskNotes.push(taskDiagnostics);
-      if (expandable) taskNotes.push(`${detailRows.length} requests`);
-      const label = tasksById.get(task.task_id) || task.task_id;
-      rows.push(`<tr class="cofair-table__row cost-row cost-row--task">
-        <td class="cofair-table__td">
-          ${
-            expandable
-              ? `<button type="button" class="cost-expand cost-expand--task" aria-expanded="${taskExpanded}"
-                  aria-controls="costBody"
-                  data-cost-task="${esc(taskKey)}">
-                <span class="cost-expand__caret" aria-hidden="true">${taskExpanded ? "▾" : "▸"}</span>
-                <span class="cost-label">${esc(task.task_id)} · ${esc(label)}</span>
-              </button>`
-              : `<span class="cost-label">
-                  <span class="cost-expand__caret" aria-hidden="true"></span>
-                  <span>${esc(task.task_id)} · ${esc(label)}</span>
-                </span>`
-          }
-          ${
-            taskNotes.length
-              ? `<p class="cofair-text cofair-text--xs cost-meta">${esc(taskNotes.join(" · "))}</p>`
-              : ""
-          }
-        </td>
-        <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(task.input_cost_usd))}</td>
-        <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(task.output_cost_usd))}</td>
-        <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(task.supporting_cost_usd))}</td>
-        <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(task.estimated_spend_usd))}</td>
-      </tr>`);
-      if (!taskExpanded) continue;
-
-      for (const request of detailRows) {
-        const costs = splitLeafCostColumns(request);
-        rows.push(`<tr class="cofair-table__row cost-row cost-row--detail">
-          <td class="cofair-table__td">
-            <span class="cost-label">${esc(detailLabel(request))}</span>
-            <p class="cofair-text cofair-text--xs cost-meta">${esc(request.api_model || "model unavailable")}</p>
+  for (const date of dates) {
+    const detail = state.costDetailsByDate.get(date);
+    if (!detail) continue;
+    for (const providerTier of detail.provider_tiers || []) {
+      if (!panelVisible(providerTier.provider_id, providerTier.tier)) continue;
+      for (const task of providerTier.tasks || []) {
+        const notes = [];
+        if (!task.complete) notes.push("Incomplete");
+        const diagnostics = costDiagnosticText(task);
+        if (diagnostics) notes.push(diagnostics);
+        const label = tasksById.get(task.task_id);
+        const taskText = label ? `${task.task_id} · ${label}` : task.task_id;
+        const model = taskModelLabel(task, providerTier);
+        rows.push(`<tr class="cofair-table__row">
+          <td class="cofair-table__td ledger-col-date">${esc(fmtDate(date))}</td>
+          <td class="cofair-table__td ledger-col-provider">${providerBadge(
+            providerTier.provider_id,
+          )} ${esc(providerTier.tier)}</td>
+          <td class="cofair-table__td ledger-col-model" title="${esc(model)}">${esc(model)}</td>
+          <td class="cofair-table__td ledger-col-task">
+            ${esc(taskText)}
+            ${
+              notes.length
+                ? `<p class="cofair-text cofair-text--xs cost-meta">${esc(notes.join(" · "))}</p>`
+                : ""
+            }
           </td>
-          <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(costs.input))}</td>
-          <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(costs.output))}</td>
-          <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(costs.supporting))}</td>
-          <td class="cofair-table__td cofair-table__td--num">${esc(formatEstimatedSpend(costs.total))}</td>
+          <td class="cofair-table__td cofair-table__td--num cost-col-num">${esc(
+            formatEstimatedSpend(task.input_cost_usd),
+          )}</td>
+          <td class="cofair-table__td cofair-table__td--num cost-col-num">${esc(
+            formatEstimatedSpend(task.output_cost_usd),
+          )}</td>
+          <td class="cofair-table__td cofair-table__td--num cost-col-num">${esc(
+            formatEstimatedSpend(task.supporting_cost_usd),
+          )}</td>
+          <td class="cofair-table__td cofair-table__td--num cost-col-num">${esc(
+            formatEstimatedSpend(task.estimated_spend_usd),
+          )}</td>
         </tr>`);
       }
     }
@@ -1633,115 +1630,134 @@ function renderCosts() {
     card.dataset.costState = costComparisonTone(comparison);
   });
 
-  const select = document.getElementById("costDate");
-  const detailDates = costDetailDates();
-  if (!state.costDate) state.costDate = defaultCostDate();
-  if (state.costDate && !detailDates.some((entry) => entry.date === state.costDate)) {
-    state.costDate = defaultCostDate();
-  }
-  if (select) {
-    if (!detailDates.length) {
-      select.innerHTML = `<option value="">No run dates yet</option>`;
-      select.disabled = true;
-      select.value = "";
-    } else {
-      select.disabled = false;
-      select.innerHTML = detailDates
-        .map((entry) => {
-          const status = entry.complete ? "" : " · incomplete";
-          return `<option value="${esc(entry.date)}">${esc(fmtDate(entry.date))}${esc(status)}</option>`;
-        })
-        .join("");
-      select.value = state.costDate || detailDates[detailDates.length - 1].date;
-    }
-  }
-
-  const range = document.getElementById("costRange");
-  if (range) {
-    if (detailDates.length) {
-      range.textContent = `Run dates cover ${fmtDate(detailDates[0].date)} – ${fmtDate(
-        detailDates[detailDates.length - 1].date,
-      )}.`;
-    } else {
-      range.textContent = "";
-    }
-  }
+  setupCostFilters();
   if (state.costIndexLoading) statusText = "Loading run-date index…";
   if (state.costIndexError) statusText = state.costIndexError;
 
   const tbody = document.getElementById("costBody");
   if (!tbody) return;
-  if (!state.costDate) {
+
+  const dates = costDatesInRange();
+  if (!dates.length) {
     const title = state.costIndexError ? "Run detail unavailable" : "No run detail yet";
     const body = state.costIndexError
       ? "Unable to load run-date index. Open Costs again to retry."
-      : costPendingMessage();
-    tbody.innerHTML = emptyRow(5, title, body);
+      : costDetailDates().length
+        ? "No published run dates fall inside this range."
+        : costPendingMessage();
+    tbody.innerHTML = emptyRow(8, title, body);
     renderCostsStatus(statusText);
     return;
   }
 
-  if (state.costInFlightDates.has(state.costDate)) {
-    tbody.innerHTML = emptyRow(5, "Loading run detail", "Fetching provider, task, and request totals for this date.");
-    renderCostsStatus("Loading selected run detail…");
+  const pending = dates.filter((date) => state.costInFlightDates.has(date));
+  const loaded = dates.filter((date) => state.costDetailsByDate.has(date));
+  if (!loaded.length && pending.length) {
+    tbody.innerHTML = emptyRow(8, "Loading run detail", "Fetching provider, model, and task totals for this range.");
+    renderCostsStatus("Loading run detail…");
     return;
   }
 
-  const detailError = state.costDetailErrors.get(state.costDate);
-  if (detailError) {
-    tbody.innerHTML = emptyRow(5, "Unable to load run detail", detailError);
-    renderCostsStatus(detailError);
-    return;
-  }
-
-  const detail = state.costDetailsByDate.get(state.costDate);
-  if (!detail) {
-    tbody.innerHTML = emptyRow(5, "Run detail unavailable", "This run date has no loaded detail yet.");
-    renderCostsStatus(statusText);
-    return;
-  }
-  if (!(detail.provider_tiers || []).length) {
+  // Newest first, matching the Ledger, so the most recent day is the one a
+  // reader lands on rather than the oldest.
+  const html = renderCostRows([...loaded].reverse());
+  if (!html) {
     tbody.innerHTML = emptyRow(
-      5,
-      "No provider totals for this date",
-      "No provider-tier cost rows were published for the selected run date.",
+      8,
+      "No costs match this selection",
+      "No published cost rows match this date range and provider selection.",
     );
     renderCostsStatus(statusText);
     return;
   }
+  tbody.innerHTML = html;
 
-  if (!detail.complete) {
-    statusText = formatCostDetailWithheldStatus(detail) || statusText;
+  // Say when the table is showing less than the range asked for, so a partly
+  // loaded range is never mistaken for a range with nothing in it.
+  const failed = dates.filter((date) => state.costDetailErrors.has(date));
+  if (!statusText && failed.length) {
+    statusText = `Run detail unavailable for ${failed.length} date${failed.length === 1 ? "" : "s"} in this range.`;
   }
-  tbody.innerHTML = renderCostRows(detail);
-  tbody.querySelectorAll("[data-cost-row]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const key = button.getAttribute("data-cost-row") || "";
-      if (!key) return;
-      rememberCostFocus("row", key);
-      if (state.costExpandedRows.has(key)) {
-        state.costExpandedRows.delete(key);
-        for (const taskKey of [...state.costExpandedTasks]) {
-          if (taskKey.startsWith(`${key}|`)) state.costExpandedTasks.delete(taskKey);
-        }
-      } else {
-        state.costExpandedRows.add(key);
-      }
-      renderCosts();
-    });
-  });
-  tbody.querySelectorAll("[data-cost-task]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const key = button.getAttribute("data-cost-task") || "";
-      if (!key) return;
-      rememberCostFocus("task", key);
-      if (state.costExpandedTasks.has(key)) state.costExpandedTasks.delete(key);
-      else state.costExpandedTasks.add(key);
-      renderCosts();
-    });
-  });
+  if (!statusText && pending.length) statusText = "Loading the rest of this range…";
   renderCostsStatus(statusText);
-  restoreCostFocus();
+}
+
+// ---- insights signup -------------------------------------------------------
+
+// The handler lives on cofair-marketing, not here: this page is static and
+// colonial has no mail or sheet credentials, while marketing already holds the
+// Resend key and is the origin `cofair.org/tokens/` is served through. Absolute
+// on purpose — the page is also reachable at cofair-colonial.netlify.app, where
+// a relative path would post into a site with no such route (the function sends
+// CORS headers for that case).
+const SIGNUP_ENDPOINT = "https://cofair.org/api/insights-signup";
+
+function setSignupStatus(tone, title, body) {
+  const status = document.getElementById("signupStatus");
+  if (!status) return;
+  if (!tone) {
+    status.innerHTML = "";
+    return;
+  }
+  status.innerHTML = `<div class="cofair-callout cofair-callout--${esc(tone)}">
+    <p class="cofair-callout__title">${esc(title)}</p>
+    ${body ? `<p class="cofair-callout__body">${esc(body)}</p>` : ""}
+  </div>`;
+}
+
+function setupSignupForm() {
+  const form = document.getElementById("signupForm");
+  const submit = document.getElementById("signupSubmit");
+  if (!form || !submit) return;
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    // `novalidate` is set so the callout carries the message rather than a
+    // browser bubble, which means the check has to be made here.
+    if (!form.reportValidity()) return;
+
+    const data = new FormData(form);
+    // A filled honeypot is a bot. Answer exactly as success does, so nothing is
+    // learned from the difference.
+    if (String(data.get("bot-field") || "").trim()) {
+      form.reset();
+      setSignupStatus("success", "Thanks — we have your details.", "We'll be in touch.");
+      return;
+    }
+
+    submit.disabled = true;
+    submit.textContent = "Sending…";
+    setSignupStatus(null);
+
+    try {
+      const response = await fetch(SIGNUP_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: String(data.get("name") || "").trim(),
+          email: String(data.get("email") || "").trim(),
+          source: "tokens",
+        }),
+      });
+      if (!response.ok) throw new Error(`Submission failed: ${response.status}`);
+      form.hidden = true;
+      setSignupStatus(
+        "success",
+        "Thanks — we have your details.",
+        "We'll email you when there is something worth reading. No newsletter, no list sharing.",
+      );
+    } catch (error) {
+      console.error("Insights signup failed", error);
+      setSignupStatus(
+        "danger",
+        "That didn't send.",
+        "Something went wrong on our end. Email nick@cofair.org and we'll pick it up from there.",
+      );
+    } finally {
+      submit.disabled = false;
+      submit.textContent = "Send";
+    }
+  });
 }
 
 // ---- render ----------------------------------------------------------------
@@ -1802,6 +1818,7 @@ async function main() {
   renderProviderChips();
   setupTabs();
   setupLedgerFilters();
+  setupSignupForm();
 
   document.getElementById("ledgerTask").addEventListener("change", (e) => {
     state.ledgerTask = e.target.value;
@@ -1815,14 +1832,18 @@ async function main() {
     state.ledgerTo = e.target.value;
     renderLedger();
   });
-  document.getElementById("costDate").addEventListener("change", (e) => {
-    state.costDate = e.target.value;
-    state.costExpandedRows.clear();
-    state.costExpandedTasks.clear();
-    state.costDetailErrors.delete(state.costDate);
-    renderCostsIfVisible();
-    void loadCostDetail(state.costDate);
-  });
+  for (const [id, field] of [
+    ["costFrom", "costFrom"],
+    ["costTo", "costTo"],
+  ]) {
+    document.getElementById(id).addEventListener("change", (e) => {
+      state[field] = e.target.value;
+      // Widening the range can pull in dates that were never fetched, so a
+      // change has to go back through the loader rather than just re-render.
+      renderCostsIfVisible();
+      void ensureCostsReady();
+    });
+  }
 
   document.getElementById("pack").addEventListener("change", (e) => {
     state.pack = e.target.value;

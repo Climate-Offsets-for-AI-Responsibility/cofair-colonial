@@ -134,6 +134,97 @@
             </div>
           </div>
         </section>
+
+        <section class="prose" aria-labelledby="tracking-heading">
+          <h2 class="cofair-heading cofair-heading--3 section-heading" id="tracking-heading">
+            What we&rsquo;re tracking
+          </h2>
+          <p class="cofair-text prose__p">
+            Our claim is that we are in the subsidiary phase of Artificial Intelligence providers.
+            Providers are scrambling to build as much infrastructure as they can afford to
+            accommodate increased demand down the road as AI becomes more and more ubiquitous.
+          </p>
+          <p class="cofair-text prose__p">
+            As we saw in ride-sharing and delivery services companies in the early and mid-2010s,
+            society was granted a subsidiary phase in an effort to gain market share. However,
+            unlike the publicly-available cost per 1m tokens on provider&rsquo;s pricing pages and
+            documentation, this is only half the metric in determining which models are &lsquo;low
+            cost&rsquo;. It is how efficient they are in providing responses as well, as the price
+            per token multiplied by tokens consumed is the true measure of consumer cost.
+          </p>
+          <p class="cofair-text prose__p">
+            We&rsquo;ve standardized six different tasks that test different dimensions of language
+            models. Tasks of rationalization, logic, call-and-response are issued to both a flagship
+            and workhorse model for each provider every day. We do not judge the arbitrary measure
+            of quality &ndash; how well the respective models complete their tasks &ndash; but
+            instead track the model&rsquo;s efficiency in completing these tasks over time.
+          </p>
+          <p class="cofair-text prose__p">
+            It is this, a comparative token expenditure, that is less transparent to the public than
+            a standardized &lsquo;cost per 1m tokens&rsquo; metric. Our hypothesis is as follows
+            &ndash; we will observe differentiation (are DeepSeek and Qwen really low cost?) and
+            &lsquo;drift&rsquo; between the relative level of output from each provider as both
+            their flagship and workhorse models evolve.
+          </p>
+
+          <div class="cofair-card signup" id="signupCard">
+            <h3 class="cofair-heading cofair-heading--4" id="signup-heading">
+              Receive insights and updates
+            </h3>
+            <form class="signup__form" id="signupForm" novalidate>
+              <div class="signup__row">
+                <div class="cofair-field">
+                  <label class="cofair-label" for="signupName">
+                    Your name<span class="cofair-label__required" aria-hidden="true">*</span>
+                  </label>
+                  <input class="cofair-input" id="signupName" name="name"
+                         autocomplete="name" required />
+                </div>
+                <div class="cofair-field">
+                  <label class="cofair-label" for="signupEmail">
+                    Work email<span class="cofair-label__required" aria-hidden="true">*</span>
+                  </label>
+                  <input class="cofair-input" id="signupEmail" name="email" type="email"
+                         autocomplete="email" required />
+                </div>
+              </div>
+              <p class="signup__honeypot" aria-hidden="true">
+                <label>
+                  Leave this field empty
+                  <input type="text" name="bot-field" tabindex="-1" autocomplete="off" />
+                </label>
+              </p>
+              <div class="signup__actions">
+                <button type="submit" class="cofair-btn cofair-btn--accent" id="signupSubmit">
+                  Send
+                </button>
+              </div>
+            </form>
+            <div class="signup__status" id="signupStatus" role="status" aria-live="polite"></div>
+          </div>
+
+          <h3 class="cofair-heading cofair-heading--4 section-heading">Flagship vs. Workhorse</h3>
+          <p class="cofair-text prose__p">
+            Each provider typically offers multiple, general-purpose models. We test their frontier
+            grade (flagship) model, and their daily-driver (workhorse) in order to map the
+            discrepancy in token expenditures between the two. The upgrading of the different
+            flagship vs. workhorse models versions over time are reflected by the broken segments of
+            the lines associated with each provider. What is of interest is that, assuming the
+            number of parameters for each model increases with every version release, does the
+            number of expended tokens increase as well?
+          </p>
+
+          <h3 class="cofair-heading cofair-heading--4 section-heading">
+            Cost alignment, but token drift
+          </h3>
+          <p class="cofair-text prose__p">
+            We are still in the early stages of our analysis, but there exists a significant
+            difference in the token expenditure across these half-dozen providers. A 10x
+            differential in token expenditure between the models from Grok/xAI and Google suggests
+            that, despite a relative pricing alignment on Flagship vs Workhorse (~15% variance)
+            there exists a significant difference in cost-per-usage.
+          </p>
+        </section>
       </div>
 
       <div class="cofair-tabs__panel" role="tabpanel" id="panel-ledger"
@@ -162,7 +253,6 @@
             </div>
           </div>
         </div>
-        <p class="cofair-help" id="ledgerRange"></p>
         <div class="cofair-card">
           <div class="cofair-table__scroll ledger-scroll">
             <table class="cofair-table cofair-table--striped ledger-table">
@@ -206,26 +296,32 @@
         </div>
 
         <div class="controls">
-          <div class="cofair-field control-group">
-            <label class="cofair-label" for="costDate">Run date</label>
-            <select class="cofair-select" id="costDate">
-              <option value="">No run dates yet</option>
-            </select>
+          <div class="pack-measure ledger-filters">
+            <div class="cofair-field control-group">
+              <label class="cofair-label" for="costFrom">From</label>
+              <input class="cofair-input" type="date" id="costFrom" />
+            </div>
+            <div class="cofair-field control-group">
+              <label class="cofair-label" for="costTo">To</label>
+              <input class="cofair-input" type="date" id="costTo" />
+            </div>
           </div>
         </div>
-        <p class="cofair-help" id="costRange"></p>
         <p class="cofair-help" id="costStatus" aria-live="polite"></p>
 
         <div class="cofair-card">
-          <div class="cofair-table__scroll">
-            <table class="cofair-table cofair-table--striped">
+          <div class="cofair-table__scroll ledger-scroll">
+            <table class="cofair-table cofair-table--striped ledger-table cost-table">
               <thead class="cofair-table__head">
                 <tr class="cofair-table__row">
-                  <th class="cofair-table__th" scope="col">Provider · tier</th>
-                  <th class="cofair-table__th cofair-table__th--num" scope="col">Input</th>
-                  <th class="cofair-table__th cofair-table__th--num" scope="col">Output</th>
-                  <th class="cofair-table__th cofair-table__th--num" scope="col">Supporting</th>
-                  <th class="cofair-table__th cofair-table__th--num" scope="col">Total</th>
+                  <th class="cofair-table__th ledger-col-date" scope="col">Date</th>
+                  <th class="cofair-table__th ledger-col-provider" scope="col">Provider</th>
+                  <th class="cofair-table__th ledger-col-model" scope="col">Model</th>
+                  <th class="cofair-table__th ledger-col-task" scope="col">Task</th>
+                  <th class="cofair-table__th cofair-table__th--num cost-col-num" scope="col">Input</th>
+                  <th class="cofair-table__th cofair-table__th--num cost-col-num" scope="col">Output</th>
+                  <th class="cofair-table__th cofair-table__th--num cost-col-num" scope="col">Supporting</th>
+                  <th class="cofair-table__th cofair-table__th--num cost-col-num" scope="col">Total</th>
                 </tr>
               </thead>
               <tbody class="cofair-table__body" id="costBody"></tbody>
