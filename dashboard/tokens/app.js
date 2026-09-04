@@ -551,8 +551,13 @@ function syncTierChips() {
 function renderProviderChips() {
   fillProviderChips("providerFilter");
   fillProviderChips("ledgerProviderFilter");
+  // Costs filters on the same two axes as the other panels, so it needs its own
+  // row of chips: the rows are one shared selection, and a panel that honours it
+  // without showing it would drop rows with no visible control to explain why.
+  fillProviderChips("costProviderFilter");
   fillTierChips("tierFilter");
   fillTierChips("ledgerTierFilter");
+  fillTierChips("costTierFilter");
   syncProviderChips();
   syncTierChips();
 }
