@@ -59,29 +59,6 @@ a { color: var(--cofair-color-primary); }
   --cofair-layout-max-width: 76rem;
 }
 
-/* Inverse CTA on the green SiteHeader — same tokens as marketing `.header-action`. */
-.header-action {
-  color: var(--cofair-color-text-inverse);
-  text-decoration: none;
-  font-size: var(--cofair-font-size-sm);
-}
-
-.header-action:hover {
-  color: var(--cofair-color-primary-muted);
-}
-
-.header-action:focus-visible {
-  outline: var(--cofair-border-width-medium) solid var(--cofair-color-text-inverse);
-  outline-offset: var(--cofair-space-1);
-}
-
-.cofair-site-header__brand a {
-  display: inline-flex;
-  align-items: center;
-  text-decoration: none;
-  color: inherit;
-}
-
 .page {
   padding: var(--cofair-space-6) var(--cofair-space-8);
   display: flex;

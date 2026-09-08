@@ -66,6 +66,10 @@ SCRIPTS = [
         DESIGN_SYSTEM / "src" / "marketing" / "triangle-bg.js",
         "triangle-bg.js",
     ),
+    (
+        DESIGN_SYSTEM / "src" / "marketing" / "header-reveal.js",
+        "header-reveal.js",
+    ),
 ]
 
 

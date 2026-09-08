@@ -26,7 +26,7 @@
   <meta name="description" content="Daily list-price snapshots for major AI model platforms — the upstream valuation source for COFAIR attribution." />
   <link rel="canonical" href="https://cofair.org/pricing/" />
   <meta property="og:url" content="https://cofair.org/pricing/" />
-  <link rel="icon" href="vendor/cofair-color-logo.svg" />
+  <link rel="icon" href="vendor/favicon.ico" sizes="any" />
   <link rel="stylesheet" href="vendor/fonts.css" />
   <link rel="stylesheet" href="vendor/cofair-ui.css" />
   <link rel="stylesheet" href="styles.css" />
@@ -43,14 +43,8 @@
                src="vendor/cofair-bw-lockup-horizontal.svg" alt="COFAIR" width="140" />
         </a>
       </div>
-      <nav class="cofair-site-header__nav" aria-label="Primary">
-        <a class="cofair-site-header__link" href="https://cofair.org/">Home</a>
-        <a class="cofair-site-header__link" href="https://cofair.org/datacenters/">Data centers</a>
-        <a class="cofair-site-header__link" href="https://cofair.org/policy/">Playbook</a>
-        <a class="cofair-site-header__link" href="https://cofair.org/insights/">Insights</a>
-      </nav>
-      <div class="cofair-site-header__actions">
-        <a class="header-action" href="https://cofair.org/start/">Sign up for COFAIR today</a>
+      <div class="cofair-site-header__actions cofair-site-header__actions--reveal">
+        <a class="cofair-site-header__action" href="https://cofair.org/start/">Sign up today</a>
       </div>
     </div>
   </header>
@@ -317,9 +311,12 @@
   </footer>
   <script type="module">
     import { mountTriangleBackground } from "./vendor/triangle-bg.js";
+    import { mountHeaderSignupReveal } from "./vendor/header-reveal.js";
     document.querySelectorAll("[data-cofair-triangles]").forEach((el) => {
       mountTriangleBackground(el);
     });
+    const header = document.querySelector(".cofair-site-header");
+    if (header) mountHeaderSignupReveal(header);
   </script>
 
 </body>

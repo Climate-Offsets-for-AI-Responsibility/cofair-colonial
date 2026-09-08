@@ -823,6 +823,7 @@
 
 .cofair-site-header {
   background: var(--cofair-color-bg-elevated);
+  overflow: hidden;
 }
 
 .cofair-site-header__inner {
@@ -835,10 +836,11 @@
   padding: var(--cofair-space-3) var(--cofair-space-6);
 }
 
-.cofair-site-header__brand {
-  font-family: var(--cofair-font-serif);
-  font-size: var(--cofair-font-size-lg);
-  font-weight: 600;
+.cofair-site-header__brand a {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
 }
 
 .cofair-site-header__nav {
@@ -872,6 +874,58 @@
   display: flex;
   gap: var(--cofair-space-3);
   align-items: center;
+  margin-left: auto;
+}
+
+.cofair-site-header__action {
+  color: var(--cofair-color-text);
+  text-decoration: none;
+  font-size: var(--cofair-font-size-sm);
+}
+
+.cofair-site-header__action:hover {
+  color: var(--cofair-color-text-muted);
+}
+
+.cofair-site-header--inverted .cofair-site-header__action {
+  color: var(--cofair-color-text-inverse);
+}
+
+.cofair-site-header--inverted .cofair-site-header__action:hover {
+  color: var(--cofair-color-primary-muted);
+}
+
+.cofair-site-header--inverted .cofair-site-header__action:focus-visible {
+  outline: var(--cofair-border-width-medium) solid var(--cofair-color-text-inverse);
+  outline-offset: var(--cofair-space-1);
+}
+
+.cofair-site-header__actions--reveal {
+  transform: translateY(-120%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform 320ms ease,
+    opacity 240ms ease,
+    visibility 0s linear 240ms;
+}
+
+.cofair-site-header__actions--visible {
+  transform: none;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    transform 320ms ease,
+    opacity 240ms ease,
+    visibility 0s linear 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cofair-site-header__actions--reveal {
+    transition: none;
+  }
 }
 
 .cofair-site-header--sticky {
