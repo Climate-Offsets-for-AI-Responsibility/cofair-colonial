@@ -37,16 +37,20 @@
 
 /* ── Narrative ─────────────────────────────────────────────────────────── */
 
-/* `.prose` itself is shared with /pricing and lives in ../styles.css. The
-   Task Corpus sits under the chart, full width of the page measure. */
+/* `.prose` itself is shared with /pricing and lives in ../styles.css. Task
+   Corpus uses the same reading measure and is centred as a block; table cells
+   stay left-aligned. */
 
 .task-corpus {
-  margin-top: var(--cofair-space-6);
+  max-width: var(--dash-prose-measure);
+  width: 100%;
+  margin-inline: auto;
   text-align: left;
 }
 
 .task-corpus .section-heading {
   margin-top: 0;
+  text-align: left;
 }
 
 /* Auto layout and wrapping labels: the corpus is three short columns that
@@ -57,8 +61,10 @@
 }
 
 .task-table .cofair-table__th,
-.task-table .cofair-table__td {
+.task-table .cofair-table__td,
+.task-table .cofair-table__td--num {
   white-space: normal;
+  text-align: left;
 }
 
 /* ── Costs tab ─────────────────────────────────────────────────────────── */

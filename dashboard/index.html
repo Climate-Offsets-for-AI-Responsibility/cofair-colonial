@@ -35,25 +35,28 @@
   <script type="module" src="app.js"></script>
 </head>
 <body>
-  <header class="page-header">
-    <a class="page-header__brand" href="https://cofair.org" aria-label="COFAIR">
-      <img src="vendor/cofair-bw-mark-square.svg" alt="COFAIR" width="40" height="40" />
-    </a>
-    <div class="page-header__title">
-      <h1 class="cofair-heading cofair-heading--2">Model Price Index</h1>
+  <header class="cofair-site-header cofair-site-header--inverted cofair-site-header--sticky">
+    <div class="cofair-site-header__inner">
+      <div class="cofair-site-header__brand">
+        <a href="https://cofair.org" aria-label="COFAIR">
+          <img class="cofair-logo cofair-logo--bw-lockup-horizontal cofair-logo--on-dark"
+               src="vendor/cofair-bw-lockup-horizontal.svg" alt="COFAIR" width="140" />
+        </a>
+      </div>
+      <nav class="cofair-site-header__nav" aria-label="Primary">
+        <a class="cofair-site-header__link" href="https://cofair.org/">Home</a>
+        <a class="cofair-site-header__link" href="https://cofair.org/datacenters/">Data centers</a>
+        <a class="cofair-site-header__link" href="https://cofair.org/policy/">Playbook</a>
+        <a class="cofair-site-header__link" href="https://cofair.org/insights/">Insights</a>
+      </nav>
+      <div class="cofair-site-header__actions">
+        <a class="header-action" href="https://cofair.org/start/">Sign up for COFAIR today</a>
+      </div>
     </div>
-    <a class="page-header__cta cofair-btn cofair-btn--primary cofair-btn--sm"
-       href="https://cofair.org/start/">
-      Sign up for COFAIR today
-      <svg class="page-header__cta-arrow" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-        <path d="M5.5 10.5 10.5 5.5M5.75 5.5h4.75v4.75"
-              fill="none" stroke="currentColor" stroke-width="1.5"
-              stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
-    </a>
   </header>
 
   <main class="page">
+    <h1 class="cofair-heading cofair-heading--2 page-title">Model Price Index</h1>
     <div class="cofair-tabs">
       <div class="cofair-tabs__list" role="tablist" aria-label="Pricing views">
         <button type="button" role="tab" class="cofair-tabs__tab cofair-tabs__tab--active"
