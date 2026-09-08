@@ -276,12 +276,17 @@ function awaitingEpochReason() {
 function renderHeader() {
   const i = state.index;
   const rangeSummary = document.getElementById("rangeSummary");
-  if (!rangeSummary) return;
-  // `fmtDate(null)` renders as an invalid date, so the empty window needs its own
-  // sentence rather than a summary of nothing.
-  rangeSummary.textContent = i.snapshot_count
-    ? `${i.snapshot_count} daily snapshots · ${fmtDate(i.first_date)} → ${fmtDate(i.last_date)} · regenerated ${fmtDateTime(i.generated_at)}`
-    : awaitingEpochReason() || "No snapshots in the published window.";
+  if (rangeSummary) {
+    // `fmtDate(null)` renders as an invalid date, so the empty window needs its own
+    // sentence rather than a summary of nothing.
+    rangeSummary.textContent = i.snapshot_count
+      ? `${i.snapshot_count} daily snapshots · ${fmtDate(i.first_date)} → ${fmtDate(i.last_date)} · regenerated ${fmtDateTime(i.generated_at)}`
+      : awaitingEpochReason() || "No snapshots in the published window.";
+  }
+  const updated = document.querySelector(".prose__updated");
+  if (updated && i?.last_date) {
+    updated.textContent = `(updated ${fmtDate(i.last_date)})`;
+  }
 }
 
 // ---- provider filter chips -------------------------------------------------

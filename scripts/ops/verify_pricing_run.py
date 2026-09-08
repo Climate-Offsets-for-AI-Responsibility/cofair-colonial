@@ -76,14 +76,13 @@ def verify_pricing_run() -> dict:
 
     history_today = PRICING_HISTORY / f"{_today_str()}.json"
     latest_history = _latest_history_file()
-    freshness_ok = False
-    freshness_detail = f"expected {history_today}"
     if history_today.exists():
         freshness_ok = True
         freshness_detail = f"snapshot present: {history_today.name}"
-    elif latest_history is not None:
-        freshness_ok = True
-        freshness_detail = f"today snapshot unchanged; latest={latest_history.name}"
+    else:
+        latest = latest_history.name if latest_history is not None else "none"
+        freshness_ok = False
+        freshness_detail = f"expected {history_today.name}; latest={latest}"
     add(
         "history_freshness",
         freshness_ok,

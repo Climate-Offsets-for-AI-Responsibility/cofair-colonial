@@ -1791,6 +1791,10 @@ async function main() {
   const eq = await res.json();
   state.eq = eq;
 
+  const updated = document.querySelector(".prose__updated");
+  const last = eq.costs?.latest_complete_date || eq.window?.last_date;
+  if (updated && last) updated.textContent = `(updated ${fmtDate(last)})`;
+
   renderProviderChips();
   setupTabs();
   setupTrendFilters();

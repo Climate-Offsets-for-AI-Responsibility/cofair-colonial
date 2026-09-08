@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Copy pricing.json to pricing_history/<UTC-today>.json only if its content
-has actually changed since the latest snapshot.
+"""Copy pricing.json to pricing_history/<UTC-today>.json.
 
-The pricing.json `meta.last_run_datetime` field changes every run, so a naive
-file diff would always claim a change. We compare just the `providers` and
-`pricing` arrays. Idempotent: re-running on the same day is a no-op when
-nothing meaningful changed.
+Every scrape day gets a dated file, even when list prices did not move. The
+dashboard is built only from these files, so skipping an unchanged day freezes
+the public chart at the last *change*. `meta.last_run_datetime` is ignored in
+the fingerprint so a same-day re-run is still a no-op.
 """
 from __future__ import annotations
 
@@ -23,30 +22,35 @@ def fingerprint(d: dict) -> tuple:
     return (d.get("providers"), d.get("pricing"))
 
 
+def snapshot_pricing(src: Path, dest_dir: Path, today: str) -> str:
+    """Write dest_dir/<today>.json when this calendar day has no matching snapshot.
+
+    A new day is always written. Skip only when today's file already exists and
+    its providers/pricing fingerprint matches the live scrape.
+    """
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / f"{today}.json"
+    src_data = json.loads(src.read_text())
+
+    if dest.exists():
+        try:
+            existing = json.loads(dest.read_text())
+        except json.JSONDecodeError:
+            existing = None
+        if existing and fingerprint(existing) == fingerprint(src_data):
+            return f"pricing unchanged from {dest.name}; skipping snapshot"
+
+    dest.write_text(src.read_text())
+    return f"wrote {dest.name}"
+
+
 def main() -> int:
     if not SRC.exists():
         print(f"error: {SRC} not found", file=sys.stderr)
         return 1
 
-    DIR.mkdir(parents=True, exist_ok=True)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    dest = DIR / f"{today}.json"
-
-    src_data = json.loads(SRC.read_text())
-    snaps = sorted(DIR.glob("*.json"))
-
-    if snaps:
-        latest_path = snaps[-1]
-        try:
-            latest_data = json.loads(latest_path.read_text())
-        except json.JSONDecodeError:
-            latest_data = None
-        if latest_data and fingerprint(latest_data) == fingerprint(src_data):
-            print(f"pricing unchanged from {latest_path.name}; skipping snapshot")
-            return 0
-
-    dest.write_text(SRC.read_text())
-    print(f"wrote {dest.relative_to(REPO_ROOT)}")
+    print(snapshot_pricing(SRC, DIR, today))
     return 0
 
 
