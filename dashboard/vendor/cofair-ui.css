@@ -949,6 +949,101 @@
   text-align: center;
 }
 
+.cofair-site-footer--brand {
+  padding: 0;
+  border-top: none;
+  text-align: start;
+  color: var(--cofair-color-text-inverse);
+  font-size: var(--cofair-font-size-sm);
+}
+
+.cofair-site-footer__field {
+  background-color: var(--cofair-color-primary);
+}
+
+.cofair-site-footer__inner {
+  max-width: var(--cofair-layout-max-width, 72rem);
+  margin: 0 auto;
+  padding: var(--cofair-space-12) var(--cofair-space-8) var(--cofair-space-8);
+}
+
+.cofair-site-footer__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--cofair-space-8) var(--cofair-space-6);
+  align-items: start;
+}
+
+.cofair-site-footer__brand .cofair-logo {
+  height: auto;
+  width: 10rem;
+}
+
+.cofair-site-footer__nav {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--cofair-space-3);
+}
+
+.cofair-site-footer__link {
+  color: var(--cofair-color-text-inverse);
+  text-decoration: none;
+}
+
+.cofair-site-footer__link:hover {
+  text-decoration: underline;
+  text-underline-offset: var(--cofair-space-1);
+}
+
+.cofair-site-footer__contact {
+  font-style: normal;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cofair-space-3);
+}
+
+.cofair-site-footer__contact p {
+  margin: 0;
+}
+
+.cofair-site-footer__extra {
+  margin-top: var(--cofair-space-8);
+  color: var(--cofair-color-primary-muted);
+}
+
+.cofair-site-footer--brand .cofair-text,
+.cofair-site-footer--brand .cofair-text--muted {
+  color: var(--cofair-color-primary-muted);
+}
+
+.cofair-site-footer--brand .footer-content__link,
+.cofair-site-footer__extra a {
+  color: var(--cofair-color-text-inverse);
+}
+
+.cofair-site-footer__legal {
+  margin: var(--cofair-space-8) 0 0;
+  color: var(--cofair-color-primary-muted);
+}
+
+@media (max-width: 60rem) {
+  .cofair-site-footer__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 40rem) {
+  .cofair-site-footer__inner {
+    padding: var(--cofair-space-8) var(--cofair-space-4);
+  }
+
+  .cofair-site-footer__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .cofair-hero {
   padding: var(--cofair-space-8) var(--cofair-space-5);
 }

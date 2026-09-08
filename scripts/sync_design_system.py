@@ -62,6 +62,10 @@ SCRIPTS = [
         / "chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js",
         "chartjs-adapter-date-fns.bundle.min.js",
     ),
+    (
+        DESIGN_SYSTEM / "src" / "marketing" / "triangle-bg.js",
+        "triangle-bg.js",
+    ),
 ]
 
 

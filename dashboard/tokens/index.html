@@ -375,29 +375,50 @@
     </div>
   </main>
 
-  <!-- Same composition as cofair.org: @cofair/ui SiteFooter + marketing footer-content. -->
-  <footer class="cofair-site-footer">
-    <div class="footer-content">
-      <nav class="footer-nav" aria-label="Site sections">
-        <a class="footer-content__link" href="https://cofair.org/">Home</a>
-        <a class="footer-content__link" href="https://cofair.org/datacenters/">Data centers</a>
-        <a class="footer-content__link" href="https://cofair.org/policy/">Playbook</a>
-        <a class="footer-content__link" href="https://cofair.org/insights/">Insights</a>
-      </nav>
-      <p class="cofair-text cofair-text--muted">
-        COFAIR is a donor&ndash;recipient AI token exchange for climate non-profits. Organizations
-        donate unused tokens, and registered 501(c)(3) environmental non-profits receive subsidized
-        access to frontier-tier models.
-      </p>
-      <p class="cofair-text cofair-text--muted">
-        Contact:
-        <a class="footer-content__link" href="mailto:hello@cofair.org">hello@cofair.org</a>
-      </p>
-      <p class="cofair-text cofair-text--muted">
-        &copy; <span id="footerYear">2026</span> COFAIR. All rights reserved.
-      </p>
+  <!-- Same composition as cofair.org: @cofair/ui SiteFooter tone=brand. -->
+  <footer class="cofair-site-footer cofair-site-footer--brand">
+    <div class="cofair-triangle-bg cofair-site-footer__field" data-cofair-triangles>
+      <div class="cofair-triangle-bg__content">
+        <div class="cofair-site-footer__inner">
+          <div class="cofair-site-footer__grid">
+            <div class="cofair-site-footer__brand">
+              <a href="https://cofair.org" aria-label="COFAIR">
+                <img class="cofair-logo cofair-logo--bw-lockup-horizontal cofair-logo--on-dark"
+                     src="../vendor/cofair-bw-lockup-horizontal.svg" alt="COFAIR" width="160" />
+              </a>
+            </div>
+            <nav class="cofair-site-footer__nav" aria-label="Site">
+              <a class="cofair-site-footer__link" href="https://cofair.org/#how-it-works">How COFAIR works</a>
+              <a class="cofair-site-footer__link" href="https://cofair.org/#contact">Get in touch</a>
+              <a class="cofair-site-footer__link" href="https://cofair.org/insights/">Insights</a>
+              <a class="cofair-site-footer__link" href="https://cofair.org/policy/">Playbook</a>
+            </nav>
+            <nav class="cofair-site-footer__nav" aria-label="Instruments">
+              <a class="cofair-site-footer__link" href="https://cofair.org/tokens/">Token Efficiency Index</a>
+              <a class="cofair-site-footer__link" href="https://cofair.org/pricing/">Pricing Tracker</a>
+              <a class="cofair-site-footer__link" href="https://cofair.org/datacenters/">Data Center Ledger</a>
+              <a class="cofair-site-footer__link" href="https://cofair.org/start/?intent=recipient">Sign up for Non-Profits</a>
+              <a class="cofair-site-footer__link" href="https://cofair.org/start/?intent=donor">Sign up for Donors</a>
+            </nav>
+            <address class="cofair-site-footer__contact">
+              <p>1 Ferry Building Plaza<br />Suite 201<br />San Francisco, CA 94105</p>
+              <p><a class="cofair-site-footer__link" href="tel:+15105427364">(510) 542-7364</a></p>
+              <p><a class="cofair-site-footer__link" href="mailto:hello@cofair.org">hello@cofair.org</a></p>
+            </address>
+          </div>
+          <p class="cofair-site-footer__legal">
+            &copy; <span id="footerYear">2026</span> COFAIR. All rights reserved.
+          </p>
+        </div>
+      </div>
     </div>
   </footer>
+  <script type="module">
+    import { mountTriangleBackground } from "../vendor/triangle-bg.js";
+    document.querySelectorAll("[data-cofair-triangles]").forEach((el) => {
+      mountTriangleBackground(el);
+    });
+  </script>
 
   <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
   <aside
