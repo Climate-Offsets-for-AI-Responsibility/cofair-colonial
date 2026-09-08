@@ -270,6 +270,113 @@ export function costDayTotals(rows) {
   return { input, output, supporting, total, count };
 }
 
+/** Collapsed Costs header: published day totals, no detail fetch required. */
+export function costCollapsedTotals(indexEntry, dailyEntry) {
+  return {
+    input: parseOptionalNumber(indexEntry?.input_cost_usd ?? dailyEntry?.input_cost_usd),
+    output: parseOptionalNumber(indexEntry?.output_cost_usd ?? dailyEntry?.output_cost_usd),
+    supporting: parseOptionalNumber(
+      indexEntry?.supporting_cost_usd ?? dailyEntry?.supporting_cost_usd,
+    ),
+    total: parseOptionalNumber(indexEntry?.estimated_spend_usd ?? dailyEntry?.estimated_spend_usd),
+    count: 0,
+  };
+}
+
+export function defaultFromDate(optionsOldestFirst, pageSize = COST_DATE_PAGE_SIZE) {
+  const dates = optionsOldestFirst || [];
+  if (!dates.length) return "";
+  const size = Math.max(1, Number(pageSize) || COST_DATE_PAGE_SIZE);
+  return dates[Math.max(0, dates.length - size)];
+}
+
+export function rewindFromDate(currentFrom, optionsOldestFirst, pageSize = COST_DATE_PAGE_SIZE) {
+  const dates = optionsOldestFirst || [];
+  const index = dates.indexOf(currentFrom);
+  if (index <= 0) return dates[0] || currentFrom || "";
+  const size = Math.max(1, Number(pageSize) || COST_DATE_PAGE_SIZE);
+  return dates[Math.max(0, index - size)];
+}
+
+export function canRewindFromDate(currentFrom, optionsOldestFirst) {
+  return (optionsOldestFirst || []).indexOf(currentFrom) > 0;
+}
+
+export function canLoadEarlierDates({
+  shownCount,
+  rangeCount,
+  from,
+  optionsOldestFirst,
+}) {
+  if ((Number(shownCount) || 0) < (Number(rangeCount) || 0)) return true;
+  return canRewindFromDate(from, optionsOldestFirst);
+}
+
+export function dateRangeWidenedBackward(prevKey, from, to) {
+  const [prevFrom, prevTo] = String(prevKey || "|").split("|");
+  return Boolean(prevFrom && from && from < prevFrom && to === prevTo);
+}
+
+export function resolveRecentDateRange(from, to, options, pageSize = COST_DATE_PAGE_SIZE) {
+  if (!options.length) return { from: "", to: "" };
+  const next = {
+    from: options.includes(from) ? from : defaultFromDate(options, pageSize),
+    to: options.includes(to) ? to : options[options.length - 1],
+  };
+  if (next.from > next.to) next.to = next.from;
+  return next;
+}
+
+export function nextDatePagingState({
+  prevKey,
+  from,
+  to,
+  visibleCount,
+  expandedDates,
+  datesNewestFirst,
+  pageSize = COST_DATE_PAGE_SIZE,
+}) {
+  const key = `${from}|${to}`;
+  const expanded = expandedDates instanceof Set ? expandedDates : new Set(expandedDates || []);
+  if (key !== prevKey) {
+    if (dateRangeWidenedBackward(prevKey, from, to)) {
+      return { rangeKey: key, visibleCount, expandedDates: new Set(expanded) };
+    }
+    return {
+      rangeKey: key,
+      visibleCount: pageSize,
+      expandedDates: new Set(defaultExpandedCostDates(datesNewestFirst)),
+    };
+  }
+  const nextExpanded = new Set(expanded);
+  for (const date of nextExpanded) {
+    if (!(datesNewestFirst || []).includes(date)) nextExpanded.delete(date);
+  }
+  return { rangeKey: key, visibleCount, expandedDates: nextExpanded };
+}
+
+export function ledgerDatesNewestFirst(rows) {
+  return [...new Set((rows || []).map((row) => row.date).filter(Boolean))].sort().reverse();
+}
+
+export function ledgerRowsForDate(rows, date) {
+  return (rows || []).filter((row) => row.date === date);
+}
+
+export function ledgerDayTotals(rows) {
+  let tokensIn = 0;
+  let chars = 0;
+  for (const row of rows || []) {
+    tokensIn += Number(row.tokens_in) || 0;
+    chars += Number(row.input_chars) || 0;
+  }
+  return {
+    tokensIn,
+    density: chars > 0 ? (tokensIn / chars) * 1000 : null,
+    count: (rows || []).length,
+  };
+}
+
 export function resolveCostDetailRequestState({ hasCachedDetail, hasPath }) {
   if (hasCachedDetail) {
     return {

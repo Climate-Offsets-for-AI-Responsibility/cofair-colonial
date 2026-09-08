@@ -25,6 +25,17 @@ import {
   defaultExpandedCostDates,
   costTaskRowsForDate,
   costDayTotals,
+  costCollapsedTotals,
+  defaultFromDate,
+  rewindFromDate,
+  canRewindFromDate,
+  canLoadEarlierDates,
+  dateRangeWidenedBackward,
+  nextDatePagingState,
+  resolveRecentDateRange,
+  ledgerDatesNewestFirst,
+  ledgerRowsForDate,
+  ledgerDayTotals,
 } from "./labels.js";
 
 describe("scrubDisplayName", () => {
@@ -433,6 +444,113 @@ describe("cost rows grouped by date", () => {
       supporting: 0.05,
       total: 0.35,
       count: 1,
+    });
+  });
+});
+
+describe("collapsed cost totals", () => {
+  it("preloads input/output/supporting from the index, falling back to daily", () => {
+    assert.deepEqual(
+      costCollapsedTotals(
+        {
+          date: "2026-09-08",
+          estimated_spend_usd: 1.15,
+          input_cost_usd: 0.3,
+          output_cost_usd: 0.65,
+          supporting_cost_usd: 0.2,
+        },
+        null,
+      ),
+      { input: 0.3, output: 0.65, supporting: 0.2, total: 1.15, count: 0 },
+    );
+    assert.deepEqual(
+      costCollapsedTotals(
+        { date: "2026-09-08", estimated_spend_usd: 1.15 },
+        { input_cost_usd: 0.3, output_cost_usd: 0.65, supporting_cost_usd: 0.2 },
+      ),
+      { input: 0.3, output: 0.65, supporting: 0.2, total: 1.15, count: 0 },
+    );
+  });
+});
+
+describe("recent table date window", () => {
+  const oldestFirst = [
+    "2026-09-01",
+    "2026-09-02",
+    "2026-09-03",
+    "2026-09-04",
+    "2026-09-05",
+    "2026-09-06",
+    "2026-09-07",
+    "2026-09-08",
+  ];
+
+  it("defaults From to a week back when enough published days exist", () => {
+    assert.equal(defaultFromDate(oldestFirst), "2026-09-02");
+    assert.deepEqual(resolveRecentDateRange("", "", oldestFirst), {
+      from: "2026-09-02",
+      to: "2026-09-08",
+    });
+  });
+
+  it("uses the earliest day when fewer than a week of dates exist", () => {
+    assert.equal(defaultFromDate(["2026-09-07", "2026-09-08"]), "2026-09-07");
+  });
+
+  it("rewinds From by another week so the reader can walk further back", () => {
+    assert.equal(rewindFromDate("2026-09-02", oldestFirst), "2026-09-01");
+    assert.equal(canRewindFromDate("2026-09-02", oldestFirst), true);
+    assert.equal(canRewindFromDate("2026-09-01", oldestFirst), false);
+    assert.equal(
+      canLoadEarlierDates({
+        shownCount: 7,
+        rangeCount: 7,
+        from: "2026-09-02",
+        optionsOldestFirst: oldestFirst,
+      }),
+      true,
+    );
+    assert.equal(
+      canLoadEarlierDates({
+        shownCount: 8,
+        rangeCount: 8,
+        from: "2026-09-01",
+        optionsOldestFirst: oldestFirst,
+      }),
+      false,
+    );
+  });
+
+  it("keeps the newest day expanded when From widens backward", () => {
+    const next = nextDatePagingState({
+      prevKey: "2026-09-02|2026-09-08",
+      from: "2026-09-01",
+      to: "2026-09-08",
+      visibleCount: 7,
+      expandedDates: new Set(["2026-09-08"]),
+      datesNewestFirst: [...oldestFirst].reverse(),
+    });
+    assert.equal(dateRangeWidenedBackward("2026-09-02|2026-09-08", "2026-09-01", "2026-09-08"), true);
+    assert.equal(next.rangeKey, "2026-09-01|2026-09-08");
+    assert.equal(next.visibleCount, 7);
+    assert.deepEqual([...next.expandedDates], ["2026-09-08"]);
+  });
+});
+
+describe("ledger rows grouped by date", () => {
+  const rows = [
+    { date: "2026-09-08", tokens_in: 100, input_chars: 200, task_id: "A" },
+    { date: "2026-09-08", tokens_in: 50, input_chars: 100, task_id: "B" },
+    { date: "2026-09-07", tokens_in: 10, input_chars: 40, task_id: "A" },
+  ];
+
+  it("orders dates newest first and sums prompt tokens plus density on the collapsed row", () => {
+    assert.deepEqual(ledgerDatesNewestFirst(rows), ["2026-09-08", "2026-09-07"]);
+    assert.equal(ledgerRowsForDate(rows, "2026-09-08").length, 2);
+    assert.deepEqual(ledgerDayTotals(ledgerRowsForDate(rows, "2026-09-08")), {
+      tokensIn: 150,
+      density: 500,
+      count: 2,
     });
   });
 });

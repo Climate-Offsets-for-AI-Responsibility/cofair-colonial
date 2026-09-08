@@ -61,6 +61,7 @@
   --cofair-radius-lg: 8px;
   --cofair-border-width-thin: 1px;
   --cofair-border-width-medium: 2px;
+  --cofair-border-width-stripe: 5px;
   --cofair-shadow-sm: 0 1px 2px rgb(39 31 23 / 0.06);
   --cofair-shadow-md: 0 4px 12px rgb(39 31 23 / 0.10);
   --cofair-sidebar-width: 240px;
@@ -129,6 +130,7 @@
   --cofair-radius-lg: 8px;
   --cofair-border-width-thin: 1px;
   --cofair-border-width-medium: 2px;
+  --cofair-border-width-stripe: 5px;
   --cofair-shadow-sm: 0 1px 2px rgb(39 31 23 / 0.06);
   --cofair-shadow-md: 0 4px 12px rgb(39 31 23 / 0.10);
   --cofair-sidebar-width: 240px;
@@ -183,6 +185,8 @@
   --cofair-sidebar-item-active-text: var(--cofair-color-primary);
   --cofair-empty-min-height: 12.5rem;
   --cofair-content-max-width-narrow: 22.5rem;
+  --cofair-site-header-mark: 2.75rem;
+  --cofair-site-footer-legal-height: calc((var(--cofair-site-header-mark) + (var(--cofair-space-3) * 2)) / 2);
 }
 
 
@@ -363,6 +367,17 @@
 .cofair-text--muted { color: var(--cofair-color-text-muted); }
 .cofair-text--small { font-size: var(--cofair-font-size-sm); }
 .cofair-text--xs { font-size: var(--cofair-font-size-xs); }
+
+/* Paragraph links use color, not underline. Hover underline stays on chrome
+   (nav, footer) where the affordance is otherwise thin. */
+p a {
+  text-decoration: none;
+}
+
+.cofair-text a {
+  color: var(--cofair-color-primary);
+  text-decoration: none;
+}
 
 .cofair-code {
   font-family: var(--cofair-font-mono);
@@ -900,6 +915,22 @@
   outline-offset: var(--cofair-space-1);
 }
 
+/* Primary on the inverted strip would be green-on-green; invert the fill. */
+.cofair-site-header--inverted .cofair-btn--primary {
+  background: var(--cofair-color-text-inverse);
+  color: var(--cofair-color-primary);
+}
+
+.cofair-site-header--inverted .cofair-btn--primary:hover:not(:disabled) {
+  background: var(--cofair-color-primary-muted);
+  color: var(--cofair-color-primary);
+}
+
+.cofair-site-header--inverted .cofair-btn--primary:focus-visible {
+  outline: var(--cofair-border-width-medium) solid var(--cofair-color-text-inverse);
+  outline-offset: var(--cofair-space-1);
+}
+
 .cofair-site-header__actions--reveal {
   transform: translateY(-120%);
   opacity: 0;
@@ -1005,14 +1036,27 @@
 
 .cofair-site-footer--brand {
   padding: 0;
-  border-top: none;
+  border-top: var(--cofair-border-width-stripe) solid var(--cofair-color-primary);
+  background: var(--cofair-color-bg);
   text-align: start;
   color: var(--cofair-color-text-inverse);
   font-size: var(--cofair-font-size-sm);
 }
 
 .cofair-site-footer__field {
-  background-color: var(--cofair-color-primary);
+  background-color: transparent;
+}
+
+.cofair-site-footer__field::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    var(--cofair-color-primary) 0%,
+    transparent 55%
+  );
+  pointer-events: none;
 }
 
 .cofair-site-footer__inner {
@@ -1062,6 +1106,12 @@
   margin: 0;
 }
 
+.cofair-site-footer__contact-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cofair-space-2);
+}
+
 .cofair-site-footer__extra {
   margin-top: var(--cofair-space-8);
   color: var(--cofair-color-primary-muted);
@@ -1078,8 +1128,46 @@
 }
 
 .cofair-site-footer__legal {
-  margin: var(--cofair-space-8) 0 0;
+  background: var(--cofair-color-primary);
+  color: var(--cofair-color-text-inverse);
+  margin: 0;
+}
+
+.cofair-site-footer__legal-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cofair-space-4);
+  max-width: var(--cofair-layout-max-width, 72rem);
+  min-height: var(--cofair-site-footer-legal-height);
+  margin: 0 auto;
+  padding: 0 var(--cofair-space-8);
+}
+
+.cofair-site-footer__copyright {
+  margin: 0;
+}
+
+.cofair-site-footer__social {
+  display: flex;
+  align-items: center;
+  gap: var(--cofair-space-3);
+}
+
+.cofair-site-footer__social-link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--cofair-color-text-inverse);
+}
+
+.cofair-site-footer__social-link:hover {
   color: var(--cofair-color-primary-muted);
+}
+
+.cofair-site-footer__social-icon {
+  display: block;
+  width: var(--cofair-font-size-xl);
+  height: var(--cofair-font-size-xl);
 }
 
 @media (max-width: 60rem) {
@@ -1091,6 +1179,10 @@
 @media (max-width: 40rem) {
   .cofair-site-footer__inner {
     padding: var(--cofair-space-8) var(--cofair-space-4);
+  }
+
+  .cofair-site-footer__legal-inner {
+    padding: 0 var(--cofair-space-4);
   }
 
   .cofair-site-footer__grid {
@@ -1236,8 +1328,171 @@
 }
 
 .cofair-site-header__brand .cofair-logo {
-  height: 2rem;
+  height: var(--cofair-site-header-mark);
   width: auto;
+}
+
+/* ── Insights carousel (gauge.io-style strip above the footer) ────────── */
+.cofair-insights-carousel {
+  width: 100%;
+  padding-block: var(--cofair-space-12);
+  padding-inline: var(--cofair-space-6);
+  background: var(--cofair-color-bg);
+  border-top: var(--cofair-border-width-thin) solid var(--cofair-color-border-subtle);
+}
+
+.cofair-insights-carousel__inner {
+  max-width: var(--cofair-layout-max-width, 72rem);
+  margin-inline: auto;
+}
+
+.cofair-insights-carousel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--cofair-space-4);
+  margin-bottom: var(--cofair-space-6);
+}
+
+.cofair-insights-carousel__heading {
+  margin: 0;
+  font-family: var(--cofair-heading-font);
+  font-weight: var(--cofair-heading-weight);
+  font-size: var(--cofair-font-size-2xl);
+  color: var(--cofair-color-text);
+}
+
+.cofair-insights-carousel__all {
+  color: var(--cofair-color-primary);
+  text-decoration: none;
+  font-size: var(--cofair-font-size-sm);
+  font-weight: 500;
+}
+
+.cofair-insights-carousel__all:hover {
+  color: var(--cofair-color-primary-hover);
+}
+
+.cofair-insights-carousel__viewport {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.cofair-insights-carousel__viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.cofair-insights-carousel__track {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: var(--cofair-space-5);
+}
+
+.cofair-insights-carousel__item {
+  flex: 0 0 min(22rem, 85vw);
+  scroll-snap-align: start;
+  margin: 0;
+  min-width: 0;
+}
+
+.cofair-insights-carousel__card {
+  height: 100%;
+  background: var(--cofair-color-bg-elevated);
+  border: var(--cofair-border-width-thin) solid var(--cofair-color-border-subtle);
+  border-radius: var(--cofair-radius-lg);
+}
+
+.cofair-insights-carousel__link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cofair-space-3);
+  height: 100%;
+  padding: var(--cofair-card-padding);
+  color: inherit;
+  text-decoration: none;
+}
+
+.cofair-insights-carousel__link:hover .cofair-insights-carousel__title,
+.cofair-insights-carousel__link:focus-visible .cofair-insights-carousel__title {
+  color: var(--cofair-color-primary);
+}
+
+.cofair-insights-carousel__tags {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cofair-space-2);
+  margin: 0;
+  padding: 0;
+}
+
+.cofair-insights-carousel__title {
+  margin: 0;
+  font-family: var(--cofair-heading-font);
+  font-weight: var(--cofair-heading-weight);
+  font-size: var(--cofair-font-size-xl);
+  color: var(--cofair-color-text);
+  /* NO TOKEN: line-height 1.25 — no --cofair-line-height-* family. */
+  line-height: 1.25;
+}
+
+.cofair-insights-carousel__excerpt {
+  margin: 0;
+  color: var(--cofair-color-text-muted);
+  font-size: var(--cofair-font-size-md);
+  /* NO TOKEN: line-height 1.5 — no --cofair-line-height-* family. */
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  overflow: hidden;
+}
+
+.cofair-insights-carousel__date {
+  margin-top: auto;
+  color: var(--cofair-color-text-muted);
+  font-size: var(--cofair-font-size-sm);
+}
+
+.cofair-insights-carousel__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--cofair-space-4);
+  margin-top: var(--cofair-space-6);
+}
+
+.cofair-insights-carousel__prev,
+.cofair-insights-carousel__next {
+  appearance: none;
+  background: transparent;
+  border: var(--cofair-border-width-thin) solid var(--cofair-color-border);
+  border-radius: var(--cofair-radius-md);
+  padding: var(--cofair-space-2) var(--cofair-space-4);
+  font-family: var(--cofair-font-sans);
+  font-size: var(--cofair-font-size-sm);
+  color: var(--cofair-color-text);
+  cursor: pointer;
+}
+
+.cofair-insights-carousel__prev:hover:not(:disabled),
+.cofair-insights-carousel__next:hover:not(:disabled) {
+  background: var(--cofair-color-bg-muted);
+}
+
+.cofair-insights-carousel__prev:disabled,
+.cofair-insights-carousel__next:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cofair-insights-carousel__status {
+  margin: 0;
+  color: var(--cofair-color-text-muted);
+  font-size: var(--cofair-font-size-sm);
 }
 
 

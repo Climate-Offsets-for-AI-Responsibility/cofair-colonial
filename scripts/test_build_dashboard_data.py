@@ -1615,6 +1615,19 @@ class CostArtifactTest(CostFixture):
             self.assertEqual(index["complete_start_date"], DASHBOARD_START_DATE)
             self.assertEqual(index["latest_complete_date"], second)
             self.assertEqual(written, index)
+            first_day = costs["daily"][0]
+            self.assertEqual(
+                index["dates"][0]["input_cost_usd"],
+                first_day["input_cost_usd"],
+            )
+            self.assertEqual(
+                index["dates"][0]["output_cost_usd"],
+                first_day["output_cost_usd"],
+            )
+            self.assertEqual(
+                index["dates"][0]["supporting_cost_usd"],
+                first_day["supporting_cost_usd"],
+            )
 
             detail = json.loads((directory / f"{POST_EPOCH}.json").read_text())
             self.assertEqual(detail["date"], POST_EPOCH)

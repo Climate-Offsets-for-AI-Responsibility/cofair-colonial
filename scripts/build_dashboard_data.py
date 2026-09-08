@@ -1523,7 +1523,7 @@ def write_cost_details(costs: dict, directory: Path = COST_DETAIL_DIR) -> dict:
             {
                 "date": day["date"],
                 "complete": day["complete"],
-                "estimated_spend_usd": day["estimated_spend_usd"],
+                **{field: day[field] for field in _COST_TOTAL_FIELDS},
                 "path": _detail_path(day["date"]),
             }
             for day in costs["daily"]

@@ -51,6 +51,7 @@ FONTS = [
 # Brand marks, straight from the design system's asset folder.
 LOGOS = [
     "cofair-bw-lockup-horizontal.svg",
+    "cofair-bw-logo.svg",
     "cofair-bw-mark-square.svg",
     "cofair-color-logo.svg",
 ]
@@ -69,6 +70,10 @@ SCRIPTS = [
     (
         DESIGN_SYSTEM / "src" / "marketing" / "header-reveal.js",
         "header-reveal.js",
+    ),
+    (
+        DESIGN_SYSTEM / "src" / "marketing" / "insights-carousel.js",
+        "insights-carousel.js",
     ),
 ]
 

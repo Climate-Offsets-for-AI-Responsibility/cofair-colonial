@@ -19,9 +19,17 @@ import {
   costDatesForPage,
   nextCostDateVisibleCount,
   costDatesToFetch,
-  defaultExpandedCostDates,
   costTaskRowsForDate,
   costDayTotals,
+  costCollapsedTotals,
+  rewindFromDate,
+  canRewindFromDate,
+  canLoadEarlierDates,
+  nextDatePagingState,
+  resolveRecentDateRange,
+  ledgerDatesNewestFirst,
+  ledgerRowsForDate,
+  ledgerDayTotals,
 } from "../labels.js";
 import { setupSignupForm } from "../signup.js";
 
@@ -51,6 +59,9 @@ const state = {
   ledgerTask: "",
   ledgerFrom: "",
   ledgerTo: "",
+  ledgerExpandedDates: new Set(),
+  ledgerVisibleCount: COST_DATE_PAGE_SIZE,
+  ledgerRangeKey: "",
   // Chart rollover, mirroring /pricing: the date column under the cursor and
   // the provider|tier line whose node is being pointed at (null off a node).
   // Resting state is the most recent scraped day rather than nothing, so the
@@ -1206,6 +1217,7 @@ function ledgerAllRows() {
       model: row.api_model || row.model_id,
       task_id: row.task_id,
       tokens_in: row.tokens_in,
+      input_chars: row.input_chars,
       density: row.tokens_in_per_1k_chars,
     }))
     .sort((a, b) => {
@@ -1251,25 +1263,81 @@ function setupLedgerFilters() {
   }
 
   const options = dateSelectOptions(all);
-  const range = resolveDateRange(state.ledgerFrom, state.ledgerTo, options);
+  const range = resolveRecentDateRange(state.ledgerFrom, state.ledgerTo, options);
   state.ledgerFrom = range.from;
   state.ledgerTo = range.to;
   fillDateSelect("ledgerFrom", options, range.from);
   fillDateSelect("ledgerTo", options, range.to);
 }
 
-function renderLedger() {
-  const tbody = document.getElementById("ledgerBody");
-  if (!tbody) return;
-
-  const labels = ledgerTaskLabels();
-  const rows = ledgerAllRows().filter(
+function ledgerFilteredRows() {
+  return ledgerAllRows().filter(
     (row) =>
       panelVisible(row.provider_id, row.tier) &&
       (!state.ledgerTask || row.task_id === state.ledgerTask) &&
       (!state.ledgerFrom || (row.date || "") >= state.ledgerFrom) &&
       (!state.ledgerTo || (row.date || "") <= state.ledgerTo),
   );
+}
+
+function applyLedgerPaging(datesNewestFirst) {
+  const next = nextDatePagingState({
+    prevKey: state.ledgerRangeKey,
+    from: state.ledgerFrom,
+    to: state.ledgerTo,
+    visibleCount: state.ledgerVisibleCount,
+    expandedDates: state.ledgerExpandedDates,
+    datesNewestFirst,
+  });
+  state.ledgerRangeKey = next.rangeKey;
+  state.ledgerVisibleCount = next.visibleCount;
+  state.ledgerExpandedDates = next.expandedDates;
+}
+
+function toggleLedgerDate(date) {
+  if (!date) return;
+  if (state.ledgerExpandedDates.has(date)) state.ledgerExpandedDates.delete(date);
+  else state.ledgerExpandedDates.add(date);
+  renderLedger();
+}
+
+function loadMoreLedgerDates() {
+  const options = dateSelectOptions(ledgerDates().all);
+  let newestFirst = ledgerDatesNewestFirst(ledgerFilteredRows());
+  const shown = costDatesForPage(newestFirst, state.ledgerVisibleCount);
+  if (shown.length < newestFirst.length) {
+    state.ledgerVisibleCount = nextCostDateVisibleCount(state.ledgerVisibleCount, newestFirst.length);
+  } else if (canRewindFromDate(state.ledgerFrom, options)) {
+    state.ledgerFrom = rewindFromDate(state.ledgerFrom, options);
+    setupLedgerFilters();
+    newestFirst = ledgerDatesNewestFirst(ledgerFilteredRows());
+    state.ledgerVisibleCount = nextCostDateVisibleCount(state.ledgerVisibleCount, newestFirst.length);
+  }
+  renderLedger();
+}
+
+function ledgerRowHtml(row, labels) {
+  const density = row.density == null ? "—" : Number(row.density).toFixed(1);
+  const taskLabel = labels.get(row.task_id);
+  const task = taskLabel ? `${row.task_id} · ${taskLabel}` : row.task_id;
+  const model = row.model || "—";
+  return `<tr class="cofair-table__row cost-group__row">
+        <td class="cofair-table__td"></td>
+        <td class="cofair-table__td col-nowrap">${providerBadge(row.provider_id)} ${tierTag(row.tier)}</td>
+        <td class="cofair-table__td">${esc(model)}</td>
+        <td class="cofair-table__td">${esc(task)}</td>
+        <td class="cofair-table__td cofair-table__td--num col-divide">${Number(row.tokens_in || 0).toLocaleString()}</td>
+        <td class="cofair-table__td cofair-table__td--num">${esc(density)}</td>
+      </tr>`;
+}
+
+function renderLedger() {
+  const tbody = document.getElementById("ledgerBody");
+  const more = document.getElementById("ledgerMore");
+  if (!tbody) return;
+
+  const labels = ledgerTaskLabels();
+  const rows = ledgerFilteredRows();
 
   if (!rows.length) {
     tbody.innerHTML = emptyRow(
@@ -1277,25 +1345,45 @@ function renderLedger() {
       "No daily token counts here",
       "No ledger rows match this task, date range, and provider selection.",
     );
+    if (more) more.hidden = true;
     return;
   }
 
-  tbody.innerHTML = rows
-    .map((row) => {
-      const density = row.density == null ? "—" : Number(row.density).toFixed(1);
-      const taskLabel = labels.get(row.task_id);
-      const task = taskLabel ? `${row.task_id} · ${taskLabel}` : row.task_id;
-      const model = row.model || "—";
-      return `<tr class="cofair-table__row">
-        <td class="cofair-table__td col-nowrap">${esc(fmtDate(row.date))}</td>
-        <td class="cofair-table__td col-nowrap">${providerBadge(row.provider_id)} ${tierTag(row.tier)}</td>
-        <td class="cofair-table__td">${esc(model)}</td>
-        <td class="cofair-table__td">${esc(task)}</td>
-        <td class="cofair-table__td cofair-table__td--num col-divide">${Number(row.tokens_in || 0).toLocaleString()}</td>
-        <td class="cofair-table__td cofair-table__td--num">${esc(density)}</td>
-      </tr>`;
-    })
-    .join("");
+  const newestFirst = ledgerDatesNewestFirst(rows);
+  applyLedgerPaging(newestFirst);
+  const shown = costDatesForPage(newestFirst, state.ledgerVisibleCount);
+  const html = [];
+
+  for (const date of shown) {
+    const dayRows = ledgerRowsForDate(rows, date);
+    const totals = ledgerDayTotals(dayRows);
+    const expanded = state.ledgerExpandedDates.has(date);
+    const density = totals.density == null ? "—" : Number(totals.density).toFixed(1);
+    html.push(`<tr class="cofair-table__row cost-group">
+      <th class="cofair-table__td col-nowrap" scope="row">
+        <button type="button" class="cost-group__toggle" data-ledger-date="${esc(date)}"
+                aria-expanded="${expanded ? "true" : "false"}">
+          <span class="cost-group__chevron" aria-hidden="true"></span>
+          ${esc(fmtDate(date))}
+        </button>
+      </th>
+      <td class="cofair-table__td" colspan="3"></td>
+      <td class="cofair-table__td cofair-table__td--num col-divide">${Number(totals.tokensIn || 0).toLocaleString()}</td>
+      <td class="cofair-table__td cofair-table__td--num">${esc(density)}</td>
+    </tr>`);
+    if (!expanded) continue;
+    for (const row of dayRows) html.push(ledgerRowHtml(row, labels));
+  }
+
+  tbody.innerHTML = html.join("");
+  if (more) {
+    more.hidden = !canLoadEarlierDates({
+      shownCount: shown.length,
+      rangeCount: newestFirst.length,
+      from: state.ledgerFrom,
+      optionsOldestFirst: dateSelectOptions(ledgerDates().all),
+    });
+  }
 }
 
 function renderTaskTable() {
@@ -1546,11 +1634,12 @@ async function loadCostDetail(date) {
 }
 
 /**
- * Clamp the pickers to the published window, defaulting to all of it.
+ * Clamp the pickers to the published window, defaulting to the latest week.
  *
  * Mirrors `setupLedgerFilters`: the bounds are derived from what was actually
  * published rather than from the calendar, so a picker never offers a day the
- * pipeline never ran.
+ * pipeline never ran. From opens a week back when enough days exist; Load
+ * earlier walks further into the archive.
  */
 function setupCostFilters() {
   const published = costDetailDates()
@@ -1563,7 +1652,7 @@ function setupCostFilters() {
   if (!published.length) return;
 
   const options = dateSelectOptions(published);
-  const range = resolveDateRange(state.costFrom, state.costTo, options);
+  const range = resolveRecentDateRange(state.costFrom, state.costTo, options);
   state.costFrom = range.from;
   state.costTo = range.to;
   fillDateSelect("costFrom", options, range.from);
@@ -1591,21 +1680,27 @@ function costIndexEntry(date) {
   return costDetailDates().find((entry) => entry.date === date) || null;
 }
 
+function costDailyEntry(date) {
+  return (state.eq?.costs?.daily || []).find((day) => day.date === date) || null;
+}
+
 /**
  * A From/To change starts a new page (newest week, newest day open).
- * Provider/tier chips do not, because they only hide rows already on screen.
+ * Widening From backward (Load earlier) keeps the newest day open.
+ * Provider/tier chips do not reset, because they only hide rows already on screen.
  */
 function syncCostPaging(datesNewestFirst) {
-  const key = `${state.costFrom}|${state.costTo}`;
-  if (key !== state.costRangeKey) {
-    state.costRangeKey = key;
-    state.costVisibleCount = COST_DATE_PAGE_SIZE;
-    state.costExpandedDates = new Set(defaultExpandedCostDates(datesNewestFirst));
-    return;
-  }
-  for (const date of [...state.costExpandedDates]) {
-    if (!datesNewestFirst.includes(date)) state.costExpandedDates.delete(date);
-  }
+  const next = nextDatePagingState({
+    prevKey: state.costRangeKey,
+    from: state.costFrom,
+    to: state.costTo,
+    visibleCount: state.costVisibleCount,
+    expandedDates: state.costExpandedDates,
+    datesNewestFirst,
+  });
+  state.costRangeKey = next.rangeKey;
+  state.costVisibleCount = next.visibleCount;
+  state.costExpandedDates = next.expandedDates;
 }
 
 function toggleCostDate(date) {
@@ -1621,9 +1716,21 @@ function toggleCostDate(date) {
 }
 
 function loadMoreCostDates() {
-  const total = costDatesNewestFirst().length;
-  state.costVisibleCount = nextCostDateVisibleCount(state.costVisibleCount, total);
+  const published = costDetailDates()
+    .map((entry) => entry.date)
+    .filter(Boolean);
+  const options = dateSelectOptions(published);
+  let newestFirst = costDatesNewestFirst();
+  const shown = costDatesForPage(newestFirst, state.costVisibleCount);
+  if (shown.length < newestFirst.length) {
+    state.costVisibleCount = nextCostDateVisibleCount(state.costVisibleCount, newestFirst.length);
+  } else if (canRewindFromDate(state.costFrom, options)) {
+    state.costFrom = rewindFromDate(state.costFrom, options);
+    newestFirst = costDatesNewestFirst();
+    state.costVisibleCount = nextCostDateVisibleCount(state.costVisibleCount, newestFirst.length);
+  }
   renderCostsIfVisible();
+  void ensureCostsReady();
 }
 
 function costPendingMessage() {
@@ -1690,13 +1797,7 @@ function renderCostRows(datesNewestFirst) {
     const taskRows = costTaskRowsForDate(date, detail, panelVisible);
     const totals = detail
       ? costDayTotals(taskRows)
-      : {
-          input: null,
-          output: null,
-          supporting: null,
-          total: costIndexEntry(date)?.estimated_spend_usd ?? null,
-          count: 0,
-        };
+      : costCollapsedTotals(costIndexEntry(date), costDailyEntry(date));
 
     rows.push(`<tr class="cofair-table__row cost-group">
       <th class="cofair-table__td col-nowrap" scope="row">
@@ -1815,7 +1916,16 @@ function renderCosts() {
   tbody.innerHTML = html;
 
   if (more) {
-    more.hidden = shown.length >= newestFirst.length;
+    more.hidden = !canLoadEarlierDates({
+      shownCount: shown.length,
+      rangeCount: newestFirst.length,
+      from: state.costFrom,
+      optionsOldestFirst: dateSelectOptions(
+        costDetailDates()
+          .map((entry) => entry.date)
+          .filter(Boolean),
+      ),
+    });
   }
 
   const failed = shown.filter((date) => state.costDetailErrors.has(date));
@@ -1913,6 +2023,14 @@ async function main() {
       renderLedger();
     });
   }
+  document.getElementById("ledgerBody").addEventListener("click", (e) => {
+    const toggle = e.target.closest("[data-ledger-date]");
+    if (!toggle) return;
+    toggleLedgerDate(toggle.dataset.ledgerDate);
+  });
+  document.getElementById("ledgerLoadMore").addEventListener("click", () => {
+    loadMoreLedgerDates();
+  });
   for (const field of ["trendFrom", "trendTo"]) {
     document.getElementById(field).addEventListener("change", (e) => {
       state[field] = e.target.value;

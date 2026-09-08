@@ -441,7 +441,8 @@ a { color: var(--cofair-color-primary); }
   border-top: var(--cofair-border-width-thin) solid var(--cofair-color-border);
 }
 
-.section-rule + .prose .section-heading:first-of-type {
+.section-rule + .prose .section-heading:first-of-type,
+.section-rule + .task-corpus .section-heading:first-of-type {
   margin-top: var(--cofair-space-6);
 }
 
@@ -459,7 +460,10 @@ a { color: var(--cofair-color-primary); }
   line-height: var(--dash-prose-leading);
 }
 
-.prose__link { color: var(--cofair-color-primary); }
+.prose__link {
+  color: var(--cofair-color-primary);
+  text-decoration: none;
+}
 
 /* The as-of date belongs to the heading above it, so it sits tight to it and
    reads as a caption rather than as the first line of the narrative. */
