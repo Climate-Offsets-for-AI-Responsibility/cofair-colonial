@@ -1095,6 +1095,9 @@ async function main() {
   // signup are static and should still work on a day the artifacts don't.
   setupSignupForm("pricing");
 
+  const footerYear = document.getElementById("footerYear");
+  if (footerYear) footerYear.textContent = String(new Date().getFullYear());
+
   try {
     await loadData();
   } catch (e) {

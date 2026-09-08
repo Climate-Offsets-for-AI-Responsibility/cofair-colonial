@@ -125,6 +125,22 @@
         </div>
         <p class="cofair-help metric-note" id="metricNote"></p>
 
+        <section class="task-corpus" aria-labelledby="corpus-heading">
+          <h2 class="cofair-heading cofair-heading--4 section-heading" id="corpus-heading">Task Corpus</h2>
+          <div class="cofair-card">
+            <table class="cofair-table cofair-table--striped task-table">
+              <thead class="cofair-table__head">
+                <tr class="cofair-table__row">
+                  <th class="cofair-table__th" scope="col">Task</th>
+                  <th class="cofair-table__th cofair-table__th--num" scope="col">Input chars</th>
+                  <th class="cofair-table__th cofair-table__th--num" scope="col">Words</th>
+                </tr>
+              </thead>
+              <tbody class="cofair-table__body" id="taskBody"></tbody>
+            </table>
+          </div>
+        </section>
+
         <section class="prose" aria-labelledby="tracking-heading">
           <h2 class="cofair-heading cofair-heading--3 section-heading" id="tracking-heading">
             What we&rsquo;re tracking
@@ -150,21 +166,6 @@
             the price per token multiplied by tokens consumed is the true measure of consumer
             spend.
           </p>
-          <div class="prose__block">
-            <h3 class="cofair-heading cofair-heading--4 section-heading">Task Corpus</h3>
-            <div class="cofair-card">
-              <table class="cofair-table cofair-table--striped task-table">
-                <thead class="cofair-table__head">
-                  <tr class="cofair-table__row">
-                    <th class="cofair-table__th" scope="col">Task</th>
-                    <th class="cofair-table__th cofair-table__th--num" scope="col">Input chars</th>
-                    <th class="cofair-table__th cofair-table__th--num" scope="col">Words</th>
-                  </tr>
-                </thead>
-                <tbody class="cofair-table__body" id="taskBody"></tbody>
-              </table>
-            </div>
-          </div>
 
           <p class="cofair-text prose__p">
             We&rsquo;ve standardized six different tasks that test different dimensions of language
@@ -365,8 +366,15 @@
     </div>
   </main>
 
-  <footer class="cofair-site-footer page-footer">
+  <!-- Same composition as cofair.org: @cofair/ui SiteFooter + marketing footer-content. -->
+  <footer class="cofair-site-footer">
     <div class="footer-content">
+      <nav class="footer-nav" aria-label="Site sections">
+        <a class="footer-content__link" href="https://cofair.org/">Home</a>
+        <a class="footer-content__link" href="https://cofair.org/datacenters/">Data centers</a>
+        <a class="footer-content__link" href="https://cofair.org/policy/">Playbook</a>
+        <a class="footer-content__link" href="https://cofair.org/insights/">Insights</a>
+      </nav>
       <p class="cofair-text cofair-text--muted">
         COFAIR is a donor&ndash;recipient AI token exchange for climate non-profits. Organizations
         donate unused tokens, and registered 501(c)(3) environmental non-profits receive subsidized
@@ -374,7 +382,7 @@
       </p>
       <p class="cofair-text cofair-text--muted">
         Contact:
-        <a class="footer-content__link page-footer__link" href="mailto:hello@cofair.org">hello@cofair.org</a>
+        <a class="footer-content__link" href="mailto:hello@cofair.org">hello@cofair.org</a>
       </p>
       <p class="cofair-text cofair-text--muted">
         &copy; <span id="footerYear">2026</span> COFAIR. All rights reserved.

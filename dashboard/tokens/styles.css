@@ -4,12 +4,12 @@
   --tokens-page-measure: 76rem;
 }
 
-/* Constrain and centre every band of the page. The tables are wide, but at a
+/* Constrain and centre the page body. The header and footer are full-bleed —
+   the header's elevated bar and SiteFooter both have to reach the viewport
+   edges, the way they do on cofair.org. The tables are still wide, but at a
    full 2560px viewport a chart and an eight-column table stretch until the
    columns lose any relation to each other. */
-.page-header,
-.page,
-.page-footer {
+.page {
   max-width: var(--tokens-page-measure);
   margin-inline: auto;
   width: 100%;
@@ -54,14 +54,16 @@
 
 /* ── Narrative ─────────────────────────────────────────────────────────── */
 
-/* `.prose` itself is shared with /pricing and lives in ../styles.css. Only the
-   Task Corpus block below is particular to this page. */
+/* `.prose` itself is shared with /pricing and lives in ../styles.css. The
+   Task Corpus sits under the chart, full width of the page measure. */
 
-/* A table cannot be read centred, so the block is centred and its contents are
-   not. Full width of the measure, since the corpus explains the columns. */
-.prose__block {
-  margin: var(--cofair-space-6) auto 0;
+.task-corpus {
+  margin-top: var(--cofair-space-6);
   text-align: left;
+}
+
+.task-corpus .section-heading {
+  margin-top: 0;
 }
 
 /* Auto layout and wrapping labels: the corpus is three short columns that
@@ -387,17 +389,3 @@
 @media (max-width: 40rem) {
   .cost-cards { grid-template-columns: 1fr; }
 }
-
-/* ── Footer ────────────────────────────────────────────────────────────── */
-
-/* The marketing site's footer, reproduced from `@cofair/ui`'s `SiteFooter`
-   skin plus the `.footer-content` stack that wraps it there, so /tokens closes
-   the same way every other COFAIR surface does. */
-.footer-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cofair-space-2);
-  max-width: var(--dash-prose-measure);
-}
-
-.footer-content__link { color: var(--cofair-color-primary); }

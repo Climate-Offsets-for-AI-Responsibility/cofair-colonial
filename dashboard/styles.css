@@ -468,19 +468,19 @@ a { color: var(--cofair-color-primary); }
 
 .section-heading {
   margin: var(--cofair-space-6) 0 var(--cofair-space-2);
+  text-align: left;
 }
 
-/* Centred in the page and capped to a reading measure. The narrative is the
-   page's editorial voice rather than another data surface, so it is set
-   centred, one column, a step up from the UI's body size. */
+/* Left-aligned under the charts, capped to a reading measure. The narrative is
+   the page's editorial voice rather than another data surface, so it stays one
+   column, a step up from the UI's body size. */
 .prose {
   max-width: var(--dash-prose-measure);
-  margin-inline: auto;
-  text-align: center;
+  text-align: left;
 }
 
 .prose__p {
-  margin: var(--cofair-space-4) auto 0;
+  margin: var(--cofair-space-4) 0 0;
   font-size: var(--cofair-font-size-lg);
   line-height: var(--dash-prose-leading);
 }
@@ -493,8 +493,7 @@ a { color: var(--cofair-color-primary); }
   margin: 0;
 }
 
-/* Labels and inputs are left-aligned even inside the centred narrative — a
-   form is filled in, not read. */
+/* Labels and inputs stay left-aligned — a form is filled in, not read. */
 .signup {
   display: grid;
   gap: var(--cofair-space-3);
@@ -538,20 +537,35 @@ a { color: var(--cofair-color-primary); }
   display: none;
 }
 
-/* ── Footer ────────────────────────────────────────────────────────────── */
+/* ── Footer (marketing SiteFooter composition) ───────────────────────── */
 
-.page-footer {
+/* Skin is `@cofair/ui`'s `.cofair-site-footer`. Inner stack matches
+   cofair-marketing's `.footer-content` / `.footer-nav` so /pricing and /tokens
+   close the same way as cofair.org. The dashboard is zero-build, so it cannot
+   import the React `SiteFooter` / `FooterNav` — it applies the same classes. */
+.cofair-site-footer {
   margin-top: var(--cofair-space-8);
-  padding: var(--cofair-space-6) var(--cofair-space-8);
-  border-top: var(--cofair-border-width-thin) solid var(--cofair-color-border-subtle);
 }
 
-.page-footer__link { color: var(--cofair-color-primary); }
+.footer-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cofair-space-2);
+}
+
+.footer-content__link { color: var(--cofair-color-primary); }
+
+.footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--cofair-space-4);
+  margin-bottom: var(--cofair-space-2);
+}
 
 @media (max-width: 40rem) {
   .page-header,
-  .page,
-  .page-footer {
+  .page {
     padding-left: var(--cofair-space-4);
     padding-right: var(--cofair-space-4);
   }
