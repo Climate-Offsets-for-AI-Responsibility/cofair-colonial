@@ -849,10 +849,10 @@ function renderArchive() {
   const tbody = document.getElementById("archiveBody");
   tbody.innerHTML = rows.map(m => `
     <tr class="cofair-table__row">
-      <td class="cofair-table__td archive-col-name">${esc(m.display_name)}</td>
       <td class="cofair-table__td">${esc(fmtDate(m.first_seen))}</td>
-      <td class="cofair-table__td archive-col-flagged-on"${showFlaggedOn ? "" : " hidden"}>${esc(fmtDate(m.deprecated_on))}</td>
       <td class="cofair-table__td">${esc(fmtDate(m.currently_present ? null : m.last_seen))}</td>
+      <td class="cofair-table__td archive-col-name">${esc(m.display_name)}</td>
+      <td class="cofair-table__td archive-col-flagged-on"${showFlaggedOn ? "" : " hidden"}>${esc(fmtDate(m.deprecated_on))}</td>
       <td class="cofair-table__td cofair-table__td--num">${esc(fmtDaysActive(m))}</td>
       <td class="cofair-table__td cofair-table__td--num">${m.latest_input != null ? `$${esc(m.latest_input)}` : "—"}</td>
       <td class="cofair-table__td cofair-table__td--num">${m.latest_output != null ? `$${esc(m.latest_output)}` : "—"}</td>

@@ -15,6 +15,13 @@ import {
   pointAtOrBefore,
   resolveCostDetailRequestState,
   sortDatasetsForDate,
+  COST_DATE_PAGE_SIZE,
+  costDatesForPage,
+  nextCostDateVisibleCount,
+  costDatesToFetch,
+  defaultExpandedCostDates,
+  costTaskRowsForDate,
+  costDayTotals,
 } from "../labels.js";
 import { setupSignupForm } from "../signup.js";
 
@@ -64,6 +71,11 @@ const state = {
   costIndexLoading: false,
   costIndexError: null,
   costLastStatus: "",
+  // Newest date starts open; others fetch only when expanded. Visible count
+  // is a page of dates, not the whole From/To range.
+  costExpandedDates: new Set(),
+  costVisibleCount: COST_DATE_PAGE_SIZE,
+  costRangeKey: "",
 };
 
 const SERIES_COUNT = 7;
@@ -1561,10 +1573,57 @@ function setupCostFilters() {
 async function ensureCostsReady() {
   await loadCostDetailIndex();
   setupCostFilters();
-  // Every day in view needs its own detail file, so the range fans out into one
-  // fetch per published date. They are cached by date, so widening the range
-  // only pays for the days that were not already loaded.
-  await Promise.all(costDatesInRange().map((date) => loadCostDetail(date)));
+  const newestFirst = costDatesNewestFirst();
+  syncCostPaging(newestFirst);
+  const shown = costDatesForPage(newestFirst, state.costVisibleCount);
+  // Only the dates a reader has opened. Collapsed days stay as index rows
+  // until expanded, so a long From/To range does not fetch every file.
+  await Promise.all(
+    costDatesToFetch(shown, state.costExpandedDates).map((date) => loadCostDetail(date)),
+  );
+}
+
+function costDatesNewestFirst() {
+  return [...costDatesInRange()].reverse();
+}
+
+function costIndexEntry(date) {
+  return costDetailDates().find((entry) => entry.date === date) || null;
+}
+
+/**
+ * A From/To change starts a new page (newest week, newest day open).
+ * Provider/tier chips do not, because they only hide rows already on screen.
+ */
+function syncCostPaging(datesNewestFirst) {
+  const key = `${state.costFrom}|${state.costTo}`;
+  if (key !== state.costRangeKey) {
+    state.costRangeKey = key;
+    state.costVisibleCount = COST_DATE_PAGE_SIZE;
+    state.costExpandedDates = new Set(defaultExpandedCostDates(datesNewestFirst));
+    return;
+  }
+  for (const date of [...state.costExpandedDates]) {
+    if (!datesNewestFirst.includes(date)) state.costExpandedDates.delete(date);
+  }
+}
+
+function toggleCostDate(date) {
+  if (!date) return;
+  if (state.costExpandedDates.has(date)) {
+    state.costExpandedDates.delete(date);
+    renderCostsIfVisible();
+    return;
+  }
+  state.costExpandedDates.add(date);
+  renderCostsIfVisible();
+  void loadCostDetail(date);
+}
+
+function loadMoreCostDates() {
+  const total = costDatesNewestFirst().length;
+  state.costVisibleCount = nextCostDateVisibleCount(state.costVisibleCount, total);
+  renderCostsIfVisible();
 }
 
 function costPendingMessage() {
@@ -1615,47 +1674,96 @@ function taskModelLabel(task, providerTier) {
 }
 
 /**
- * One row per date · provider · model · task, on the Ledger's column order.
- *
- * Deliberately flat. The provider→task→request tree it replaces put three kinds
- * of row in one column and made a reader expand twice to compare two days; the
- * date being a column instead of a selector is what lets the range be read at
- * all. Request-level detail stays in the published `costs/<date>.json`.
+ * One collapsible group per date, then the Ledger's provider/model/task rows
+ * underneath an open day. Request-level detail still lives in the published
+ * `costs/<date>.json`.
  */
-function renderCostRows(dates) {
+function renderCostRows(datesNewestFirst) {
   const tasksById = new Map((state.eq?.tasks || []).map((task) => [task.task_id, task.label]));
   const rows = [];
 
-  for (const date of dates) {
+  for (const date of datesNewestFirst) {
+    const expanded = state.costExpandedDates.has(date);
     const detail = state.costDetailsByDate.get(date);
-    if (!detail) continue;
-    for (const providerTier of detail.provider_tiers || []) {
-      if (!panelVisible(providerTier.provider_id, providerTier.tier)) continue;
-      for (const task of providerTier.tasks || []) {
-        const label = tasksById.get(task.task_id);
-        const taskText = label ? `${task.task_id} · ${label}` : task.task_id;
-        const model = taskModelLabel(task, providerTier);
-        rows.push(`<tr class="cofair-table__row">
-          <td class="cofair-table__td col-nowrap">${esc(fmtDate(date))}</td>
-          <td class="cofair-table__td col-nowrap">${providerBadge(
-            providerTier.provider_id,
-          )} ${tierTag(providerTier.tier)}</td>
-          <td class="cofair-table__td">${esc(model)}</td>
-          <td class="cofair-table__td">${esc(taskText)}</td>
-          <td class="cofair-table__td cofair-table__td--num col-divide">${esc(
-            formatEstimatedSpend(task.input_cost_usd),
-          )}</td>
-          <td class="cofair-table__td cofair-table__td--num">${esc(
-            formatEstimatedSpend(task.output_cost_usd),
-          )}</td>
-          <td class="cofair-table__td cofair-table__td--num">${esc(
-            formatEstimatedSpend(task.supporting_cost_usd),
-          )}</td>
-          <td class="cofair-table__td cofair-table__td--num">${esc(
-            formatEstimatedSpend(task.estimated_spend_usd),
-          )}</td>
-        </tr>`);
-      }
+    const inFlight = state.costInFlightDates.has(date);
+    const error = state.costDetailErrors.get(date);
+    const taskRows = costTaskRowsForDate(date, detail, panelVisible);
+    const totals = detail
+      ? costDayTotals(taskRows)
+      : {
+          input: null,
+          output: null,
+          supporting: null,
+          total: costIndexEntry(date)?.estimated_spend_usd ?? null,
+          count: 0,
+        };
+
+    rows.push(`<tr class="cofair-table__row cost-group">
+      <th class="cofair-table__td col-nowrap" scope="row">
+        <button type="button" class="cost-group__toggle" data-cost-date="${esc(date)}"
+                aria-expanded="${expanded ? "true" : "false"}">
+          <span class="cost-group__chevron" aria-hidden="true"></span>
+          ${esc(fmtDate(date))}
+        </button>
+      </th>
+      <td class="cofair-table__td" colspan="3"></td>
+      <td class="cofair-table__td cofair-table__td--num col-divide">${esc(
+        formatEstimatedSpend(totals.input),
+      )}</td>
+      <td class="cofair-table__td cofair-table__td--num">${esc(
+        formatEstimatedSpend(totals.output),
+      )}</td>
+      <td class="cofair-table__td cofair-table__td--num">${esc(
+        formatEstimatedSpend(totals.supporting),
+      )}</td>
+      <td class="cofair-table__td cofair-table__td--num">${esc(
+        formatEstimatedSpend(totals.total),
+      )}</td>
+    </tr>`);
+
+    if (!expanded) continue;
+    if (inFlight && !detail) {
+      rows.push(emptyRow(8, "Loading this day", "Fetching provider, model, and task totals."));
+      continue;
+    }
+    if (error && !detail) {
+      rows.push(emptyRow(8, "Run detail unavailable", error));
+      continue;
+    }
+    if (!taskRows.length) {
+      rows.push(
+        emptyRow(
+          8,
+          "No costs match this selection",
+          "No published cost rows match this date and provider selection.",
+        ),
+      );
+      continue;
+    }
+    for (const { providerTier, task } of taskRows) {
+      const label = tasksById.get(task.task_id);
+      const taskText = label ? `${task.task_id} · ${label}` : task.task_id;
+      const model = taskModelLabel(task, providerTier);
+      rows.push(`<tr class="cofair-table__row cost-group__row">
+        <td class="cofair-table__td"></td>
+        <td class="cofair-table__td col-nowrap">${providerBadge(
+          providerTier.provider_id,
+        )} ${tierTag(providerTier.tier)}</td>
+        <td class="cofair-table__td">${esc(model)}</td>
+        <td class="cofair-table__td">${esc(taskText)}</td>
+        <td class="cofair-table__td cofair-table__td--num col-divide">${esc(
+          formatEstimatedSpend(task.input_cost_usd),
+        )}</td>
+        <td class="cofair-table__td cofair-table__td--num">${esc(
+          formatEstimatedSpend(task.output_cost_usd),
+        )}</td>
+        <td class="cofair-table__td cofair-table__td--num">${esc(
+          formatEstimatedSpend(task.supporting_cost_usd),
+        )}</td>
+        <td class="cofair-table__td cofair-table__td--num">${esc(
+          formatEstimatedSpend(task.estimated_spend_usd),
+        )}</td>
+      </tr>`);
     }
   }
   return rows.join("");
@@ -1684,10 +1792,12 @@ function renderCosts() {
   if (state.costIndexError) statusText = state.costIndexError;
 
   const tbody = document.getElementById("costBody");
+  const more = document.getElementById("costMore");
   if (!tbody) return;
 
-  const dates = costDatesInRange();
-  if (!dates.length) {
+  const newestFirst = costDatesNewestFirst();
+  syncCostPaging(newestFirst);
+  if (!newestFirst.length) {
     const title = state.costIndexError ? "Run detail unavailable" : "No run detail yet";
     const body = state.costIndexError
       ? "Unable to load run-date index. Open Costs again to retry."
@@ -1695,38 +1805,26 @@ function renderCosts() {
         ? "No published run dates fall inside this range."
         : costPendingMessage();
     tbody.innerHTML = emptyRow(8, title, body);
+    if (more) more.hidden = true;
     renderCostsStatus(statusText);
     return;
   }
 
-  const pending = dates.filter((date) => state.costInFlightDates.has(date));
-  const loaded = dates.filter((date) => state.costDetailsByDate.has(date));
-  if (!loaded.length && pending.length) {
-    tbody.innerHTML = emptyRow(8, "Loading run detail", "Fetching provider, model, and task totals for this range.");
-    renderCostsStatus("Loading run detail…");
-    return;
-  }
-
-  // Newest first, matching the Ledger, so the most recent day is the one a
-  // reader lands on rather than the oldest.
-  const html = renderCostRows([...loaded].reverse());
-  if (!html) {
-    tbody.innerHTML = emptyRow(
-      8,
-      "No costs match this selection",
-      "No published cost rows match this date range and provider selection.",
-    );
-    renderCostsStatus(statusText);
-    return;
-  }
+  const shown = costDatesForPage(newestFirst, state.costVisibleCount);
+  const html = renderCostRows(shown);
   tbody.innerHTML = html;
 
-  // Say when the table is showing less than the range asked for, so a partly
-  // loaded range is never mistaken for a range with nothing in it.
-  const failed = dates.filter((date) => state.costDetailErrors.has(date));
+  if (more) {
+    more.hidden = shown.length >= newestFirst.length;
+  }
+
+  const failed = shown.filter((date) => state.costDetailErrors.has(date));
   if (!statusText && failed.length) {
     statusText = `Run detail unavailable for ${failed.length} date${failed.length === 1 ? "" : "s"} in this range.`;
   }
+  const pending = costDatesToFetch(shown, state.costExpandedDates).filter((date) =>
+    state.costInFlightDates.has(date),
+  );
   if (!statusText && pending.length) statusText = "Loading the rest of this range…";
   renderCostsStatus(statusText);
 }
@@ -1834,6 +1932,15 @@ async function main() {
       void ensureCostsReady();
     });
   }
+
+  document.getElementById("costBody").addEventListener("click", (e) => {
+    const toggle = e.target.closest("[data-cost-date]");
+    if (!toggle) return;
+    toggleCostDate(toggle.dataset.costDate);
+  });
+  document.getElementById("costLoadMore").addEventListener("click", () => {
+    loadMoreCostDates();
+  });
 
   document.getElementById("pack").addEventListener("change", (e) => {
     state.pack = e.target.value;

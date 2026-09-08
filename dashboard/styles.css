@@ -100,11 +100,23 @@ a { color: var(--cofair-color-primary); }
   flex-shrink: 0;
 }
 
+/* No page-width token ships with the design system — its own shell owns that —
+   so the reading measure and the page column are named here rather than
+   scattered as literals. */
+:root {
+  --dash-prose-measure: 44rem;
+  --dash-prose-leading: 1.65;
+  --dash-page-measure: 76rem;
+}
+
 .page {
   padding: var(--cofair-space-6) var(--cofair-space-8);
   display: flex;
   flex-direction: column;
   gap: var(--cofair-space-6);
+  max-width: var(--dash-page-measure);
+  margin-inline: auto;
+  width: 100%;
 }
 
 /* ── Stat cards ────────────────────────────────────────────────────────── */
@@ -459,16 +471,24 @@ a { color: var(--cofair-color-primary); }
 
 /* ── Narrative + insights signup (shared with /tokens) ─────────────────── */
 
-/* No page-width token ships with the design system — its own shell owns that —
-   so the reading measure is named here rather than scattered as literals. */
-:root {
-  --dash-prose-measure: 44rem;
-  --dash-prose-leading: 1.65;
-}
-
 .section-heading {
   margin: var(--cofair-space-6) 0 var(--cofair-space-2);
   text-align: left;
+}
+
+/* Full page-column break above the narrative, matching the chart/table width
+   rather than the narrower reading measure. */
+.section-rule {
+  display: block;
+  width: 100%;
+  height: 0;
+  margin: var(--cofair-space-8) 0 0;
+  border: 0;
+  border-top: var(--cofair-border-width-thin) solid var(--cofair-color-border);
+}
+
+.section-rule + .prose .section-heading:first-of-type {
+  margin-top: var(--cofair-space-6);
 }
 
 /* Left-aligned under the charts, capped to a reading measure. The narrative is

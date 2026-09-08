@@ -212,9 +212,63 @@ export function formatCostDelta(comparison) {
 }
 
 // `splitLeafCostColumns` removed 2026-09-04 with the request-level rows it fed.
-// Costs is a flat date/provider/model/task table now, and the builder already
-// publishes those four cost columns on the task node, so mapping a single
-// request's `estimated_cost_usd` onto a column by its source had no caller left.
+// Costs groups by date and expands into provider/model/task rows; the builder
+// already publishes those four cost columns on the task node.
+
+/** Newest-first page size for the Costs table. One week of runs, then Load earlier. */
+export const COST_DATE_PAGE_SIZE = 7;
+
+export function costDatesForPage(datesNewestFirst, visibleCount) {
+  const count = Math.max(0, Number(visibleCount) || 0);
+  return (datesNewestFirst || []).slice(0, count);
+}
+
+export function nextCostDateVisibleCount(current, total, pageSize = COST_DATE_PAGE_SIZE) {
+  const safeCurrent = Math.max(0, Number(current) || 0);
+  const safeTotal = Math.max(0, Number(total) || 0);
+  const size = Math.max(1, Number(pageSize) || COST_DATE_PAGE_SIZE);
+  return Math.min(safeTotal, safeCurrent + size);
+}
+
+export function costDatesToFetch(shownDates, expandedDates) {
+  const expanded =
+    expandedDates instanceof Set ? expandedDates : new Set(expandedDates || []);
+  return (shownDates || []).filter((date) => expanded.has(date));
+}
+
+export function defaultExpandedCostDates(datesNewestFirst) {
+  const newest = datesNewestFirst?.[0];
+  return newest ? [newest] : [];
+}
+
+export function costTaskRowsForDate(date, detail, isVisible) {
+  const rows = [];
+  if (!detail) return rows;
+  for (const providerTier of detail.provider_tiers || []) {
+    if (isVisible && !isVisible(providerTier.provider_id, providerTier.tier)) continue;
+    for (const task of providerTier.tasks || []) {
+      rows.push({ date, providerTier, task });
+    }
+  }
+  return rows;
+}
+
+export function costDayTotals(rows) {
+  let input = 0;
+  let output = 0;
+  let supporting = 0;
+  let total = 0;
+  let count = 0;
+  for (const row of rows || []) {
+    const task = row.task || row;
+    input += Number(task.input_cost_usd) || 0;
+    output += Number(task.output_cost_usd) || 0;
+    supporting += Number(task.supporting_cost_usd) || 0;
+    total += Number(task.estimated_spend_usd) || 0;
+    count += 1;
+  }
+  return { input, output, supporting, total, count };
+}
 
 export function resolveCostDetailRequestState({ hasCachedDetail, hasPath }) {
   if (hasCachedDetail) {

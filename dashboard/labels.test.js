@@ -18,6 +18,13 @@ import {
   resolveCostDetailRequestState,
   priceAtOrBefore,
   sortDatasetsForDate,
+  COST_DATE_PAGE_SIZE,
+  costDatesForPage,
+  nextCostDateVisibleCount,
+  costDatesToFetch,
+  defaultExpandedCostDates,
+  costTaskRowsForDate,
+  costDayTotals,
 } from "./labels.js";
 
 describe("scrubDisplayName", () => {
@@ -365,5 +372,67 @@ describe("drawer observed columns", () => {
       drawerObservedColumns("A").map((col) => col.key),
       ["tokens_in", "tokens_out", "tokens_in_per_1k_chars"],
     );
+  });
+});
+
+describe("cost table date paging", () => {
+  const dates = [
+    "2026-09-08",
+    "2026-09-07",
+    "2026-09-06",
+    "2026-09-05",
+    "2026-09-04",
+    "2026-09-03",
+    "2026-09-02",
+    "2026-09-01",
+  ];
+
+  it("reveals one page of newest dates and leaves the rest for later", () => {
+    assert.equal(COST_DATE_PAGE_SIZE, 7);
+    assert.deepEqual(costDatesForPage(dates, COST_DATE_PAGE_SIZE), dates.slice(0, 7));
+    assert.equal(nextCostDateVisibleCount(7, dates.length), 8);
+    assert.deepEqual(costDatesForPage(dates, 8), dates);
+  });
+
+  it("does not fetch a collapsed date, even when that date is on the page", () => {
+    assert.deepEqual(defaultExpandedCostDates(dates), ["2026-09-08"]);
+    assert.deepEqual(
+      costDatesToFetch(costDatesForPage(dates, 7), new Set(["2026-09-08"])),
+      ["2026-09-08"],
+    );
+  });
+});
+
+describe("cost rows grouped by date", () => {
+  const detail = {
+    provider_tiers: [
+      {
+        provider_id: "openai",
+        tier: "flagship",
+        tasks: [
+          { task_id: "A", input_cost_usd: 0.1, output_cost_usd: 0.2, supporting_cost_usd: 0.05, estimated_spend_usd: 0.35 },
+        ],
+      },
+      {
+        provider_id: "anthropic",
+        tier: "workhorse",
+        tasks: [
+          { task_id: "B", input_cost_usd: 0.01, output_cost_usd: 0.02, supporting_cost_usd: 0, estimated_spend_usd: 0.03 },
+        ],
+      },
+    ],
+  };
+
+  it("keeps only visible provider-tiers and sums the day's filtered totals", () => {
+    const rows = costTaskRowsForDate("2026-09-08", detail, (providerId) => providerId === "openai");
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].task.task_id, "A");
+    assert.deepEqual(costDayTotals(rows), {
+      input: 0.1,
+      output: 0.2,
+      supporting: 0.05,
+      total: 0.35,
+      count: 1,
+    });
   });
 });

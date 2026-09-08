@@ -1,20 +1,3 @@
-/* Local measures. The design system ships no page-width token — its own shell
-   owns that — so this page names its own rather than scattering literals. */
-:root {
-  --tokens-page-measure: 76rem;
-}
-
-/* Constrain and centre the page body. The header and footer are full-bleed —
-   the header's elevated bar and SiteFooter both have to reach the viewport
-   edges, the way they do on cofair.org. The tables are still wide, but at a
-   full 2560px viewport a chart and an eight-column table stretch until the
-   columns lose any relation to each other. */
-.page {
-  max-width: var(--tokens-page-measure);
-  margin-inline: auto;
-  width: 100%;
-}
-
 /* Pack + measure share a full-width row under the provider chips so the pack
    dropdown stays to the left of measure instead of wrapping independently. */
 .pack-measure {
@@ -118,6 +101,54 @@
 
 .cost-card[data-cost-state="decrease"] .cost-card__comparison {
   color: var(--cofair-color-success);
+}
+
+.cost-group .cofair-table__td,
+.cost-group .cofair-table__th {
+  background: var(--cofair-color-bg-muted);
+}
+
+.cost-group__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cofair-space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cost-group__toggle:focus-visible {
+  outline: var(--cofair-focus-ring-width, 2px) solid var(--cofair-color-primary);
+  outline-offset: 2px;
+  border-radius: var(--cofair-radius-sm);
+}
+
+.cost-group__chevron {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-top: var(--cofair-space-1) solid transparent;
+  border-bottom: var(--cofair-space-1) solid transparent;
+  border-left: var(--cofair-space-2) solid currentColor;
+}
+
+.cost-group__toggle[aria-expanded="true"] .cost-group__chevron {
+  transform: rotate(90deg);
+}
+
+.cost-more {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--cofair-space-4);
+}
+
+.cost-more[hidden] {
+  display: none;
 }
 
 /* Ledger and Costs: fit the page width. Shared `.cofair-table` cells are
