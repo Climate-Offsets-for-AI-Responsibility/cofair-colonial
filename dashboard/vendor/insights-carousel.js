@@ -14,6 +14,9 @@ const DEFAULT_FEED = "https://cofair.org/insights.json";
 const DEFAULT_INDEX = "https://cofair.org/insights/";
 const LOCAL_DEV_FEED = "http://localhost:5174/insights.json";
 
+export const CAROUSEL_LIMIT = 5;
+export const HIDDEN_SLUGS = new Set(["testing-cofair-integration"]);
+
 /** When colonial is served locally, production `insights.json` is not deployed yet. */
 export function localInsightsFeedFallback(hostname, feedUrl) {
   if (hostname !== "localhost" && hostname !== "127.0.0.1") return null;
@@ -50,6 +53,22 @@ export function escapeCarouselText(value) {
     .replace(/"/g, "&quot;");
 }
 
+/** Drop the weekly-brief series prefix so tiles and article heads share one title. */
+export function displayCarouselTitle(title) {
+  return String(title ?? "")
+    .replace(/^Municipal(?: Data Center)? Briefing:\s*/i, "")
+    .trim();
+}
+
+function slugFromHref(href) {
+  try {
+    const path = new URL(href, "https://cofair.org").pathname;
+    return path.replace(/\/+$/, "").split("/").pop() ?? "";
+  } catch {
+    return "";
+  }
+}
+
 function tagsMarkup(tags) {
   if (!tags?.length) return "";
   const items = tags
@@ -61,6 +80,11 @@ function tagsMarkup(tags) {
   return `<ul class="cofair-insights-carousel__tags" aria-label="Topics">${items}</ul>`;
 }
 
+function imageMarkup(item) {
+  if (!item.imageSrc) return "";
+  return `<img class="cofair-insights-carousel__image" src="${escapeCarouselText(item.imageSrc)}" alt="${escapeCarouselText(item.imageAlt ?? "")}" />`;
+}
+
 export function renderCarouselCard(item) {
   const date = formatCarouselDate(item.publishedAt);
   const title = escapeCarouselText(item.title);
@@ -68,10 +92,13 @@ export function renderCarouselCard(item) {
   const href = escapeCarouselText(item.href);
   return `<article class="cofair-insights-carousel__card">
   <a class="cofair-insights-carousel__link" href="${href}">
-    ${tagsMarkup(item.tags)}
-    <h3 class="cofair-insights-carousel__title">${title}</h3>
-    <p class="cofair-insights-carousel__excerpt">${excerpt}</p>
-    ${date ? `<time class="cofair-insights-carousel__date" datetime="${escapeCarouselText(item.publishedAt)}">${date}</time>` : ""}
+    ${imageMarkup(item)}
+    <div class="cofair-insights-carousel__body">
+      ${tagsMarkup(item.tags)}
+      <h3 class="cofair-insights-carousel__title">${title}</h3>
+      <p class="cofair-insights-carousel__excerpt">${excerpt}</p>
+      ${date ? `<time class="cofair-insights-carousel__date" datetime="${escapeCarouselText(item.publishedAt)}">${date}</time>` : ""}
+    </div>
   </a>
 </article>`;
 }
@@ -87,12 +114,16 @@ export function parseInsightsFeed(payload) {
   return posts
     .map((post) => ({
       href: post.href ?? post.canonical ?? "",
-      title: post.title ?? "",
+      title: displayCarouselTitle(post.title ?? ""),
       excerpt: post.excerpt ?? "",
       tags: Array.isArray(post.tags) ? post.tags : [],
       publishedAt: post.publishedAt ?? "",
+      imageSrc: post.featureImage?.src ?? post.imageSrc ?? "",
+      imageAlt: post.featureImage?.alt ?? post.imageAlt ?? "",
     }))
-    .filter((item) => item.href && item.title);
+    .filter((item) => item.href && item.title)
+    .filter((item) => !HIDDEN_SLUGS.has(slugFromHref(item.href)))
+    .slice(0, CAROUSEL_LIMIT);
 }
 
 function applyIndex(root, index, total) {
