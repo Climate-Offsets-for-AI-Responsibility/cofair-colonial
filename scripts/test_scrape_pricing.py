@@ -198,6 +198,45 @@ class ParseDeepSeekTest(unittest.TestCase):
         self.assertFalse(is_deepseek_owned_model("claude-sonnet-4"))
         self.assertFalse(is_deepseek_owned_model("gpt-5"))
 
+    def test_parses_every_deepseek_column_not_just_the_first_two(self) -> None:
+        """A third (or nth) family member has to land in the snapshot.
+
+        The docs table used to be exactly flash|pro. When DeepSeek adds v4.1 as
+        another column, a two-column parser would never see it, and /tokens
+        would keep pinning the retired pair until someone edited TIER_CANDIDATES.
+        """
+        html = """
+        <table>
+          <tr>
+            <th>MODEL</th>
+            <th>deepseek-v4-flash</th>
+            <th>deepseek-v4-pro</th>
+            <th>deepseek-v4.1-flash</th>
+            <th>deepseek-v4.1-pro</th>
+          </tr>
+          <tr><td>CONTEXT LENGTH</td><td>1M</td><td>1M</td><td>1M</td><td>1M</td></tr>
+          <tr>
+            <td>PRICING (1)</td>
+            <td>1M INPUT TOKENS (CACHE HIT)</td>
+            <td>$0.0028</td><td>$0.003625</td><td>$0.0028</td><td>$0.003625</td>
+          </tr>
+          <tr><td>1M INPUT TOKENS (CACHE MISS)</td><td>$0.14</td><td>$0.435</td><td>$0.14</td><td>$0.435</td></tr>
+          <tr><td>1M OUTPUT TOKENS</td><td>$0.28</td><td>$0.87</td><td>$0.28</td><td>$0.87</td></tr>
+        </table>
+        """
+        rows = parse_deepseek(html)
+        model_ids = sorted({row["model_id"] for row in rows})
+        self.assertEqual(
+            model_ids,
+            [
+                "deepseek-v4-flash",
+                "deepseek-v4-pro",
+                "deepseek-v4.1-flash",
+                "deepseek-v4.1-pro",
+            ],
+        )
+        self.assertEqual(len(rows), 12)
+
 
 class ParseQwenTest(unittest.TestCase):
     def test_keeps_international_list_rows_for_selected_models(self) -> None:

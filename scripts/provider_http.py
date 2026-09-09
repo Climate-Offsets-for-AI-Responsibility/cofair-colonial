@@ -95,7 +95,15 @@ def request_with_retry(method: str, url: str, **kwargs: Any) -> requests.Respons
     for attempt in range(max_attempts):
         try:
             response = requests.request(method, url, timeout=timeout, **kwargs)
-        except (requests.ConnectionError, requests.Timeout) as exc:
+        except (
+            requests.ConnectionError,
+            requests.Timeout,
+            requests.exceptions.ChunkedEncodingError,
+        ):
+            # ChunkedEncodingError ("Response ended prematurely") is not a
+            # ConnectionError. DeepSeek dropped a long flagship generation on
+            # 2026-09-09 with exactly that exception, and a single miss withheld
+            # the day's /tokens node.
             if attempt >= max_attempts - 1:
                 raise
             _sleep_before_retry(attempt, None)

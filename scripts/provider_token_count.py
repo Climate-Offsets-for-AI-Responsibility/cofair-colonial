@@ -20,6 +20,7 @@ if str(_SCRIPTS) not in sys.path:
 
 from ops.provider_faults import classify_provider_error, run_status_for_http
 from provider_http import request_with_retry
+from model_families import rank_ids_for_tier
 
 TIMEOUT_SECONDS = 90
 
@@ -149,6 +150,59 @@ def _anthropic_candidates(model_id: str, api_key: str | None) -> list[str]:
     return out or [dashed]
 
 
+_DEEPSEEK_MODEL_IDS: list[str] | None = None
+
+
+def deepseek_model_ids(api_key: str) -> list[str]:
+    """Ids DeepSeek will actually serve on this key, newest not guaranteed."""
+    global _DEEPSEEK_MODEL_IDS
+    if _DEEPSEEK_MODEL_IDS is not None:
+        return _DEEPSEEK_MODEL_IDS
+    response = request_with_retry(
+        "GET",
+        "https://api.deepseek.com/models",
+        headers={"Authorization": f"Bearer {api_key}"},
+        timeout=TIMEOUT_SECONDS,
+    )
+    if not response.ok:
+        raise _http_error_from_response(response)
+    _DEEPSEEK_MODEL_IDS = [
+        item["id"] for item in response.json().get("data", []) if item.get("id")
+    ]
+    return _DEEPSEEK_MODEL_IDS
+
+
+def _deepseek_candidates(
+    model_id: str,
+    tier: str,
+    api_key: str | None,
+    fallback_model_ids: list[Any] | None,
+) -> list[str]:
+    """Pinned id first only as a fallback; live list supplies the current generation.
+
+    DeepSeek ships a new flash/pro pair without keeping the previous ids on the
+    key. Walking only yesterday's pin made the meter record `model_unavailable`
+    (or a dropped stream on a retiring endpoint) and /tokens withheld the day.
+    """
+    ordered: list[str] = []
+    for entry in [model_id, *(fallback_model_ids or [])]:
+        candidate = entry["model_id"] if isinstance(entry, dict) else entry
+        if candidate not in ordered:
+            ordered.append(candidate)
+    if not api_key:
+        return ordered or [model_id]
+    try:
+        live = deepseek_model_ids(api_key)
+    except Exception:  # noqa: BLE001 — availability lookup is best-effort
+        return ordered or [model_id]
+    ranked = rank_ids_for_tier("deepseek", tier, live)
+    merged: list[str] = []
+    for candidate in [*ranked, *ordered]:
+        if candidate not in merged:
+            merged.append(candidate)
+    return merged or ordered or [model_id]
+
+
 def api_model_candidates(
     provider_id: str,
     model_id: str,
@@ -166,6 +220,8 @@ def api_model_candidates(
     """
     if provider_id == "anthropic":
         return _anthropic_candidates(model_id, api_key)
+    if provider_id == "deepseek":
+        return _deepseek_candidates(model_id, tier, api_key, fallback_model_ids)
     ordered: list[str] = []
     for entry in [model_id, *(fallback_model_ids or [])]:
         # Accepts bare ids or `equivalence.json`'s priced candidate rows.

@@ -737,45 +737,45 @@ def parse_deepseek(html):
         if not is_deepseek_owned_model(mat[0][1]):
             continue
 
-        model_pairs = [
-            (slugify(mat[0][1]), norm(mat[0][1]), 0),
-            (slugify(mat[0][2]), norm(mat[0][2]), 1),
-        ]
+        # Every owned column, not the first two. A new generation (v4.1, …)
+        # arrives as another header cell; dropping it kept /tokens pinned to
+        # yesterday's pair until someone edited TIER_CANDIDATES.
+        models = []
+        for name in mat[0][1:]:
+            if not is_deepseek_owned_model(name):
+                continue
+            model_id = slugify(name)
+            display_name = norm(name)
+            if model_id and display_name:
+                models.append((model_id, display_name))
+        if not models:
+            continue
 
-        context_values = [None, None]
-        cache_hit_values = [None, None]
-        cache_miss_values = [None, None]
-        output_values = [None, None]
+        n = len(models)
+        context_values = [None] * n
+        cache_hit_values = [None] * n
+        cache_miss_values = [None] * n
+        output_values = [None] * n
+
+        def _fill(target, values):
+            for i, value in enumerate(values[:n]):
+                target[i] = value
 
         for row in mat[1:]:
             label = " ".join(part.lower() for part in row[:2]) if row else ""
             if "context length" in label:
-                if len(row) > 1:
-                    context_values[0] = row[1]
-                if len(row) > 2:
-                    context_values[1] = row[2]
+                _fill(context_values, row[1:])
             elif "cache hit" in label:
                 if len(row) > 2 and "pricing" in row[0].lower():
-                    cache_hit_values[0] = money(row[2])
-                    if len(row) > 3:
-                        cache_hit_values[1] = money(row[3])
+                    _fill(cache_hit_values, [money(v) for v in row[2:]])
                 else:
-                    if len(row) > 1:
-                        cache_hit_values[0] = money(row[1])
-                    if len(row) > 2:
-                        cache_hit_values[1] = money(row[2])
+                    _fill(cache_hit_values, [money(v) for v in row[1:]])
             elif "cache miss" in label:
-                if len(row) > 1:
-                    cache_miss_values[0] = money(row[1])
-                if len(row) > 2:
-                    cache_miss_values[1] = money(row[2])
+                _fill(cache_miss_values, [money(v) for v in row[1:]])
             elif "output" in label:
-                if len(row) > 1:
-                    output_values[0] = money(row[1])
-                if len(row) > 2:
-                    output_values[1] = money(row[2])
+                _fill(output_values, [money(v) for v in row[1:]])
 
-        for model_id, display_name, idx in model_pairs:
+        for idx, (model_id, display_name) in enumerate(models):
             if not model_id or not display_name:
                 continue
             if not is_deepseek_owned_model(display_name) and not is_deepseek_owned_model(model_id):

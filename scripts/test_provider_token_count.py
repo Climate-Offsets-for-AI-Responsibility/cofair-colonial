@@ -193,6 +193,24 @@ class ApiModelCandidatesTest(unittest.TestCase):
             api_model_candidates("qwen", "qwen3.7-max", "flagship", None), ["qwen-max"]
         )
 
+    def test_deepseek_prefers_newer_stable_ids_from_the_live_list(self) -> None:
+        live = [
+            "deepseek-v4-flash",
+            "deepseek-v4-pro",
+            "deepseek-v4.1-flash",
+            "deepseek-v4.1-pro",
+            "deepseek-v4.1-flash-expires-on-0910",
+        ]
+        with mock.patch("provider_token_count.deepseek_model_ids", return_value=live):
+            self.assertEqual(
+                api_model_candidates("deepseek", "deepseek-v4-pro", "flagship", "sk-test"),
+                ["deepseek-v4.1-pro", "deepseek-v4-pro"],
+            )
+            self.assertEqual(
+                api_model_candidates("deepseek", "deepseek-v4-flash", "workhorse", "sk-test"),
+                ["deepseek-v4.1-flash", "deepseek-v4-flash"],
+            )
+
     def test_anthropic_dots_become_dashes_without_a_key(self) -> None:
         self.assertEqual(
             api_model_candidates("anthropic", "claude-haiku-4.5", "workhorse", None),

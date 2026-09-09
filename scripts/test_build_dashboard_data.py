@@ -262,6 +262,65 @@ class BuildEquivalenceTest(unittest.TestCase):
         self.assertIn("daily tokenizer ledger on tasks A/B/C/D/F", note)
         self.assertNotIn("daily task E wrapper counts", note)
 
+    def _deepseek_row(self, model_id: str, input_price: float, output_price: float) -> dict:
+        return {
+            "provider_id": "deepseek",
+            "model_id": model_id,
+            "display_name": model_id,
+            "latest_input": input_price,
+            "latest_output": output_price,
+            "currency": "USD",
+            "currently_active": True,
+        }
+
+    def test_selects_newest_stable_deepseek_family_member(self) -> None:
+        """Pinned v4 ids must not strand the panel when v4.1 ships.
+
+        /tokens withholds a day that is missing any suite task. If the catalog
+        moves to a new pro/flash pair and TIER_CANDIDATES still names only v4,
+        DeepSeek drops off the chart until someone edits the pin list.
+        """
+        models = [
+            self._deepseek_row("deepseek-v4-pro", 0.435, 0.87),
+            self._deepseek_row("deepseek-v4-flash", 0.14, 0.28),
+            self._deepseek_row("deepseek-v4.1-pro", 0.435, 0.87),
+            self._deepseek_row("deepseek-v4-flash-expires-on-0910", 0.14, 0.28),
+            self._deepseek_row("deepseek-v4.1-flash", 0.14, 0.28),
+            self._deepseek_row("deepseek-v4.1-flash-expires-on-0910", 0.14, 0.28),
+        ]
+        eq = build_equivalence(
+            models,
+            {"generated_at": "2026-09-09T00:00:00Z", "last_date": "2026-09-09"},
+            live_model_map={},
+        )
+        by_tier = {
+            row["tier"]: row["model_id"]
+            for row in eq["selected_models"]
+            if row["provider_id"] == "deepseek"
+        }
+        self.assertEqual(by_tier["flagship"], "deepseek-v4.1-pro")
+        self.assertEqual(by_tier["workhorse"], "deepseek-v4.1-flash")
+
+    def test_still_selects_deepseek_when_the_pinned_ids_leave_the_catalog(self) -> None:
+        models = [
+            self._deepseek_row("deepseek-v4.1-pro", 0.435, 0.87),
+            self._deepseek_row("deepseek-v4.1-flash", 0.14, 0.28),
+        ]
+        eq = build_equivalence(
+            models,
+            {"generated_at": "2026-09-09T00:00:00Z", "last_date": "2026-09-09"},
+            live_model_map={},
+        )
+        by_tier = {
+            row["tier"]: row["model_id"]
+            for row in eq["selected_models"]
+            if row["provider_id"] == "deepseek"
+        }
+        self.assertEqual(
+            by_tier,
+            {"flagship": "deepseek-v4.1-pro", "workhorse": "deepseek-v4.1-flash"},
+        )
+
 
 class BuildTokenRunsTest(unittest.TestCase):
     def test_normalizes_density_and_flags_censored_output(self) -> None:

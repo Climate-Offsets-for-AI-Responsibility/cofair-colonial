@@ -43,6 +43,7 @@ if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent / "ops"))
 from cost_events import load_cost_events  # noqa: E402
+from model_families import rank_ids_for_tier  # noqa: E402
 from provider_faults import remedy_for_error  # noqa: E402
 from task_corpus import (  # noqa: E402
     CHAT_CORPUS_VERSION,
@@ -263,6 +264,9 @@ TIER_CANDIDATES = {
         "workhorse": ["nova-micro", "nova-2.0-lite", "nova-lite"],
     },
     "deepseek": {
+        # Pins are fallbacks. `_expand_tier_ids` prepends the newest stable
+        # pro/flash currently in the catalog so a v4.1-style cutover does not
+        # require a code change to keep DeepSeek on the /tokens panel.
         "flagship": ["deepseek-v4-pro"],
         "workhorse": ["deepseek-v4-flash"],
     },
@@ -399,6 +403,36 @@ def build_index(series: list[dict], schema_by_date: dict[str, str]) -> dict:
         # site is broken, which is worse than the history the epoch hides.
         "dashboard_start_date": DASHBOARD_START_DATE,
     }
+
+
+def _expand_tier_ids(
+    by_provider_model: dict[tuple[str, str], dict],
+    provider_id: str,
+    tier_name: str,
+    pinned: list[str],
+) -> list[str]:
+    """Newest catalog family member first, then the pinned fallbacks.
+
+    DeepSeek (and anyone we later fold into `rank_ids_for_tier`) ships a new
+    generation by adding a column, not by keeping yesterday's id. Walking only
+    the pin list made /tokens go dark the day v4-pro left the rate card.
+    """
+    if provider_id != "deepseek":
+        return list(pinned)
+    catalog_ids = [
+        model_id
+        for (pid, model_id), row in by_provider_model.items()
+        if pid == provider_id
+        and row.get("currently_active", row.get("is_active", True))
+        and row.get("latest_input", row.get("input_price")) is not None
+        and row.get("latest_output", row.get("output_price")) is not None
+    ]
+    ranked = rank_ids_for_tier(provider_id, tier_name, catalog_ids)
+    ordered: list[str] = []
+    for model_id in [*ranked, *pinned]:
+        if model_id not in ordered:
+            ordered.append(model_id)
+    return ordered
 
 
 def _pick_tier_model(
@@ -1556,7 +1590,9 @@ def build_equivalence(
     selected_by_mode = {"two": [], "three": []}
     for provider_id, tiers in TIER_CANDIDATES.items():
         for tier_name in TIER_ORDER:
-            tier_ids = tiers.get(tier_name, [])
+            tier_ids = _expand_tier_ids(
+                by_provider_model, provider_id, tier_name, tiers.get(tier_name, [])
+            )
             row = _pick_tier_model(by_provider_model, provider_id, tier_ids)
             if row is None:
                 continue

@@ -68,6 +68,33 @@ class ProviderHttpRetryTest(unittest.TestCase):
         self.assertEqual(mocked.call_count, 1)
         slept.assert_not_called()
 
+    def test_retries_chunked_encoding_premature_end_then_succeeds(self) -> None:
+        """DeepSeek (and others) can drop a long generation mid-body.
+
+        `Response ended prematurely` is a ChunkedEncodingError, not a Timeout or
+        ConnectionError, and the meter used to record it as a hard failure. One
+        dropped flagship task D then withheld the whole DeepSeek node for the day.
+        """
+        success = MagicMock()
+        success.status_code = 200
+        success.text = '{"usage":{"prompt_tokens":1,"completion_tokens":1}}'
+        success.headers = {}
+        success.ok = True
+
+        with patch(
+            "provider_http.requests.request",
+            side_effect=[
+                requests.exceptions.ChunkedEncodingError("Response ended prematurely"),
+                success,
+            ],
+        ) as mocked:
+            with patch("provider_http.time.sleep"):
+                response = request_with_retry(
+                    "POST", "https://api.deepseek.com/chat/completions", timeout=1
+                )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(mocked.call_count, 2)
+
 
 if __name__ == "__main__":
     unittest.main()

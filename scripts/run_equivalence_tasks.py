@@ -53,7 +53,10 @@ DATA_DIR = REPO_ROOT / "dashboard" / "data"
 EQUIVALENCE_FILE = DATA_DIR / "equivalence.json"
 RUNS_FILE = DATA_DIR / "equivalence_runs.json"
 
-TIMEOUT_SECONDS = 90
+# Generation, not lookup. 90s was enough for v4-flash; a slower flagship on
+# task D (25K packet) dropped the TCP body ("Response ended prematurely") and
+# /tokens withheld the whole DeepSeek node for the day.
+TIMEOUT_SECONDS = 300
 
 _GOOGLE_MODELS_CACHE: list[str] | None = None
 
