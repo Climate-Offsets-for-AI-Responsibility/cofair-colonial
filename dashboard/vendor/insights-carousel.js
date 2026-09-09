@@ -123,6 +123,7 @@ export function parseInsightsFeed(payload) {
     }))
     .filter((item) => item.href && item.title)
     .filter((item) => !HIDDEN_SLUGS.has(slugFromHref(item.href)))
+    .filter((item) => Boolean(item.imageSrc))
     .slice(0, CAROUSEL_LIMIT);
 }
 

@@ -190,10 +190,12 @@
 }
 
 
-/* Links use colour and context rather than an underline across COFAIR surfaces. */
+/* Links use colour and context rather than an underline across COFAIR surfaces.
+   Weight is inherited so a tile title or footer label is not bold merely because
+   it is an <a>. Surfaces that need a heavier mark set it themselves. */
 a {
   text-decoration: none;
-  font-weight: var(--cofair-heading-weight);
+  font-weight: inherit;
 }
 
 .cofair-btn {
@@ -876,9 +878,10 @@ p a {
   margin: 0;
   font-family: var(--cofair-font-sans);
   font-size: var(--cofair-font-size-sm);
-  font-weight: 500;
+  font-weight: var(--cofair-heading-weight);
   color: var(--cofair-color-text-muted);
   white-space: nowrap;
+  text-decoration: none;
 }
 
 .cofair-site-header--inverted .cofair-site-header__tagline {
@@ -1092,7 +1095,7 @@ p a {
 }
 
 .cofair-site-footer__field {
-  background-color: transparent;
+  background-color: var(--cofair-color-primary);
 }
 
 .cofair-site-footer__field::after {
@@ -1100,10 +1103,11 @@ p a {
   position: absolute;
   inset: 0;
   z-index: 1;
+  /* Same fade as the homepage hero: solid primary into the triangle field. */
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--cofair-color-primary) 42%, transparent) 0%,
-    color-mix(in srgb, var(--cofair-color-primary-active) 28%, transparent) 100%
+    var(--cofair-color-primary) 0%,
+    transparent 45%
   );
   pointer-events: none;
 }
@@ -1136,6 +1140,7 @@ p a {
 .cofair-site-footer__link {
   color: var(--cofair-color-text-inverse);
   text-decoration: none;
+  font-weight: 400;
 }
 
 .cofair-site-footer__link:hover {
@@ -1399,8 +1404,11 @@ p a {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--cofair-space-4);
   margin-bottom: var(--cofair-space-6);
+}
+
+.cofair-insights-carousel__stage {
+  position: relative;
 }
 
 .cofair-insights-carousel__heading {
@@ -1483,10 +1491,14 @@ p a {
   padding: 0;
 }
 
+.cofair-insights-carousel__tags .cofair-badge {
+  font-weight: 400;
+}
+
 .cofair-insights-carousel__title {
   margin: 0;
   font-family: var(--cofair-heading-font);
-  font-weight: var(--cofair-heading-weight);
+  font-weight: 400;
   font-size: var(--cofair-font-size-xl);
   color: var(--cofair-color-text);
   /* NO TOKEN: line-height 1.25 — no --cofair-line-height-* family. */
@@ -1515,8 +1527,12 @@ p a {
 .cofair-insights-carousel__prev,
 .cofair-insights-carousel__next {
   appearance: none;
-  background: transparent;
-  border: 0;
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  transform: translateY(-50%);
+  background: var(--cofair-color-bg-elevated);
+  border: var(--cofair-border-width-thin) solid var(--cofair-color-border-subtle);
   padding: var(--cofair-space-2);
   color: var(--cofair-color-text);
   cursor: pointer;
@@ -1524,6 +1540,14 @@ p a {
   align-items: center;
   justify-content: center;
   border-radius: var(--cofair-radius-pill);
+}
+
+.cofair-insights-carousel__prev {
+  left: calc(var(--cofair-space-2) * -1);
+}
+
+.cofair-insights-carousel__next {
+  right: calc(var(--cofair-space-2) * -1);
 }
 
 .cofair-insights-carousel__prev:hover:not(:disabled),

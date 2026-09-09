@@ -42,7 +42,7 @@
           <img class="cofair-logo cofair-logo--bw-logo cofair-logo--on-dark"
                src="vendor/cofair-bw-logo.svg" alt="COFAIR" width="56" />
         </a>
-        <p class="cofair-site-header__tagline cofair-site-header__reveal">Climate Offsets for AI Responsibility</p>
+        <a href="https://cofair.org" class="cofair-site-header__tagline cofair-site-header__reveal">Climate Offsets for AI Responsibility</a>
       </div>
       <div class="cofair-site-header__actions cofair-site-header__actions--reveal">
         <a class="cofair-btn cofair-btn--primary cofair-btn--sm" href="https://cofair.org/start/">
@@ -284,16 +284,18 @@
            aria-labelledby="insights-carousel-heading">
     <div class="cofair-insights-carousel__inner">
       <header class="cofair-insights-carousel__head">
+        <h2 class="cofair-insights-carousel__heading" id="insights-carousel-heading">Latest News</h2>
+      </header>
+      <div class="cofair-insights-carousel__stage">
         <button type="button" class="cofair-insights-carousel__prev" aria-label="Previous">
           <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
         </button>
-        <h2 class="cofair-insights-carousel__heading" id="insights-carousel-heading">Latest News</h2>
+        <div class="cofair-insights-carousel__viewport">
+          <ul class="cofair-insights-carousel__track"></ul>
+        </div>
         <button type="button" class="cofair-insights-carousel__next" aria-label="Next">
           <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
         </button>
-      </header>
-      <div class="cofair-insights-carousel__viewport">
-        <ul class="cofair-insights-carousel__track"></ul>
       </div>
     </div>
   </section>
@@ -315,7 +317,8 @@
               <a class="cofair-site-footer__link" href="https://cofair.org/start/?intent=recipient">Sign up for Non-Profits</a>
               <a class="cofair-site-footer__link" href="https://cofair.org/start/?intent=donor">Sign up for Donors</a>
               <a class="cofair-site-footer__link" href="https://cofair.org/#how-it-works">How COFAIR works</a>
-              <a class="cofair-site-footer__link" href="https://cofair.org/#contact">Get in Touch</a>
+              <a class="cofair-site-footer__link" href="https://cofair.org/#faqs">COFAIR FAQs</a>
+              <a class="cofair-site-footer__link" href="https://cofair.org/#contact">Get in touch w/ us</a>
             </nav>
             <nav class="cofair-site-footer__nav" aria-label="Instruments">
               <a class="cofair-site-footer__link" href="https://cofair.org/tokens/">Token Efficiency Index</a>
@@ -324,7 +327,7 @@
               <a class="cofair-site-footer__link" href="https://cofair.org/policy/">Community Playbook</a>
             </nav>
             <address class="cofair-site-footer__contact">
-              <p><a class="cofair-site-footer__link" href="https://cofair.org">Cofair.org</a></p>
+              <p><a class="cofair-site-footer__link" href="https://cofair.org">COFAIR.org – 501(c)(3)</a></p>
               <p>1 Ferry Building Plaza #201<br />San Francisco, CA 94105</p>
               <p>
                 <a class="cofair-site-footer__link cofair-site-footer__contact-link" href="tel:+15105427364">
@@ -362,7 +365,10 @@
     import { mountHeaderSignupReveal } from "./vendor/header-reveal.js";
     import { mountInsightsCarousel } from "./vendor/insights-carousel.js";
     document.querySelectorAll("[data-cofair-triangles]").forEach((el) => {
-      mountTriangleBackground(el, { baseColor: "transparent" });
+      mountTriangleBackground(el, {
+        baseColor: "var(--cofair-color-primary)",
+        maxOpacity: 0.36,
+      });
     });
     const header = document.querySelector(".cofair-site-header");
     if (header) mountHeaderSignupReveal(header);
