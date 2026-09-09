@@ -171,7 +171,7 @@
   --cofair-skeleton-base: var(--cofair-color-bg-muted);
   --cofair-skeleton-sheen: var(--cofair-color-border-subtle);
   --cofair-heading-font: var(--cofair-font-serif);
-  --cofair-heading-weight: 600;
+  --cofair-heading-weight: 400;
   --cofair-table-cell-padding-y: var(--cofair-space-2);
   --cofair-table-cell-padding-x: var(--cofair-space-3);
   --cofair-tab-padding-y: var(--cofair-space-2);
@@ -1564,6 +1564,7 @@ p a {
   width: 100%;
   padding-block: var(--cofair-space-12);
   padding-inline: var(--cofair-space-6);
+  background: var(--cofair-color-bg-muted);
 }
 
 .cofair-site-faq__inner {
@@ -1595,17 +1596,17 @@ p a {
 .cofair-site-faq__item {
   border: var(--cofair-border-width-thin) solid var(--cofair-color-border);
   border-radius: var(--cofair-radius-md);
-  background: var(--cofair-color-bg-muted);
+  background: var(--cofair-color-bg);
   overflow: hidden;
 }
 
 .cofair-site-faq__summary {
   list-style: none;
   cursor: pointer;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--cofair-space-4);
+  column-gap: var(--cofair-space-4);
   padding: var(--cofair-space-4) var(--cofair-space-5);
   font-family: var(--cofair-font-serif);
   font-size: var(--cofair-font-size-lg);
@@ -1614,7 +1615,6 @@ p a {
 }
 
 .cofair-site-faq__summary > span {
-  flex: 1;
   min-width: 0;
   text-align: left;
 }
@@ -1624,9 +1624,9 @@ p a {
 }
 
 .cofair-site-faq__icon {
+  justify-self: end;
   color: var(--cofair-color-primary);
   transition: transform 160ms ease;
-  flex-shrink: 0;
 }
 
 .cofair-site-faq__item[open] .cofair-site-faq__icon {
