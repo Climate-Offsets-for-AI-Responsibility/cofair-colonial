@@ -582,4 +582,12 @@ describe("dashboard chrome", () => {
       assert.equal(html.includes("cofair-site-header__tagline cofair-site-header__reveal"), false);
     }
   });
+
+  it("uses the shared Data Centers in America footer label", () => {
+    for (const file of ["index.html", "tokens/index.html"]) {
+      const html = readFileSync(join(dashDir, file), "utf8");
+      assert.match(html, />Data Centers in America<\/a>/);
+      assert.equal(html.includes(">Datacenter Ledger</a>"), false);
+    }
+  });
 });

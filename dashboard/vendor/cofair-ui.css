@@ -172,6 +172,7 @@
   --cofair-skeleton-sheen: var(--cofair-color-border-subtle);
   --cofair-heading-font: var(--cofair-font-serif);
   --cofair-heading-weight: 400;
+  --cofair-section-heading-size: var(--cofair-font-size-3xl);
   --cofair-table-cell-padding-y: var(--cofair-space-2);
   --cofair-table-cell-padding-x: var(--cofair-space-3);
   --cofair-tab-padding-y: var(--cofair-space-2);
@@ -360,7 +361,7 @@ a {
 }
 
 .cofair-heading--1 { font-size: var(--cofair-font-size-4xl); letter-spacing: -0.01em; }
-.cofair-heading--2 { font-size: var(--cofair-font-size-3xl); letter-spacing: -0.01em; }
+.cofair-heading--2 { font-size: var(--cofair-section-heading-size); letter-spacing: -0.01em; }
 .cofair-heading--3 { font-size: var(--cofair-font-size-2xl); }
 .cofair-heading--4 { font-size: var(--cofair-font-size-xl); }
 
@@ -845,6 +846,15 @@ p a {
 
 .cofair-marketing-shell__main {
   flex: 1;
+}
+
+/* Keep footer hash-link targets visible below the sticky corporate header. */
+.cofair-marketing-shell__main section[id] {
+  scroll-margin-top: calc(
+    var(--cofair-site-header-mark) +
+    (var(--cofair-space-3) * 2) +
+    var(--cofair-space-3)
+  );
 }
 
 .cofair-site-header {
@@ -1418,7 +1428,7 @@ p a {
   margin: 0;
   font-family: var(--cofair-heading-font);
   font-weight: var(--cofair-heading-weight);
-  font-size: var(--cofair-font-size-2xl);
+  font-size: var(--cofair-section-heading-size);
   color: var(--cofair-color-text);
   text-align: center;
 }
@@ -1581,7 +1591,7 @@ p a {
   margin: 0;
   font-family: var(--cofair-heading-font);
   font-weight: var(--cofair-heading-weight);
-  font-size: var(--cofair-font-size-2xl);
+  font-size: var(--cofair-section-heading-size);
   color: var(--cofair-color-text);
 }
 
