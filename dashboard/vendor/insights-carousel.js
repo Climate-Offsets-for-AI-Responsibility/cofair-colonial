@@ -45,6 +45,15 @@ export function stepCarouselIndex(index, delta, total) {
   return next;
 }
 
+/** Scroll the track inside its overflow viewport — never the page. */
+export function scrollCarouselViewportToIndex(root, index, { behavior = "auto" } = {}) {
+  const viewport = root.querySelector(".cofair-insights-carousel__viewport");
+  const items = root.querySelectorAll(".cofair-insights-carousel__item");
+  const target = items[index];
+  if (!viewport || !target || typeof viewport.scrollTo !== "function") return;
+  viewport.scrollTo({ left: target.offsetLeft, behavior });
+}
+
 export function escapeCarouselText(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -127,18 +136,16 @@ export function parseInsightsFeed(payload) {
     .slice(0, CAROUSEL_LIMIT);
 }
 
-function applyIndex(root, index, total) {
+function applyIndex(root, index, total, { instant = false } = {}) {
   const status = root.querySelector(".cofair-insights-carousel__status");
   if (status) status.textContent = carouselStatus(index, total);
   const prev = root.querySelector(".cofair-insights-carousel__prev");
   const next = root.querySelector(".cofair-insights-carousel__next");
   if (prev) prev.disabled = index <= 0;
   if (next) next.disabled = index >= total - 1;
-  const items = root.querySelectorAll(".cofair-insights-carousel__item");
-  const target = items[index];
-  if (target && typeof target.scrollIntoView === "function") {
-    target.scrollIntoView({ inline: "start", block: "nearest", behavior: "smooth" });
-  }
+  scrollCarouselViewportToIndex(root, index, {
+    behavior: instant ? "auto" : "smooth",
+  });
 }
 
 function fillTrack(root, items) {
@@ -166,7 +173,7 @@ export function mountInsightsCarousel(root, options = {}) {
     const next = root.querySelector(".cofair-insights-carousel__next");
     prev?.addEventListener("click", onPrev);
     next?.addEventListener("click", onNext);
-    applyIndex(root, index, total);
+    applyIndex(root, index, total, { instant: true });
     return () => {
       prev?.removeEventListener("click", onPrev);
       next?.removeEventListener("click", onNext);

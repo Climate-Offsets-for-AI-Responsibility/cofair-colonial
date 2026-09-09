@@ -1,7 +1,8 @@
 /**
- * Scroll-reveal for the sticky header's Sign up control and lockup tagline.
+ * Scroll-reveal for the sticky header's Sign up control.
  * Zero-build surfaces (colonial /pricing and /tokens) load this module;
  * React SiteHeader calls the same mount after paint.
+ * The lockup tagline stays visible; it is not part of the reveal.
  */
 export function headerSignupShouldReveal(sentinelBottomInViewport) {
   return sentinelBottomInViewport <= 0;
@@ -13,16 +14,11 @@ export function applyHeaderSignupReveal(el, shouldReveal) {
 }
 
 export function mountHeaderSignupReveal(header, options = {}) {
-  const revealEls = [
-    ...header.querySelectorAll(".cofair-site-header__actions"),
-    ...header.querySelectorAll(".cofair-site-header__tagline"),
-  ];
+  const revealEls = [...header.querySelectorAll(".cofair-site-header__actions")];
   if (revealEls.length === 0) return () => {};
 
   for (const el of revealEls) {
-    if (el.classList.contains("cofair-site-header__actions")) {
-      el.classList.add("cofair-site-header__actions--reveal");
-    }
+    el.classList.add("cofair-site-header__actions--reveal");
     el.classList.add("cofair-site-header__reveal");
   }
 

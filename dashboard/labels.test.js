@@ -1,5 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   basisChangeFlags,
   computeSeriesBreaks,
@@ -552,5 +555,31 @@ describe("ledger rows grouped by date", () => {
       density: 500,
       count: 2,
     });
+  });
+});
+
+const dashDir = dirname(fileURLToPath(import.meta.url));
+
+describe("dashboard chrome", () => {
+  it("keeps From and To in one date-range group so they wrap together", () => {
+    const html = readFileSync(join(dashDir, "tokens/index.html"), "utf8");
+    assert.match(html, /class="date-range"[\s\S]*id="trendFrom"[\s\S]*id="trendTo"/);
+    assert.match(html, /class="date-range"[\s\S]*id="ledgerFrom"[\s\S]*id="ledgerTo"/);
+    assert.match(html, /class="date-range"[\s\S]*id="costFrom"[\s\S]*id="costTo"/);
+  });
+
+  it("titles /pricing Model Pricing Tracker", () => {
+    const html = readFileSync(join(dashDir, "index.html"), "utf8");
+    assert.match(html, /<title>Model Pricing Tracker/);
+    assert.match(html, />Model Pricing Tracker</);
+    assert.equal(html.includes("Platform Pricing Tracker"), false);
+  });
+
+  it("keeps the header tagline visible without scroll-reveal", () => {
+    for (const file of ["index.html", "tokens/index.html"]) {
+      const html = readFileSync(join(dashDir, file), "utf8");
+      assert.match(html, /class="cofair-site-header__tagline">Climate Offsets for AI Responsibility/);
+      assert.equal(html.includes("cofair-site-header__tagline cofair-site-header__reveal"), false);
+    }
   });
 });
