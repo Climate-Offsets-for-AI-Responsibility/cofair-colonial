@@ -14,6 +14,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+_OPS_DIR = Path(__file__).resolve().parent / "scripts" / "ops"
+if str(_OPS_DIR) not in sys.path:
+    sys.path.insert(0, str(_OPS_DIR))
+from incident import classify_error as classify_ops_error  # noqa: E402
+
 
 CLAUDE_URL = "https://platform.claude.com/docs/en/about-claude/pricing"
 VERTEX_URL = "https://cloud.google.com/vertex-ai/generative-ai/pricing"
@@ -1982,17 +1987,6 @@ def write_ops_incident(envelope):
         history_dir.mkdir(parents=True, exist_ok=True)
         history_path = history_dir / f"{envelope['run_id']}.json"
         history_path.write_text(json.dumps(envelope, indent=2))
-
-
-def classify_ops_error(message):
-    text = (message or "").strip()
-    key_match = re.search(r"KeyError:\s*['\"]?([^'\"]+)['\"]?", text)
-    if key_match:
-        return f"KeyError:{key_match.group(1)}", "parse"
-    if re.search(r"sanity check failed", text, re.I):
-        return "SanityCheckFailed", "parse"
-    first = re.sub(r"[^a-zA-Z0-9:_-]+", "_", text.split("\n")[0][:120]).strip("_")[:80]
-    return first or "UnknownError", "unknown"
 
 
 def detect_changes(old_rows, new_rows):

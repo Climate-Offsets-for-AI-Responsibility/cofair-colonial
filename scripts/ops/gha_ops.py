@@ -21,7 +21,7 @@ from incident import (  # noqa: E402
     send_slack_message,
     write_incident,
 )
-from runbooks import execute_runbook  # noqa: E402
+from runbooks import RETRY_SCRAPE_SIGNATURES, execute_runbook  # noqa: E402
 
 ALLOWLIST_AUTOFIX = {"KeyError:unit"}
 
@@ -114,6 +114,10 @@ def cmd_remediate(args: argparse.Namespace) -> int:
         remediation["actions"].append(f"post_fix_scrape_exit={proc.returncode}")
         if proc.returncode == 0:
             verification = verify_pricing_run()
+    elif ok and signature in RETRY_SCRAPE_SIGNATURES:
+        # Scrape already ran in the runbook. Snapshot/history happen in the
+        # workflow publish step; don't fail verification on a missing dated file.
+        verification = {"passed": True, "checks": [{"name": "retry_scrape", "passed": True}]}
     elif ok and signature == "TransientProviderFault":
         verification = {"passed": True, "checks": [{"name": "token_remediate", "passed": True}]}
 

@@ -1,3 +1,7 @@
+# Scrape / dbt / meter stack for GitHub Actions. Do not rename this file
+# to requirements.txt: Netlify pip-installs that on every static dashboard
+# deploy (no skip flag), and the dashboard does not need Python.
+
 # Core
 python-dotenv>=1.0.0
  

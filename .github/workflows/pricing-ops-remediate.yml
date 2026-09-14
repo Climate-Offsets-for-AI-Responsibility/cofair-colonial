@@ -8,6 +8,11 @@ on:
     workflows: ["Daily Pricing Scraper"]
     types: [completed]
 
+# Same group as the scrape/token jobs: a recovered scrape commits dashboard/data.
+concurrency:
+  group: dashboard-data-write
+  cancel-in-progress: false
+
 jobs:
   remediate:
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
@@ -21,11 +26,12 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: requirements-scrape.txt
 
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-scrape.txt
 
       - name: Download run report artifact
         uses: actions/download-artifact@v4
@@ -54,21 +60,69 @@ jobs:
           STATUS=$(python -c "import json; print(json.load(open('run_report.json')).get('status','failed'))")
           if [ "$STATUS" = "degraded" ]; then
             echo "Run status degraded (self-heal fallback) — skipping code remediation"
+            echo "recovered=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           RUN_ID=$(python -c "import json; print(json.load(open('run_report.json')).get('run_id','unknown'))")
-          ERROR=$(python -c "import json; print(json.load(open('run_report.json')).get('error','unknown'))")
-          SIGNATURE=$(python -c "import re; e=open('run_report.json').read(); import json; err=json.loads(e).get('error',''); m=re.search(r\"KeyError:\\s*['\\\"]?([^'\\\"]+)['\\\"]?\", err); print(f'KeyError:{m.group(1)}' if m else ('SanityCheckFailed' if 'sanity' in err.lower() else 'UnknownError'))")
-          python scripts/ops/gha_ops.py remediate \
+          ERROR=$(python -c "import json; print(json.load(open('run_report.json')).get('error') or 'unknown')")
+          SIGNATURE=$(python -c "import json,sys; sys.path.insert(0,'scripts/ops'); from incident import classify_error; print(classify_error(json.load(open('run_report.json')).get('error') or '')[0])")
+          echo "signature=$SIGNATURE"
+          if python scripts/ops/gha_ops.py remediate \
             --pipeline colonial-daily-scrape \
             --signature "$SIGNATURE" \
             --run-id "$RUN_ID" \
-            --error-message "$ERROR" || REMED_FAILED=1
-          if [ "${REMED_FAILED:-0}" = "1" ]; then
+            --error-message "$ERROR"; then
+            echo "recovered=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$SIGNATURE" = "KeyError:unit" ]; then
             python scripts/ops/gha_ops.py autofix-pr \
               --signature "$SIGNATURE" \
               --run-id "$RUN_ID" || true
           fi
+          exit 1
+
+      - name: Ingest pricing snapshot into Neon
+        if: success() && steps.remediate.outputs.recovered == 'true'
+        env:
+          NETLIFY_DATABASE_URL_UNPOOLED: ${{ secrets.NETLIFY_DATABASE_URL_UNPOOLED }}
+        run: |
+          python scripts/ingest_pricing.py --neon
+
+      - name: Refresh pricing views in Neon
+        if: success() && steps.remediate.outputs.recovered == 'true'
+        env:
+          NEON_HOST: ${{ secrets.NEON_HOST }}
+          NEON_USER: ${{ secrets.NEON_USER }}
+          NEON_PASSWORD: ${{ secrets.NEON_PASSWORD }}
+          NEON_DB: ${{ secrets.NEON_DB }}
+        run: |
+          dbt run --select stg_pricing_history stg_pricing --target dev --profiles-dir dbt --project-dir dbt
+
+      - name: Snapshot pricing.json for history
+        if: success() && steps.remediate.outputs.recovered == 'true'
+        run: |
+          python scripts/snapshot_if_changed.py
+
+      - name: Update dashboard data
+        if: success() && steps.remediate.outputs.recovered == 'true'
+        run: |
+          python scripts/build_dashboard_data.py --append
+
+      - name: Commit recovered pricing
+        if: success() && steps.remediate.outputs.recovered == 'true'
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add pricing.json pricing_history/ dashboard/data/ ops/incidents/
+          git commit -m "Auto-update pricing.json" || echo "No changes to commit"
+          git pull --rebase origin main
+          git push
+
+      - name: Verify pricing run
+        if: success() && steps.remediate.outputs.recovered == 'true'
+        run: |
+          python scripts/ops/verify_pricing_run.py
 
       - name: Upload remediated incident
         if: always()

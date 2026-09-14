@@ -167,10 +167,15 @@ def runbook_load_token_report() -> dict:
         return {}
 
 
+RETRY_SCRAPE_SIGNATURES = frozenset(
+    {"SanityCheckFailed", "Timeout", "NetworkRetryExhausted"}
+)
+
+
 def execute_runbook(signature: str, report: dict | None = None) -> tuple[bool, list[str], int]:
     if signature == "KeyError:unit":
         return runbook_unit_keyerror()
-    if signature == "SanityCheckFailed":
+    if signature in RETRY_SCRAPE_SIGNATURES:
         return runbook_retry_scrape()
     if signature == "TransientProviderFault":
         payload = report or runbook_load_token_report()

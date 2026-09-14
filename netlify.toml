@@ -1,3 +1,6 @@
 [build]
   functions = "netlify/functions"
   publish = "dashboard"
+  # Static publish only. Do not add a requirements.txt at the repo root —
+  # Netlify always pip-installs it (no skip flag). The scrape/dbt stack lives
+  # in requirements-scrape.txt, which GitHub Actions uses.
