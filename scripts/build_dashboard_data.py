@@ -410,15 +410,9 @@ def _expand_tier_ids(
     provider_id: str,
     tier_name: str,
     pinned: list[str],
+    as_of: Date | None = None,
 ) -> list[str]:
-    """Newest catalog family member first, then the pinned fallbacks.
-
-    DeepSeek (and anyone we later fold into `rank_ids_for_tier`) ships a new
-    generation by adding a column, not by keeping yesterday's id. Walking only
-    the pin list made /tokens go dark the day v4-pro left the rate card.
-    """
-    if provider_id != "deepseek":
-        return list(pinned)
+    """Newest provider-role catalog member first, then pinned fallbacks."""
     catalog_ids = [
         model_id
         for (pid, model_id), row in by_provider_model.items()
@@ -427,7 +421,7 @@ def _expand_tier_ids(
         and row.get("latest_input", row.get("input_price")) is not None
         and row.get("latest_output", row.get("output_price")) is not None
     ]
-    ranked = rank_ids_for_tier(provider_id, tier_name, catalog_ids)
+    ranked = rank_ids_for_tier(provider_id, tier_name, catalog_ids, as_of)
     ordered: list[str] = []
     for model_id in [*ranked, *pinned]:
         if model_id not in ordered:
@@ -1588,14 +1582,34 @@ def build_equivalence(
 
     selected = []
     selected_by_mode = {"two": [], "three": []}
+    selection_diagnostics = []
+    try:
+        selection_as_of = Date.fromisoformat(index["last_date"])
+    except (KeyError, TypeError, ValueError):
+        selection_as_of = Date.today()
     for provider_id, tiers in TIER_CANDIDATES.items():
         for tier_name in TIER_ORDER:
             tier_ids = _expand_tier_ids(
-                by_provider_model, provider_id, tier_name, tiers.get(tier_name, [])
+                by_provider_model,
+                provider_id,
+                tier_name,
+                tiers.get(tier_name, []),
+                selection_as_of,
             )
             row = _pick_tier_model(by_provider_model, provider_id, tier_ids)
             if row is None:
                 continue
+            catalog_ids = [
+                model_id
+                for (pid, model_id), candidate in by_provider_model.items()
+                if pid == provider_id
+                and candidate.get("currently_active", candidate.get("is_active", True))
+                and candidate.get("latest_input", candidate.get("input_price")) is not None
+                and candidate.get("latest_output", candidate.get("output_price")) is not None
+            ]
+            ranked_candidates = rank_ids_for_tier(
+                provider_id, tier_name, catalog_ids, selection_as_of
+            )
             entry = {
                 "provider_id": provider_id,
                 "tier": tier_name,
@@ -1616,6 +1630,17 @@ def build_equivalence(
             selected.append(entry)
             selected_by_mode["two"].append(entry)
             selected_by_mode["three"].append(entry)
+            selection_diagnostics.append(
+                {
+                    "provider_id": provider_id,
+                    "tier": tier_name,
+                    "selected_model_id": row["model_id"],
+                    "selection_source": (
+                        "catalog" if row["model_id"] in ranked_candidates else "pin_fallback"
+                    ),
+                    "ranked_candidates": ranked_candidates,
+                }
+            )
 
     tasks_by_id = {task["task_id"]: task for task in TASK_DEFINITIONS}
     budgets = {"two": {}, "three": {}}
@@ -1729,6 +1754,7 @@ def build_equivalence(
         "runs_per_year": DAILY_RUNS_PER_YEAR,
         "selected_models": selected,
         "selected_models_by_mode": selected_by_mode,
+        "selection_diagnostics": selection_diagnostics,
         "budget": budgets,
         # No ceiling exists under output policy 4.0.0. Kept as an explicit null
         # rather than dropped, so a reader of the artifact sees that the bound was

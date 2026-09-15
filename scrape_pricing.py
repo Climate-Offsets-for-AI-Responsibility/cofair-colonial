@@ -737,11 +737,6 @@ def parse_deepseek(html):
             continue
         if not mat[0] or mat[0][0].upper() != "MODEL":
             continue
-        if len(mat[0]) < 3:
-            continue
-        if not is_deepseek_owned_model(mat[0][1]):
-            continue
-
         # Every owned column, not the first two. A new generation (v4.1, …)
         # arrives as another header cell; dropping it kept /tokens pinned to
         # yesterday's pair until someone edited TIER_CANDIDATES.
@@ -749,8 +744,8 @@ def parse_deepseek(html):
         for name in mat[0][1:]:
             if not is_deepseek_owned_model(name):
                 continue
-            model_id = slugify(name)
-            display_name = norm(name)
+            display_name = re.sub(r"\s*\(\d+\)\s*$", "", norm(name))
+            model_id = slugify(display_name)
             if model_id and display_name:
                 models.append((model_id, display_name))
         if not models:
@@ -763,22 +758,52 @@ def parse_deepseek(html):
         output_values = [None] * n
 
         def _fill(target, values):
-            for i, value in enumerate(values[:n]):
+            for i, value in enumerate(values[-n:]):
                 target[i] = value
 
+        current_metric = None
         for row in mat[1:]:
-            label = " ".join(part.lower() for part in row[:2]) if row else ""
+            cells = [norm(part).lower() for part in row]
+            label = " ".join(cells)
             if "context length" in label:
-                _fill(context_values, row[1:])
-            elif "cache hit" in label:
-                if len(row) > 2 and "pricing" in row[0].lower():
-                    _fill(cache_hit_values, [money(v) for v in row[2:]])
+                contexts = [
+                    norm(value)
+                    for value in row
+                    if re.match(r"^\d+(?:\.\d+)?\s*[kmb](?:\s+tokens?)?$", norm(value), re.I)
+                ]
+                if len(contexts) == 1:
+                    context_values[:] = contexts * n
                 else:
-                    _fill(cache_hit_values, [money(v) for v in row[1:]])
+                    _fill(context_values, contexts)
+                continue
+            metric_changed = True
+            if "cache hit" in label:
+                current_metric = "cache_hit"
             elif "cache miss" in label:
-                _fill(cache_miss_values, [money(v) for v in row[1:]])
+                current_metric = "cache_miss"
             elif "output" in label:
-                _fill(output_values, [money(v) for v in row[1:]])
+                current_metric = "output"
+            else:
+                metric_changed = False
+            if current_metric is None:
+                continue
+
+            has_off_peak = any(cell in {"off-peak", "off peak"} for cell in cells)
+            has_peak = any(cell == "peak" for cell in cells)
+            if not metric_changed and not has_off_peak and not has_peak:
+                current_metric = None
+                continue
+            if has_off_peak:
+                continue
+            values = [money(value) for value in row]
+            if not has_peak and not any(value is not None for value in values[-n:]):
+                continue
+            target = {
+                "cache_hit": cache_hit_values,
+                "cache_miss": cache_miss_values,
+                "output": output_values,
+            }[current_metric]
+            _fill(target, values)
 
         for idx, (model_id, display_name) in enumerate(models):
             if not model_id or not display_name:

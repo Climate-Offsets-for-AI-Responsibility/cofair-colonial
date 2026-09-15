@@ -237,6 +237,58 @@ class ParseDeepSeekTest(unittest.TestCase):
         )
         self.assertEqual(len(rows), 12)
 
+    def test_parses_current_peak_rows_and_canonical_model_ids(self) -> None:
+        """The live table has descriptor columns plus OFF-PEAK/PEAK subrows."""
+        html = """
+        <table>
+          <tr>
+            <th>MODEL</th><th></th><th></th>
+            <th>deepseek-flash (1)</th><th>deepseek-v4-pro (2)</th>
+          </tr>
+          <tr><td>CONTEXT LENGTH</td><td>1M</td></tr>
+          <tr>
+            <td>PRICING (3)</td><td>1M INPUT TOKENS (CACHE HIT)</td><td>OFF-PEAK</td>
+            <td>$0.003</td><td>$0.022</td>
+          </tr>
+          <tr><td></td><td></td><td>PEAK</td><td>$0.006</td><td>$0.044</td></tr>
+          <tr>
+            <td></td><td>1M INPUT TOKENS (CACHE MISS)</td><td>OFF-PEAK</td>
+            <td>$0.15</td><td>$0.66</td>
+          </tr>
+          <tr><td></td><td></td><td>PEAK</td><td>$0.30</td><td>$1.32</td></tr>
+          <tr>
+            <td></td><td>1M OUTPUT TOKENS</td><td>OFF-PEAK</td>
+            <td>$0.60</td><td>$1.98</td>
+          </tr>
+          <tr><td></td><td></td><td>PEAK</td><td>$1.20</td><td>$3.96</td></tr>
+          <tr><td>Concurrency Limit (4)</td><td></td><td></td><td>2500</td><td>500</td></tr>
+        </table>
+        """
+        rows = parse_deepseek(html)
+        by_model = {}
+        for row in rows:
+            by_model.setdefault(row["model_id"], {})[row["component"]] = row["price"]
+
+        self.assertEqual(
+            by_model,
+            {
+                "deepseek-flash": {
+                    "input": 0.30,
+                    "cached_input": 0.006,
+                    "output": 1.20,
+                },
+                "deepseek-v4-pro": {
+                    "input": 1.32,
+                    "cached_input": 0.044,
+                    "output": 3.96,
+                },
+            },
+        )
+        self.assertEqual(
+            {row["model_id"]: row["context_window"] for row in rows},
+            {"deepseek-flash": "1M", "deepseek-v4-pro": "1M"},
+        )
+
 
 class ParseQwenTest(unittest.TestCase):
     def test_keeps_international_list_rows_for_selected_models(self) -> None:

@@ -178,7 +178,19 @@ class VerifyTokenRunsTest(unittest.TestCase):
         return tmp
 
     def _payload(self, ledger_rows: list[dict]) -> dict:
-        return {"provider_health": {"panel": build_provider_health(PANEL, [], ledger_rows, [])}}
+        return {
+            "provider_health": {"panel": build_provider_health(PANEL, [], ledger_rows, [])},
+            "selection_diagnostics": [
+                {
+                    "provider_id": item["provider_id"],
+                    "tier": item["tier"],
+                    "selected_model_id": item["model_id"],
+                    "selection_source": "catalog",
+                    "ranked_candidates": [item["model_id"]],
+                }
+                for item in PANEL
+            ],
+        }
 
     def test_all_providers_reporting_passes(self) -> None:
         path = self._write(self._payload([_ledger("google", "ok"), _ledger("openai", "ok")]))
@@ -222,6 +234,32 @@ class VerifyTokenRunsTest(unittest.TestCase):
         self.assertFalse(result["passed"])
         silent = next(c for c in result["checks"] if c["name"] == "ledger_no_silent_providers")
         self.assertIn("openai", silent["detail"])
+
+    def test_stale_selected_model_fails_the_gate(self) -> None:
+        payload = self._payload([_ledger("google", "ok"), _ledger("openai", "ok")])
+        payload["selection_diagnostics"][0].update(
+            {
+                "selected_model_id": "gemini-2.0-flash",
+                "ranked_candidates": ["gemini-3.7-flash", "gemini-2.0-flash"],
+            }
+        )
+        result = verify_token_runs(["ledger"], self._write(payload))
+
+        self.assertFalse(result["passed"])
+        current = next(c for c in result["checks"] if c["name"] == "model_selections_current")
+        self.assertIn("gemini-3.7-flash", current["detail"])
+        self.assertIn("gemini-2.0-flash", current["detail"])
+
+    def test_pin_fallback_without_categorized_catalog_model_fails(self) -> None:
+        payload = self._payload([_ledger("google", "ok"), _ledger("openai", "ok")])
+        payload["selection_diagnostics"][0].update(
+            {"selection_source": "pin_fallback", "ranked_candidates": []}
+        )
+        result = verify_token_runs(["ledger"], self._write(payload))
+
+        self.assertFalse(result["passed"])
+        current = next(c for c in result["checks"] if c["name"] == "model_selections_current")
+        self.assertIn("pin fallback", current["detail"])
 
     def test_missing_health_block_fails_rather_than_passing_blind(self) -> None:
         path = self._write({"token_runs": []})

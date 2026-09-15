@@ -565,6 +565,15 @@ class TaskSetTest(unittest.TestCase):
 
 
 class WorkflowContractTest(unittest.TestCase):
+    def test_pricing_runs_immediately_after_token_collection(self) -> None:
+        workflow = (
+            Path(__file__).resolve().parent.parent
+            / ".github"
+            / "workflows"
+            / "daily-scrape.yml"
+        ).read_text()
+        self.assertIn('cron: "10 9 * * *"', workflow)
+
     def test_daily_equivalence_collects_meter_without_wrapper_step(self) -> None:
         workflow = (
             Path(__file__).resolve().parent.parent

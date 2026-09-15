@@ -321,6 +321,70 @@ class BuildEquivalenceTest(unittest.TestCase):
             {"flagship": "deepseek-v4.1-pro", "workhorse": "deepseek-v4.1-flash"},
         )
 
+    def test_catalog_versions_displace_stale_pins_for_every_provider(self) -> None:
+        def row(provider_id: str, model_id: str) -> dict:
+            return {
+                "provider_id": provider_id,
+                "model_id": model_id,
+                "display_name": model_id,
+                "latest_input": 1.0,
+                "latest_output": 2.0,
+                "currency": "USD",
+                "currently_active": True,
+            }
+
+        models = [
+            row("anthropic", "claude-opus-4.8"),
+            row("anthropic", "claude-opus-5"),
+            row("anthropic", "claude-haiku-4.5"),
+            row("openai", "gpt-5.6-sol"),
+            row("openai", "chat-latest"),
+            row("openai", "gpt-5.6-luna"),
+            row("google", "gemini-3.1-pro"),
+            row("google", "gemini-2.0-flash"),
+            row("google", "gemini-3.7-flash"),
+            row("google", "gemini-3.8-flash-starting-january-1-2027"),
+            row("xai", "grok-4.5"),
+            row("xai", "grok-4.6"),
+            row("xai", "grok-build-0.1"),
+            row("aws", "nova-premier"),
+            row("aws", "nova-2.0-pro"),
+            row("aws", "nova-micro"),
+            row("aws", "nova-2.0-lite"),
+            row("deepseek", "deepseek-v4-pro"),
+            row("deepseek", "deepseek-v4-flash"),
+            row("deepseek", "deepseek-flash"),
+            row("qwen", "qwen3-max"),
+            row("qwen", "qwen3.7-max"),
+            row("qwen", "qwen-flash"),
+        ]
+        eq = build_equivalence(
+            models,
+            {"generated_at": "2026-09-15T00:00:00Z", "last_date": "2026-09-15"},
+            live_model_map={},
+        )
+        selected = {
+            (item["provider_id"], item["tier"]): item["model_id"]
+            for item in eq["selected_models"]
+        }
+        self.assertEqual(selected[("anthropic", "flagship")], "claude-opus-5")
+        self.assertEqual(selected[("openai", "flagship")], "chat-latest")
+        self.assertEqual(selected[("google", "workhorse")], "gemini-3.7-flash")
+        self.assertEqual(selected[("xai", "flagship")], "grok-4.6")
+        self.assertEqual(selected[("aws", "flagship")], "nova-2.0-pro")
+        self.assertEqual(selected[("aws", "workhorse")], "nova-2.0-lite")
+        self.assertEqual(selected[("deepseek", "workhorse")], "deepseek-flash")
+        self.assertEqual(selected[("qwen", "flagship")], "qwen3.7-max")
+
+        diagnostics = {
+            (item["provider_id"], item["tier"]): item
+            for item in eq["selection_diagnostics"]
+        }
+        google = diagnostics[("google", "workhorse")]
+        self.assertEqual(google["selected_model_id"], "gemini-3.7-flash")
+        self.assertEqual(google["selection_source"], "catalog")
+        self.assertEqual(google["ranked_candidates"][0], "gemini-3.7-flash")
+
 
 class BuildTokenRunsTest(unittest.TestCase):
     def test_normalizes_density_and_flags_censored_output(self) -> None:

@@ -81,6 +81,31 @@ def verify_token_runs(sources: list[str], path: Path = EQUIVALENCE_FILE) -> dict
 
     add("provider_health_present", True, f"{len(health)} panel rows")
 
+    selection_diagnostics = payload.get("selection_diagnostics") or []
+    stale_selections = []
+    if not selection_diagnostics:
+        stale_selections.append("selection diagnostics missing")
+    for item in selection_diagnostics:
+        ranked = item.get("ranked_candidates") or []
+        selected = item.get("selected_model_id")
+        if item.get("selection_source") == "pin_fallback":
+            stale_selections.append(
+                f"{item.get('provider_id')}·{item.get('tier')} used pin fallback "
+                f"{selected}; no current catalog model was categorized"
+            )
+        elif ranked and selected != ranked[0]:
+            stale_selections.append(
+                f"{item.get('provider_id')}·{item.get('tier')} selected {selected}; "
+                f"newest eligible is {ranked[0]}"
+            )
+    add(
+        "model_selections_current",
+        not stale_selections,
+        "; ".join(stale_selections)
+        if stale_selections
+        else f"{len(selection_diagnostics)} role selections are current",
+    )
+
     unavailable_entries: list[dict] = []
 
     for source in sources:
@@ -138,6 +163,7 @@ def verify_token_runs(sources: list[str], path: Path = EQUIVALENCE_FILE) -> dict
         if check["name"].endswith("_no_dark_providers")
         or check["name"].endswith("_no_silent_providers")
         or check["name"].endswith("_tiers_resolve_distinct_models")
+        or check["name"] == "model_selections_current"
     )
     has_unavailable = bool(unavailable_entries)
     if hard_failed:
