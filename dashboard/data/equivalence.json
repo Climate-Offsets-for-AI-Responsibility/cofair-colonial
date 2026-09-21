@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-21T15:17:26Z",
-  "pricing_snapshot_date": "2026-09-20",
+  "generated_at": "2026-09-21T15:54:43Z",
+  "pricing_snapshot_date": "2026-09-21",
   "corpus_version": "3.0.0",
   "chat_corpus_version": "2.0.0",
   "output_policy_version": "4.0.0",
@@ -5115,6 +5115,11 @@
           "output_price": 5.0
         },
         {
+          "model_id": "grok-4.7",
+          "input_price": 4.0,
+          "output_price": 12.0
+        },
+        {
           "model_id": "grok-4.6",
           "input_price": 4.0,
           "output_price": 12.0
@@ -5369,6 +5374,11 @@
             "model_id": "grok-4.20-multi-agent-0309",
             "input_price": 2.5,
             "output_price": 5.0
+          },
+          {
+            "model_id": "grok-4.7",
+            "input_price": 4.0,
+            "output_price": 12.0
           },
           {
             "model_id": "grok-4.6",
@@ -5626,6 +5636,11 @@
             "output_price": 5.0
           },
           {
+            "model_id": "grok-4.7",
+            "input_price": 4.0,
+            "output_price": 12.0
+          },
+          {
             "model_id": "grok-4.6",
             "input_price": 4.0,
             "output_price": 12.0
@@ -5816,6 +5831,7 @@
         "grok-4.20-0309-non-reasoning",
         "grok-4.20-0309-reasoning",
         "grok-4.20-multi-agent-0309",
+        "grok-4.7",
         "grok-4.6",
         "grok-4.5",
         "grok-4.3"
@@ -68555,7 +68571,7 @@
           "ANTHROPIC_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": true
+        "configured": false
       },
       "openai": {
         "env": [
@@ -68563,7 +68579,7 @@
           "OPENAI_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": true
+        "configured": false
       },
       "google": {
         "env": [
@@ -68572,7 +68588,7 @@
           "GOOGLE_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": true
+        "configured": false
       },
       "xai": {
         "env": [
@@ -68580,7 +68596,7 @@
           "XAI_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": true
+        "configured": false
       },
       "aws": {
         "env": [
@@ -68590,7 +68606,7 @@
           "AWS_ACCESS_KEY_ID"
         ],
         "purpose": "weekly task billing runs + tokenizer ledger (Bedrock Converse)",
-        "configured": true
+        "configured": false
       },
       "deepseek": {
         "env": [
@@ -68598,7 +68614,7 @@
           "DEEPSEEK_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": true
+        "configured": false
       },
       "qwen": {
         "env": [
@@ -68606,11 +68622,19 @@
           "QWEN_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": true
+        "configured": false
       }
     },
-    "missing_providers": [],
-    "env_visible_to_builder": true,
+    "missing_providers": [
+      "anthropic",
+      "openai",
+      "google",
+      "xai",
+      "aws",
+      "deepseek",
+      "qwen"
+    ],
+    "env_visible_to_builder": false,
     "ready_for_live_runs": true
   },
   "provider_health": {
@@ -71486,7 +71510,7 @@
   },
   "window": {
     "first_date": "2026-09-03",
-    "last_date": "2026-09-20",
-    "snapshot_count": 18
+    "last_date": "2026-09-21",
+    "snapshot_count": 19
   }
 }
