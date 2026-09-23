@@ -124,6 +124,25 @@ a { color: var(--cofair-color-primary); }
 
 .control-group > .cofair-label { padding: 0; }
 
+/* Two short selects that must stay on one row (Price field + Y-axis here,
+   From/To on /tokens). They wrap as a unit, never apart. */
+.control-pair {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: var(--cofair-space-4);
+  flex: 0 0 auto;
+}
+
+.control-pair .control-group {
+  min-width: 0;
+}
+
+.control-pair .cofair-select {
+  width: auto;
+  max-width: 100%;
+}
+
 .choice-row {
   display: flex;
   flex-wrap: wrap;

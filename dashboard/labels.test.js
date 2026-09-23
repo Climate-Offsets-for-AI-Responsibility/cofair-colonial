@@ -566,9 +566,9 @@ const dashDir = dirname(fileURLToPath(import.meta.url));
 describe("dashboard chrome", () => {
   it("keeps From and To in one date-range group so they wrap together", () => {
     const html = readFileSync(join(dashDir, "tokens/index.html"), "utf8");
-    assert.match(html, /class="date-range"[\s\S]*id="trendFrom"[\s\S]*id="trendTo"/);
-    assert.match(html, /class="date-range"[\s\S]*id="ledgerFrom"[\s\S]*id="ledgerTo"/);
-    assert.match(html, /class="date-range"[\s\S]*id="costFrom"[\s\S]*id="costTo"/);
+    assert.match(html, /class="control-pair date-range"[\s\S]*id="trendFrom"[\s\S]*id="trendTo"/);
+    assert.match(html, /class="control-pair date-range"[\s\S]*id="ledgerFrom"[\s\S]*id="ledgerTo"/);
+    assert.match(html, /class="control-pair date-range"[\s\S]*id="costFrom"[\s\S]*id="costTo"/);
   });
 
   it("titles /pricing Model Pricing Tracker", () => {
