@@ -7,12 +7,15 @@
 
 import {
   contextsNeedDisambiguation,
+  detectPricingEvents,
   effectiveModality,
   formatLegendLabel,
   hexToHsl,
   isFutureSchedulePlaceholder,
   priceAtOrBefore,
+  pricingIdsWithFieldChange,
   sortDatasetsForDate,
+  stitchPricingChains,
 } from "./labels.js";
 import { setupSignupForm } from "./signup.js";
 
@@ -418,18 +421,6 @@ function renderModalityChips() {
 
 // ---- trend chart -----------------------------------------------------------
 
-function pricingIdsThatChanged(rows, field) {
-  const seen = new Map();
-  for (const r of rows) {
-    const v = r[field];
-    if (v == null) continue;
-    if (!seen.has(r.pricing_id)) seen.set(r.pricing_id, new Set());
-    seen.get(r.pricing_id).add(v);
-  }
-  const out = new Set();
-  for (const [pid, vs] of seen) if (vs.size > 1) out.add(pid);
-  return out;
-}
 
 function pointDate(point) {
   if (!point) return null;
@@ -684,39 +675,42 @@ function renderTrendChart() {
     && state.selectedModalities.has(effectiveModality(r.modality))
     && !isFutureSchedulePlaceholder(r),
   );
+  let chains = stitchPricingChains(rows);
   if (activeOnly) {
     // A model whose own name says "retired" is not active, whatever the upstream
     // `is_active` flag says. Anthropic keeps retired models listed at full price
     // with a "( retired, except on Bedrock and Google Cloud )" suffix, so the
     // flag stays true while the model is gone for almost everyone.
+    // Keep the whole stitched chain when its latest id is still active, so a
+    // pricing_id rewrite does not erase the earlier prices.
     const activeIds = new Set(
       state.models
         .filter(m => m.currently_active && !m.name_marks_deprecation)
         .map(m => m.pricing_id),
     );
-    rows = rows.filter(r => activeIds.has(r.pricing_id));
+    chains = chains.filter((chain) => activeIds.has(chain.rows.at(-1)?.pricing_id));
   }
   if (changedOnly) {
-    const changedIds = pricingIdsThatChanged(rows, field);
-    rows = rows.filter(r => changedIds.has(r.pricing_id));
+    const changedIds = pricingIdsWithFieldChange(rows, field);
+    chains = chains.filter((chain) => chain.pricingIds.some((id) => changedIds.has(id)));
   }
 
-  const byPid = new Map();
-  for (const r of rows) {
-    const v = r[field];
-    if (v == null) continue;
-    if (!byPid.has(r.pricing_id)) byPid.set(r.pricing_id, { row: r, points: [] });
-    byPid.get(r.pricing_id).points.push({ x: r.date, y: v });
-  }
-
-  const heads = [...byPid.values()].map(({ row }) => row);
+  const heads = chains.map((chain) => chain.rows.at(-1)).filter(Boolean);
   const needContext = contextsNeedDisambiguation(heads);
 
   const datasets = [];
-  for (const [pid, { row, points }] of byPid) {
-    points.sort((a, b) => a.x.localeCompare(b.x));
-    const color = seriesColor(pid, row.provider_id, palette);
-    const showContext = needContext.has(`${row.provider_id}|${row.model_id}`);
+  for (const chain of chains) {
+    const points = [];
+    for (const r of chain.rows) {
+      const v = r[field];
+      if (v == null) continue;
+      points.push({ x: r.date, y: v });
+    }
+    if (!points.length) continue;
+    const row = chain.rows.at(-1);
+    const contexts = new Set(chain.rows.map((r) => r.context_window).filter(Boolean));
+    const showContext = contexts.size > 1 || needContext.has(`${row.provider_id}|${row.model_id}`);
+    const color = seriesColor(chain.id, row.provider_id, palette);
     datasets.push({
       label: formatLegendLabel(row, { showContext }),
       legendLabel: formatLegendLabel(row, { showContext }),
@@ -730,7 +724,7 @@ function renderTrendChart() {
       tension: 0,
       spanGaps: true,
       providerId: row.provider_id,
-      pricingId: pid,
+      pricingId: chain.id,
     });
   }
 
@@ -862,67 +856,56 @@ function renderArchive() {
 
 // ---- price changes ---------------------------------------------------------
 
-function detectChanges() {
-  const FIELDS = ["input_price", "output_price", "cached_input_price"];
-  const byPid = new Map();
-  for (const r of state.series) {
-    if (!byPid.has(r.pricing_id)) byPid.set(r.pricing_id, []);
-    byPid.get(r.pricing_id).push(r);
+function changeModelLabel(event) {
+  const showContext = event.context_from !== event.context_to || Boolean(event.context_window);
+  return formatLegendLabel(event, { showContext });
+}
+
+function money(value) {
+  return value == null ? "—" : `$${value}`;
+}
+
+function changeSummary(event) {
+  if (event.kind === "introduced") {
+    const bits = [];
+    if (event.input_price != null) bits.push(`$${event.input_price} in`);
+    if (event.output_price != null) bits.push(`$${event.output_price} out`);
+    return bits.length ? `added · ${bits.join(" · ")}` : "added";
   }
-  const events = [];
-  for (const [, rows] of byPid) {
-    rows.sort((a, b) => a.date.localeCompare(b.date));
-    for (const field of FIELDS) {
-      let prev = null;
-      let prevDate = null;
-      for (const r of rows) {
-        const v = r[field];
-        if (v == null) continue;
-        if (prev != null && v !== prev) {
-          events.push({
-            date: r.date,
-            provider_id: r.provider_id,
-            model_id: r.model_id,
-            display_name: r.display_name,
-            field,
-            from: prev,
-            to: v,
-            delta: v - prev,
-            prev_date: prevDate,
-          });
-        }
-        prev = v;
-        prevDate = r.date;
-      }
-    }
+  if (event.kind === "retired") {
+    const bits = [];
+    if (event.input_price != null) bits.push(`$${event.input_price} in`);
+    if (event.output_price != null) bits.push(`$${event.output_price} out`);
+    return bits.length ? `removed · ${bits.join(" · ")}` : "removed";
   }
-  events.sort((a, b) => b.date.localeCompare(a.date));
-  return events;
+  if (event.delta == null) return event.to == null ? "cleared" : "set";
+  const pct = event.from ? ((event.delta / event.from) * 100).toFixed(1) : "∞";
+  const sign = event.delta > 0 ? "+" : "";
+  return `${sign}${event.delta.toFixed(4)} (${sign}${pct}%)`;
 }
 
 function renderChanges() {
-  const events = detectChanges().filter(e => providerVisible("changes", e.provider_id));
+  const events = detectPricingEvents(state.series)
+    .filter(e => providerVisible("changes", e.provider_id));
   const tbody = document.getElementById("changesBody");
   if (!events.length) {
     tbody.innerHTML = emptyRow(
       6,
-      "No price changes detected",
-      "List prices have been stable across the whole snapshot window.",
+      "No catalog changes detected",
+      "List prices, additions, and removals have been stable across the whole snapshot window.",
     );
     return;
   }
   tbody.innerHTML = events.map(e => {
-    const pct = e.from ? ((e.delta / e.from) * 100).toFixed(1) : "∞";
-    const sign = e.delta > 0 ? "+" : "";
-    const dir = e.delta > 0 ? "delta--up" : "delta--down";
+    const dir = e.delta == null ? "" : e.delta > 0 ? "delta--up" : "delta--down";
     return `
       <tr class="cofair-table__row">
         <td class="cofair-table__td">${esc(fmtDate(e.date))}</td>
-        <td class="cofair-table__td">${esc(e.display_name)}</td>
+        <td class="cofair-table__td">${esc(changeModelLabel(e))}</td>
         <td class="cofair-table__td">${esc(e.field.replace(/_/g, " "))}</td>
-        <td class="cofair-table__td cofair-table__td--num">$${esc(e.from)}</td>
-        <td class="cofair-table__td cofair-table__td--num">$${esc(e.to)}</td>
-        <td class="cofair-table__td cofair-table__td--num ${dir}">${sign}${e.delta.toFixed(4)} (${sign}${pct}%)</td>
+        <td class="cofair-table__td cofair-table__td--num">${esc(money(e.from))}</td>
+        <td class="cofair-table__td cofair-table__td--num">${esc(money(e.to))}</td>
+        <td class="cofair-table__td cofair-table__td--num ${dir}">${esc(changeSummary(e))}</td>
       </tr>
     `;
   }).join("");

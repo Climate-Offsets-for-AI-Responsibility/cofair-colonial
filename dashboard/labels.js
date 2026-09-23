@@ -63,6 +63,204 @@ export function formatLegendLabel(row, { showContext = false } = {}) {
   return extras.length ? `${name} (${extras.join(", ")})` : name;
 }
 
+const PRICE_FIELDS = ["input_price", "output_price", "cached_input_price"];
+
+/** Identity that survives a pricing_id rewrite (context window, unit) but not a new model. */
+export function lineageKey(row) {
+  return [
+    row.provider_id ?? "",
+    row.model_id ?? "",
+    row.service_tier || "standard",
+    row.modality || "",
+    row.category || "",
+  ].join("\u001f");
+}
+
+function finitePrice(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Group snapshot rows into chart series.
+ *
+ * Rows that share a model, tier, modality, and category, and that never
+ * occupy the same day, are one series — a context-window rewrite changes
+ * pricing_id without being a different product. Overlapping ids stay separate
+ * so two live context windows do not collapse into one line.
+ */
+export function stitchPricingChains(rows) {
+  const byPid = new Map();
+  for (const row of rows || []) {
+    if (!row?.pricing_id || !row.date) continue;
+    if (!byPid.has(row.pricing_id)) byPid.set(row.pricing_id, []);
+    byPid.get(row.pricing_id).push(row);
+  }
+  const parts = [];
+  for (const [pricingId, list] of byPid) {
+    list.sort((a, b) => a.date.localeCompare(b.date));
+    parts.push({
+      pricingId,
+      lineage: lineageKey(list[0]),
+      first: list[0].date,
+      last: list[list.length - 1].date,
+      rows: list,
+    });
+  }
+  const byLineage = new Map();
+  for (const part of parts) {
+    if (!byLineage.has(part.lineage)) byLineage.set(part.lineage, []);
+    byLineage.get(part.lineage).push(part);
+  }
+  const chains = [];
+  for (const group of byLineage.values()) {
+    group.sort(
+      (a, b) => a.first.localeCompare(b.first) || a.pricingId.localeCompare(b.pricingId),
+    );
+    const local = [];
+    for (const part of group) {
+      const chain = local.find((candidate) => part.first > candidate.last);
+      if (chain) {
+        chain.parts.push(part);
+        chain.pricingIds.push(part.pricingId);
+        if (part.last > chain.last) chain.last = part.last;
+      } else {
+        local.push({
+          id: part.pricingId,
+          lineage: part.lineage,
+          first: part.first,
+          last: part.last,
+          pricingIds: [part.pricingId],
+          parts: [part],
+        });
+      }
+    }
+    chains.push(...local);
+  }
+  for (const chain of chains) {
+    chain.rows = chain.parts
+      .flatMap((part) => part.rows)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.pricing_id.localeCompare(b.pricing_id));
+  }
+  return chains;
+}
+
+/**
+ * Price edits, catalog additions, and catalog removals.
+ *
+ * A same-id number change is a price edit. So is a number change across a
+ * stitched pricing_id rewrite. A lineage that begins after the first snapshot
+ * is introduced; one that ends before the last snapshot is retired on the
+ * next snapshot day.
+ */
+export function detectPricingEvents(rows) {
+  const usable = (rows || []).filter(
+    (row) => row?.date && row?.pricing_id && !isFutureSchedulePlaceholder(row),
+  );
+  const dates = [...new Set(usable.map((row) => row.date))].sort();
+  if (!dates.length) return [];
+  const firstDate = dates[0];
+  const lastDate = dates[dates.length - 1];
+  const nextDate = new Map();
+  for (let i = 0; i < dates.length - 1; i += 1) nextDate.set(dates[i], dates[i + 1]);
+
+  const events = [];
+  for (const chain of stitchPricingChains(usable)) {
+    const ordered = chain.rows;
+    for (let i = 1; i < ordered.length; i += 1) {
+      const prev = ordered[i - 1];
+      const cur = ordered[i];
+      if (prev.date === cur.date) continue;
+      for (const field of PRICE_FIELDS) {
+        const from = finitePrice(prev[field]);
+        const to = finitePrice(cur[field]);
+        if (from === to) continue;
+        events.push({
+          kind: "price",
+          date: cur.date,
+          provider_id: cur.provider_id,
+          model_id: cur.model_id,
+          display_name: cur.display_name,
+          modality: cur.modality || null,
+          context_window: cur.context_window || null,
+          context_from: prev.context_window || null,
+          context_to: cur.context_window || null,
+          field,
+          from,
+          to,
+          delta: from != null && to != null ? to - from : null,
+          pricing_id: cur.pricing_id,
+        });
+      }
+    }
+    const head = ordered[0];
+    const tail = ordered[ordered.length - 1];
+    if (head.date > firstDate) {
+      events.push({
+        kind: "introduced",
+        date: head.date,
+        provider_id: head.provider_id,
+        model_id: head.model_id,
+        display_name: head.display_name,
+        modality: head.modality || null,
+        context_window: head.context_window || null,
+        field: "introduced",
+        from: null,
+        to: null,
+        delta: null,
+        pricing_id: head.pricing_id,
+        input_price: finitePrice(head.input_price),
+        output_price: finitePrice(head.output_price),
+      });
+    }
+    if (tail.date < lastDate) {
+      events.push({
+        kind: "retired",
+        date: nextDate.get(tail.date) || tail.date,
+        provider_id: tail.provider_id,
+        model_id: tail.model_id,
+        display_name: tail.display_name,
+        modality: tail.modality || null,
+        context_window: tail.context_window || null,
+        field: "retired",
+        from: null,
+        to: null,
+        delta: null,
+        pricing_id: tail.pricing_id,
+        input_price: finitePrice(tail.input_price),
+        output_price: finitePrice(tail.output_price),
+      });
+    }
+  }
+  const kindOrder = { price: 0, introduced: 1, retired: 2 };
+  events.sort(
+    (a, b) => b.date.localeCompare(a.date)
+      || (kindOrder[a.kind] ?? 9) - (kindOrder[b.kind] ?? 9)
+      || String(a.display_name).localeCompare(String(b.display_name))
+      || String(a.field).localeCompare(String(b.field)),
+  );
+  return events;
+}
+
+/** pricing_ids whose stitched series moved `field`, including both sides of a rewrite. */
+export function pricingIdsWithFieldChange(rows, field) {
+  const usable = (rows || []).filter(
+    (row) => row?.date && row?.pricing_id && !isFutureSchedulePlaceholder(row),
+  );
+  const chains = stitchPricingChains(usable);
+  const changedIds = new Set(
+    detectPricingEvents(usable)
+      .filter((event) => event.kind === "price" && event.field === field)
+      .map((event) => event.pricing_id),
+  );
+  const out = new Set();
+  for (const chain of chains) {
+    if (chain.pricingIds.some((id) => changedIds.has(id))) {
+      for (const id of chain.pricingIds) out.add(id);
+    }
+  }
+  return out;
+}
+
 export function contextsNeedDisambiguation(rows) {
   const seen = new Map();
   for (const row of rows) {

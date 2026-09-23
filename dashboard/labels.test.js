@@ -15,6 +15,9 @@ import {
   prettyContext,
   formatLegendLabel,
   contextsNeedDisambiguation,
+  detectPricingEvents,
+  pricingIdsWithFieldChange,
+  stitchPricingChains,
   formatEstimatedSpend,
   formatCostDelta,
   parseOptionalNumber,
@@ -589,5 +592,127 @@ describe("dashboard chrome", () => {
       assert.match(html, />Data Centers in America<\/a>/);
       assert.equal(html.includes(">Datacenter Ledger</a>"), false);
     }
+  });
+});
+
+describe("pricing catalog changes", () => {
+  const proBefore = {
+    date: "2026-09-14",
+    pricing_id: "deepseek-v4-pro-old",
+    provider_id: "deepseek",
+    model_id: "deepseek-v4-pro",
+    display_name: "deepseek-v4-pro",
+    service_tier: "standard",
+    modality: "text",
+    category: "text_api",
+    input_price: 0.435,
+    output_price: 0.87,
+  };
+  const proAfter = {
+    ...proBefore,
+    date: "2026-09-15",
+    pricing_id: "deepseek-v4-pro-1m",
+    context_window: "1m",
+    input_price: 1.32,
+    output_price: 3.96,
+  };
+  const flash = {
+    date: "2026-09-14",
+    pricing_id: "deepseek-v4-flash",
+    provider_id: "deepseek",
+    model_id: "deepseek-v4-flash",
+    display_name: "deepseek-v4-flash",
+    service_tier: "standard",
+    modality: "text",
+    category: "text_api",
+    input_price: 0.14,
+    output_price: 0.28,
+  };
+  const flashNext = {
+    date: "2026-09-15",
+    pricing_id: "deepseek-flash",
+    provider_id: "deepseek",
+    model_id: "deepseek-flash",
+    display_name: "deepseek-flash",
+    service_tier: "standard",
+    modality: "text",
+    category: "text_api",
+    input_price: 0.3,
+    output_price: 1.2,
+  };
+  const anchor = {
+    date: "2026-09-03",
+    pricing_id: "openai-gpt",
+    provider_id: "openai",
+    model_id: "gpt",
+    display_name: "gpt",
+    service_tier: "standard",
+    modality: "text",
+    category: "text_api",
+    input_price: 1,
+    output_price: 2,
+  };
+
+  it("stitches a pricing_id rewrite into one series and records the price move", () => {
+    const rows = [
+      { ...anchor, date: "2026-09-14" },
+      { ...anchor, date: "2026-09-15" },
+      proBefore,
+      proAfter,
+    ];
+    const chains = stitchPricingChains(rows);
+    const pro = chains.find((chain) => chain.pricingIds.includes("deepseek-v4-pro-old"));
+    assert.deepEqual(pro.pricingIds, ["deepseek-v4-pro-old", "deepseek-v4-pro-1m"]);
+    const prices = detectPricingEvents(rows).filter((event) => event.model_id === "deepseek-v4-pro");
+    assert.deepEqual(
+      prices.map((event) => [event.kind, event.field, event.from, event.to]),
+      [
+        ["price", "input_price", 0.435, 1.32],
+        ["price", "output_price", 0.87, 3.96],
+      ],
+    );
+    const changed = pricingIdsWithFieldChange(rows, "output_price");
+    assert.equal(changed.has("deepseek-v4-pro-old"), true);
+    assert.equal(changed.has("deepseek-v4-pro-1m"), true);
+  });
+
+  it("records a model_id replacement as a retirement plus an introduction", () => {
+    const rows = [
+      { ...anchor, date: "2026-09-14" },
+      { ...anchor, date: "2026-09-15" },
+      flash,
+      flashNext,
+    ];
+    const events = detectPricingEvents(rows);
+    const retired = events.find((event) => event.kind === "retired");
+    const introduced = events.find((event) => event.kind === "introduced");
+    assert.equal(retired.model_id, "deepseek-v4-flash");
+    assert.equal(retired.date, "2026-09-15");
+    assert.equal(introduced.model_id, "deepseek-flash");
+    assert.equal(introduced.date, "2026-09-15");
+    assert.equal(events.some((event) => event.kind === "price" && event.model_id === "deepseek-flash"), false);
+  });
+
+  it("keeps two live context windows as separate series", () => {
+    const short = {
+      date: "2026-09-15",
+      pricing_id: "short",
+      provider_id: "google",
+      model_id: "gemini",
+      display_name: "Gemini",
+      service_tier: "standard",
+      modality: "text",
+      category: "text_api",
+      context_window: "200k",
+      output_price: 12,
+    };
+    const long = { ...short, pricing_id: "long", context_window: "1m", output_price: 18 };
+    const chains = stitchPricingChains([
+      { ...short, date: "2026-09-14" },
+      short,
+      { ...long, date: "2026-09-14" },
+      long,
+    ]);
+    assert.equal(chains.filter((chain) => chain.lineage === chains[0].lineage).length, 2);
   });
 });
