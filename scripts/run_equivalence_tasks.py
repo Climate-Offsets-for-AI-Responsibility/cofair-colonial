@@ -419,6 +419,37 @@ def run_gemini(
     )
 
 
+# Nova 2 Lite's documented output ceiling. Omitting maxTokens does not mean
+# uncapped: Converse applies a short dynamic default (code stops at 1,000,
+# chat near 3,000) and reports stopReason max_tokens. Sending the ceiling lets
+# the model finish; a hit at this number is still a real truncation.
+NOVA2_LITE_OUTPUT_CEILING = 65_536
+_BEDROCK_STATED_LIMIT_RE = re.compile(
+    r"maxTokens:\s*\d+\s*>\s*(\d+)|maximum(?:\s+\w+){0,6}\s+(\d+)",
+    re.IGNORECASE,
+)
+
+
+def _is_nova2_lite(model: str) -> bool:
+    return "nova-2-lite" in (model or "")
+
+
+def _bedrock_output_cap(model: str, max_tokens: int | None) -> int | None:
+    if max_tokens is not None:
+        return max_tokens
+    if _is_nova2_lite(model):
+        return NOVA2_LITE_OUTPUT_CEILING
+    return None
+
+
+def _bedrock_stated_limit(response) -> int | None:
+    match = _BEDROCK_STATED_LIMIT_RE.search(response.text or "")
+    if not match:
+        return None
+    raw = match.group(1) or match.group(2)
+    return int(raw) if raw else None
+
+
 def run_bedrock(
     model: str,
     prompt_or_messages: str | list[dict[str, str]],
@@ -428,22 +459,32 @@ def run_bedrock(
     messages = _as_messages(prompt_or_messages)
     body_messages = _messages_for_provider("aws", messages)
     region = bedrock_region()
-    inference_config: dict = {"temperature": 0}
-    if max_tokens is not None:
-        inference_config["maxTokens"] = max_tokens
-    response = _http_request(
-        "POST",
-        f"https://bedrock-runtime.{region}.amazonaws.com/model/{model}/converse",
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "messages": body_messages,
-            "inferenceConfig": inference_config,
-        },
-        timeout=TIMEOUT_SECONDS,
-    )
+    cap = _bedrock_output_cap(model, max_tokens)
+
+    def _post(output_cap: int | None):
+        inference_config: dict = {"temperature": 0}
+        if output_cap is not None:
+            inference_config["maxTokens"] = output_cap
+        return _http_request(
+            "POST",
+            f"https://bedrock-runtime.{region}.amazonaws.com/model/{model}/converse",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "messages": body_messages,
+                "inferenceConfig": inference_config,
+            },
+            timeout=TIMEOUT_SECONDS,
+        )
+
+    response = _post(cap)
+    if not response.ok and _is_nova2_lite(model) and cap == NOVA2_LITE_OUTPUT_CEILING:
+        stated = _bedrock_stated_limit(response)
+        if stated is not None and stated < cap:
+            cap = stated
+            response = _post(cap)
     if not response.ok:
         response.raise_for_status()
     payload = response.json()
@@ -457,7 +498,7 @@ def run_bedrock(
         int(usage.get("inputTokens", 0)),
         int(usage.get("outputTokens", 0)),
         payload.get("stopReason") == "max_tokens",
-        max_tokens,
+        cap,
         assistant_text,
     )
 

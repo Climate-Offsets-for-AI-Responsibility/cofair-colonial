@@ -368,7 +368,8 @@ class BuildEquivalenceTest(unittest.TestCase):
             for item in eq["selected_models"]
         }
         self.assertEqual(selected[("anthropic", "flagship")], "claude-opus-5")
-        self.assertEqual(selected[("openai", "flagship")], "chat-latest")
+        self.assertEqual(selected[("openai", "flagship")], "gpt-5.6-sol")
+        self.assertEqual(selected[("openai", "workhorse")], "chat-latest")
         self.assertEqual(selected[("google", "workhorse")], "gemini-3.7-flash")
         self.assertEqual(selected[("xai", "flagship")], "grok-4.6")
         self.assertEqual(selected[("aws", "flagship")], "nova-2.0-pro")

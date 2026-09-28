@@ -295,7 +295,7 @@ describe("suite baseline awaiting status", () => {
 describe("series breaks", () => {
   const dayAt = (date, model, extra = {}) => ({ date, model_basis: model, ...extra });
 
-  it("breaks the line where a provider re-pins its model", () => {
+  it("keeps the line connected when a provider re-pins its model", () => {
     const { breakAt, newModelAt } = computeSeriesBreaks([
       dayAt("2026-09-01", "grok-4.5"),
       dayAt("2026-09-02", "grok-4.5"),
@@ -303,10 +303,10 @@ describe("series breaks", () => {
       dayAt("2026-09-04", "grok-4.6"),
     ]);
     assert.deepEqual(newModelAt, [false, false, true, false]);
-    assert.deepEqual(breakAt, [false, false, true, false]);
+    assert.deepEqual(breakAt, [false, false, false, false]);
   });
 
-  it("breaks flagship and workhorse independently on their own versions", () => {
+  it("marks a new flagship without breaking the workhorse line", () => {
     const flagship = computeSeriesBreaks([
       dayAt("2026-09-01", "claude-opus-4"),
       dayAt("2026-09-02", "claude-opus-5"),
@@ -315,19 +315,22 @@ describe("series breaks", () => {
       dayAt("2026-09-01", "claude-haiku-4-5"),
       dayAt("2026-09-02", "claude-haiku-4-5"),
     ]);
-    assert.deepEqual(flagship.breakAt, [false, true]);
+    assert.deepEqual(flagship.newModelAt, [false, true]);
+    assert.deepEqual(flagship.breakAt, [false, false]);
     assert.deepEqual(workhorse.breakAt, [false, false]);
   });
 
-  it("treats a day that spans two model versions as its own identity", () => {
-    // The regression this fixes: the aggregate used to report whichever task's
-    // row was summed first, so the mixed day looked like a plain continuation.
-    const { breakAt } = computeSeriesBreaks([
+  it("treats a day that spans two model versions as a new model, still connected", () => {
+    // The aggregate used to report whichever task's row was summed first, so
+    // the mixed day looked like a plain continuation. It is still flagged; the
+    // line stays connected.
+    const { breakAt, newModelAt } = computeSeriesBreaks([
       dayAt("2026-09-02", "gemini-flash-latest"),
       dayAt("2026-09-03", "gemini-flash-latest,gemini-flash-latest-high-res-exp"),
       dayAt("2026-09-04", "gemini-flash-latest-high-res-exp"),
     ]);
-    assert.deepEqual(breakAt, [false, true, true]);
+    assert.deepEqual(newModelAt, [false, true, true]);
+    assert.deepEqual(breakAt, [false, false, false]);
   });
 
   it("falls back to api_model then model_id when no basis is recorded", () => {
@@ -354,8 +357,8 @@ describe("series breaks", () => {
   });
 
   it("keeps the line intact when a derived basis goes missing", () => {
-    // A point that failed to record its own basis cannot assert a change; only
-    // the model is allowed to break a line on a transition to blank.
+    // A point that failed to record its own basis cannot assert a change.
+    // A model change is flagged and still leaves the line connected.
     const { breakAt } = computeSeriesBreaks([
       { model_basis: "m", fit_basis: "A,B,C", corpus_basis: "2.0.0" },
       { model_basis: "m", fit_basis: "", corpus_basis: "" },
@@ -566,6 +569,7 @@ const dashDir = dirname(fileURLToPath(import.meta.url));
 describe("dashboard chrome", () => {
   it("keeps From and To in one date-range group so they wrap together", () => {
     const html = readFileSync(join(dashDir, "tokens/index.html"), "utf8");
+    assert.match(html, /id="yScale"[\s\S]*value="logarithmic"/);
     assert.match(html, /class="control-pair date-range"[\s\S]*id="trendFrom"[\s\S]*id="trendTo"/);
     assert.match(html, /class="control-pair date-range"[\s\S]*id="ledgerFrom"[\s\S]*id="ledgerTo"/);
     assert.match(html, /class="control-pair date-range"[\s\S]*id="costFrom"[\s\S]*id="costTo"/);

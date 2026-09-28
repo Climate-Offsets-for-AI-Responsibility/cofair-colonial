@@ -101,6 +101,13 @@
                 <option value="ledger_fixed_overhead">Fixed request overhead</option>
               </select>
             </div>
+            <div class="cofair-field control-group">
+              <label class="cofair-label" for="yScale">Y-axis</label>
+              <select class="cofair-select" id="yScale">
+                <option value="linear" selected>Linear</option>
+                <option value="logarithmic">Log</option>
+              </select>
+            </div>
             <div class="control-pair date-range">
             <div class="cofair-field control-group">
               <label class="cofair-label" for="trendFrom">From</label>
@@ -120,6 +127,7 @@
             <div id="chartNodeTooltip" class="chart-node-tooltip" hidden role="tooltip">
               <p class="chart-node-tooltip__provider cofair-text cofair-text--xs"></p>
               <p class="chart-node-tooltip__model cofair-text cofair-text--small"></p>
+              <p class="chart-node-tooltip__badges" hidden></p>
               <p class="chart-node-tooltip__meta cofair-text cofair-text--xs"></p>
             </div>
           </div>

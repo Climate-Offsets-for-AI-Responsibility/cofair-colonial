@@ -248,15 +248,15 @@ TIER_CANDIDATES = {
         "workhorse": ["claude-haiku-4.5"],
     },
     "openai": {
-        "flagship": ["chat-latest", "gpt-5.6-sol"],
-        "workhorse": ["gpt-5.6-luna"],
+        "flagship": ["gpt-6-astra", "gpt-6-sol", "gpt-5.6-sol"],
+        "workhorse": ["chat-latest", "gpt-6-luna", "gpt-5.6-luna"],
     },
     "google": {
         "flagship": ["gemini-3.1-pro", "gemini-2.5-pro"],
         "workhorse": ["gemini-3-flash", "gemini-2.0-flash"],
     },
     "xai": {
-        "flagship": ["grok-4.6", "grok-4.5"],
+        "flagship": ["grok-4.7", "grok-4.6", "grok-4.5"],
         "workhorse": ["grok-build-0.1"],
     },
     "aws": {

@@ -43,6 +43,7 @@ FONTS = [
     ("IBM Plex Sans", "400", "ibm-plex-sans", "ibm-plex-sans-latin-400-normal"),
     ("IBM Plex Sans", "500", "ibm-plex-sans", "ibm-plex-sans-latin-500-normal"),
     ("IBM Plex Sans", "600", "ibm-plex-sans", "ibm-plex-sans-latin-600-normal"),
+    ("IBM Plex Serif", "400", "ibm-plex-serif", "ibm-plex-serif-latin-400-normal"),
     ("IBM Plex Serif", "600", "ibm-plex-serif", "ibm-plex-serif-latin-600-normal"),
     ("IBM Plex Mono", "400", "ibm-plex-mono", "ibm-plex-mono-latin-400-normal"),
     ("IBM Plex Mono", "500", "ibm-plex-mono", "ibm-plex-mono-latin-500-normal"),

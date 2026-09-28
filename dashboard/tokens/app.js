@@ -51,6 +51,7 @@ const state = {
   // and the recipient pays for. Density and the overhead/content split explain a
   // move; they are diagnostics under the headline, not the headline.
   metric: "tokens_total",
+  yScale: "linear",
   // Trends tab date window, on the same From/To model as the other two tabs.
   trendFrom: "",
   trendTo: "",
@@ -252,6 +253,16 @@ function chartPalette() {
     radiusSm: px("--cofair-radius-sm"),
     padding: px("--cofair-space-2"),
   };
+}
+
+function chartSurfaceColor(canvas) {
+  let node = canvas?.parentElement;
+  while (node) {
+    const bg = getComputedStyle(node).backgroundColor;
+    if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") return bg;
+    node = node.parentElement;
+  }
+  return themeColor("--cofair-color-bg") || "#ffffff";
 }
 
 function providerColor(providerId) {
@@ -879,8 +890,20 @@ function showNodeTooltip(chart, hit) {
   // Flagged rather than left as a bare number: nothing was requested to stop this
   // run, so the provider stopped it at its own maximum and the reading is a floor
   // on the model's real length, not a measurement of it.
+  const badges = tooltip.querySelector(".chart-node-tooltip__badges");
+  if (badges) {
+    badges.replaceChildren();
+    if (point.newModel) {
+      const badge = document.createElement("span");
+      badge.className = "cofair-badge";
+      badge.textContent = "new model";
+      badges.append(badge);
+      badges.hidden = false;
+    } else {
+      badges.hidden = true;
+    }
+  }
   const notes = [];
-  if (point.newModel) notes.push("new model");
   // Named separately from a model change: the model is the same, what changed is
   // which tasks the fit was estimated from, and a reader comparing this point to
   // yesterday's needs to know it is not quite the same quantity.
@@ -1036,18 +1059,19 @@ function renderChart(points) {
     byLine.get(key).push(point);
   }
 
+  // Hollow new-model markers knock out the series color with the chart surface
+  // so the ring stays the same size as a filled node.
+  const hole = chartSurfaceColor(canvas);
+
   const datasets = [];
   for (const [key, linePoints] of [...byLine.entries()].sort()) {
     const [providerId, tier] = key.split("|");
     const color = tierColor(providerId, tier);
     const dash = tier === "flagship" ? [] : [5, 4];
     const ordered = [...linePoints].sort((a, b) => a.date.localeCompare(b.date));
-    // A provider releasing a new flagship or workhorse re-points the panel, so
-    // the series continues under a different model. Joining across that boundary
-    // would draw one model's drift where there are two models — the same mistake
-    // as reading a censored point as a natural stop. `computeSeriesBreaks` finds
-    // every such boundary (model, fit basis, corpus); the line is broken at them
-    // by the `segment` callback below.
+    // A new model stays on the line. The first point of that model is marked so
+    // the hover card can badge it. Fit-basis and corpus changes still break the
+    // line: those are a different quantity, not a new model on the same tasks.
     const { modelAt, newModelAt, newBasisAt, newCorpusAt, breakAt } =
       computeSeriesBreaks(ordered);
     const basisAt = ordered.map((p) => p.fit_basis || "");
@@ -1056,7 +1080,10 @@ function renderChart(points) {
       label: `${providerLabel(providerId)} · ${tier}`,
       data: ordered.map((p, i) => ({
         x: `${p.date}T00:00:00Z`,
-        y: p[state.metric],
+        y:
+          state.yScale === "logarithmic" && !(p[state.metric] > 0)
+            ? null
+            : p[state.metric],
         censored: Boolean(p.censored),
         // Per point, not per series: the tooltip has to name the model that
         // produced the reading being pointed at, which the newest model is not.
@@ -1076,10 +1103,8 @@ function renderChart(points) {
       hoverBorderDash: dash,
       borderWidth: 0.5,
       hoverBorderWidth: 0.5,
-      // Break the line across a model change. `spanGaps` deliberately bridges a
-      // missing day, and a model swap is not a missing day — it is two different
-      // things being measured, so the gap has to come from here rather than from
-      // the data having a hole in it.
+      // Break only where the quantity changed (fit basis or corpus). A new model
+      // stays connected; `spanGaps` still bridges a day with no reading.
       segment: {
         borderColor: (ctx) => (breakAt[ctx.p1DataIndex] ? "transparent" : undefined),
       },
@@ -1087,18 +1112,29 @@ function renderChart(points) {
       // must not be drawn as though the model chose to stop there. Marked with a
       // cross and enlarged: on an output measure the difference between "finished"
       // and "was cut off" is the difference between a reading and a floor.
-      // A model changeover gets a diamond — the first reading from a new model,
-      // and truncation wins the marker when both land on the same point, because
-      // it is the one that says the number cannot be trusted.
+      // A new-model node is an outline circle the same size as the other nodes.
+      // The fill matches the chart surface so the line does not read as a dot.
+      // A fit or corpus break stays a diamond. Truncation wins when both apply.
       pointStyle: ordered.map((p, i) =>
-        p.censored ? "crossRot" : breakAt[i] ? "rectRot" : "circle",
+        p.censored ? "crossRot" : breakAt[i] && !newModelAt[i] ? "rectRot" : "circle",
       ),
-      pointBackgroundColor: color,
+      pointBackgroundColor: ordered.map((p, i) =>
+        !p.censored && newModelAt[i] ? hole : color,
+      ),
+      pointHoverBackgroundColor: ordered.map((p, i) =>
+        !p.censored && newModelAt[i] ? hole : color,
+      ),
       pointBorderColor: color,
-      pointBorderWidth: ordered.map((p) => (p.censored ? 1.5 : 1)),
+      pointHoverBorderColor: color,
+      pointBorderWidth: ordered.map((p, i) =>
+        p.censored ? 1.5 : newModelAt[i] ? 1.5 : 1,
+      ),
+      pointHoverBorderWidth: ordered.map((p, i) =>
+        p.censored ? 1.5 : newModelAt[i] ? 1.5 : 1,
+      ),
       // Same node and rollover geometry as /pricing's trend chart.
       pointRadius: ordered.map((p, i) =>
-        p.censored ? 4 : breakAt[i] ? 3.5 : ordered.length === 1 ? 3 : 1.5,
+        p.censored ? 4 : breakAt[i] && !newModelAt[i] ? 3.5 : ordered.length === 1 ? 3 : 1.5,
       ),
       pointHoverRadius: 5,
       pointHitRadius: 10,
@@ -1153,7 +1189,8 @@ function renderChart(points) {
           ticks: { color: palette.muted, font: tickFont },
         },
         y: {
-          beginAtZero: metric.beginAtZero !== false,
+          type: state.yScale === "logarithmic" ? "logarithmic" : "linear",
+          beginAtZero: state.yScale !== "logarithmic" && metric.beginAtZero !== false,
           grid: { color: palette.grid },
           border: { color: palette.grid },
           ticks: { color: palette.muted, font: tickFont },
@@ -2066,6 +2103,10 @@ async function main() {
   });
   document.getElementById("metric").addEventListener("change", (e) => {
     state.metric = e.target.value;
+    render();
+  });
+  document.getElementById("yScale").addEventListener("change", (e) => {
+    state.yScale = e.target.value;
     render();
   });
   document.getElementById("drawerClose").addEventListener("click", closeDrawer);

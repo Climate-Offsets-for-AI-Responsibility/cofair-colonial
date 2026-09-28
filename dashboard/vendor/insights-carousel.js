@@ -11,6 +11,8 @@ const DATE = new Intl.DateTimeFormat("en-US", {
 });
 
 const DEFAULT_FEED = "https://cofair.org/insights.json";
+/** Ghost-backed feed. Falls back to the committed JSON when this is not deployed yet. */
+const LIVE_FEED = "https://cofair.org/api/insights-feed";
 const DEFAULT_INDEX = "https://cofair.org/insights/";
 const LOCAL_DEV_FEED = "http://localhost:5174/insights.json";
 
@@ -65,7 +67,7 @@ export function escapeCarouselText(value) {
 /** Drop the weekly-brief series prefix so tiles and article heads share one title. */
 export function displayCarouselTitle(title) {
   return String(title ?? "")
-    .replace(/^Municipal(?: Data Center)? Briefing:\s*/i, "")
+    .replace(/^(?:Municipal(?: Data Center)?|Community) Briefings?:\s*/i, "")
     .trim();
 }
 
@@ -181,17 +183,29 @@ export function mountInsightsCarousel(root, options = {}) {
   }
 
   const alreadyRendered = root.querySelector(".cofair-insights-carousel__item");
-  if (items?.length) {
-    if (!alreadyRendered) fillTrack(root, items);
-    return wire(items.length);
-  }
-  if (alreadyRendered) {
-    return wire(root.querySelectorAll(".cofair-insights-carousel__item").length);
-  }
-
   const feedUrl = options.feedUrl ?? root.dataset.feed ?? DEFAULT_FEED;
   let cancelled = false;
   let unwire = () => {};
+
+  function show(nextItems) {
+    unwire();
+    items = nextItems;
+    index = 0;
+    if (!items.length) {
+      root.hidden = true;
+      return;
+    }
+    root.hidden = false;
+    fillTrack(root, items);
+    unwire = wire(items.length);
+  }
+
+  if (items?.length) {
+    if (!alreadyRendered) fillTrack(root, items);
+    unwire = wire(items.length);
+  } else if (alreadyRendered) {
+    unwire = wire(root.querySelectorAll(".cofair-insights-carousel__item").length);
+  }
 
   function loadFeed(url) {
     return fetch(url).then((response) => {
@@ -204,24 +218,28 @@ export function mountInsightsCarousel(root, options = {}) {
     globalThis.location?.hostname ?? "",
     feedUrl,
   );
-  const firstLoad = loadFeed(feedUrl).catch((error) => {
-    if (fallbackUrl && fallbackUrl !== feedUrl) return loadFeed(fallbackUrl);
-    throw error;
-  });
+  const urls = [];
+  if (feedUrl !== LIVE_FEED) urls.push(LIVE_FEED);
+  urls.push(feedUrl);
+  if (fallbackUrl && !urls.includes(fallbackUrl)) urls.push(fallbackUrl);
+
+  const firstLoad = urls.reduce(
+    (attempt, url) => attempt.catch(() => loadFeed(url)),
+    Promise.reject(new Error("insights feed not loaded")),
+  );
 
   firstLoad
     .then((payload) => {
       if (cancelled) return;
-      items = parseInsightsFeed(payload);
-      if (items.length === 0) {
-        root.hidden = true;
+      const next = parseInsightsFeed(payload);
+      if (!next.length) {
+        if (!items?.length) root.hidden = true;
         return;
       }
-      fillTrack(root, items);
-      unwire = wire(items.length);
+      show(next);
     })
     .catch(() => {
-      if (!cancelled) root.hidden = true;
+      if (!cancelled && !items?.length && !alreadyRendered) root.hidden = true;
     });
 
   return () => {
@@ -230,4 +248,4 @@ export function mountInsightsCarousel(root, options = {}) {
   };
 }
 
-export { DEFAULT_FEED, DEFAULT_INDEX, LOCAL_DEV_FEED };
+export { DEFAULT_FEED, DEFAULT_INDEX, LIVE_FEED, LOCAL_DEV_FEED };

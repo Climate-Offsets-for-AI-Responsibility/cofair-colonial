@@ -376,6 +376,31 @@ class UncappedRequestBodyTest(unittest.TestCase):
         self.assertNotIn("maxTokens", config)
         self.assertEqual(config["temperature"], 0)
 
+    def test_nova2_lite_sends_its_output_ceiling_when_uncapped(self) -> None:
+        payload = {"usage": {"inputTokens": 1, "outputTokens": 2}, "stopReason": "end_turn"}
+        with mock.patch.object(
+            runner, "_http_request", return_value=_response(200, payload)
+        ) as post:
+            usage = runner.run_bedrock("us.amazon.nova-2-lite-v1:0", "hi", None, "k")
+
+        config = post.call_args.kwargs["json"]["inferenceConfig"]
+        self.assertEqual(config["maxTokens"], runner.NOVA2_LITE_OUTPUT_CEILING)
+        self.assertEqual(usage.cap_sent, runner.NOVA2_LITE_OUTPUT_CEILING)
+        self.assertFalse(usage.truncated)
+
+    def test_nova2_lite_retries_at_the_limit_the_api_names(self) -> None:
+        refused = _response(400, text="maxTokens: 65536 > 5000, which is the maximum")
+        ok = _response(
+            200, {"usage": {"inputTokens": 1, "outputTokens": 40}, "stopReason": "end_turn"}
+        )
+        with mock.patch.object(runner, "_http_request", side_effect=[refused, ok]) as post:
+            usage = runner.run_bedrock("us.amazon.nova-2-lite-v1:0", "hi", None, "k")
+
+        second = post.call_args_list[1].kwargs["json"]["inferenceConfig"]
+        self.assertEqual(second["maxTokens"], 5000)
+        self.assertEqual(usage.cap_sent, 5000)
+        self.assertFalse(usage.truncated)
+
 
 class ConversationGenerationTest(unittest.TestCase):
     def setUp(self) -> None:

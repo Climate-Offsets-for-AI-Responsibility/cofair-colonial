@@ -11,7 +11,9 @@ class ModelRoleTest(unittest.TestCase):
         cases = [
             ("anthropic", "claude-opus-5", "flagship"),
             ("anthropic", "claude-haiku-4.5", "workhorse"),
-            ("openai", "chat-latest", "flagship"),
+            ("openai", "gpt-6-astra", "flagship"),
+            ("openai", "gpt-5.6-sol", "flagship"),
+            ("openai", "chat-latest", "workhorse"),
             ("openai", "gpt-5.6-luna", "workhorse"),
             ("google", "gemini-3.1-pro", "flagship"),
             ("google", "gemini-3.7-flash", "workhorse"),
@@ -35,6 +37,8 @@ class ModelRoleTest(unittest.TestCase):
             ("google", "gemini-3.1-flash-lite"),
             ("google", "gemini-3-pro-image"),
             ("xai", "grok-code-fast"),
+            ("xai", "grok-4.20-0309-non-reasoning"),
+            ("google", "gemini-3.8-flash-cyber"),
             ("aws", "titan-text-express"),
             ("deepseek", "deepseek-v4-vision"),
             ("qwen", "qwen3-coder"),
@@ -77,7 +81,9 @@ class ModelRankingTest(unittest.TestCase):
     def test_newest_eligible_version_wins_for_each_provider(self) -> None:
         cases = [
             ("anthropic", "flagship", ["claude-opus-4.8", "claude-opus-5"], "claude-opus-5"),
-            ("openai", "flagship", ["gpt-5.6-sol", "chat-latest"], "chat-latest"),
+            ("openai", "flagship", ["gpt-5.6-sol", "gpt-6-sol", "gpt-6-astra", "chat-latest"], "gpt-6-astra"),
+            ("openai", "flagship", ["gpt-5.6-sol", "gpt-6-sol", "chat-latest"], "gpt-6-sol"),
+            ("openai", "workhorse", ["gpt-6-luna", "chat-latest"], "chat-latest"),
             (
                 "google",
                 "workhorse",
@@ -89,6 +95,23 @@ class ModelRankingTest(unittest.TestCase):
                 "gemini-3.7-flash",
             ),
             ("xai", "flagship", ["grok-4.5", "grok-4.6"], "grok-4.6"),
+            (
+                "xai",
+                "flagship",
+                [
+                    "grok-4.6",
+                    "grok-4.7",
+                    "grok-4.20-0309-non-reasoning",
+                    "grok-4.20-multi-agent-0309",
+                ],
+                "grok-4.7",
+            ),
+            (
+                "google",
+                "workhorse",
+                ["gemini-3.8-flash-cyber", "gemini-3.8-flash", "gemini-3.7-flash"],
+                "gemini-3.8-flash",
+            ),
             ("aws", "flagship", ["nova-premier", "nova-2.0-pro"], "nova-2.0-pro"),
             (
                 "deepseek",

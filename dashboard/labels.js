@@ -316,14 +316,15 @@ export function sortDatasetsForDate(datasets, dateStr) {
  * Where a series identity changes from one observation to the next.
  *
  * `true` at index `i` means "the thing measured at `i` is not the thing measured
- * at `i - 1`", which is what the trend chart breaks its line on.
+ * at `i - 1`". Fit and corpus flags break the line. A model flag does not.
  *
  * `requireCurrent` guards the derived bases (fit basis, corpus): a point whose
  * own basis is unrecorded cannot assert a change, so a value going *missing*
  * leaves the line intact. A basis appearing where there was none still breaks —
  * that is the case where a day's prompts or fit inputs are newly pinned and the
  * two halves genuinely are not comparable. Model identity carries no guard: it
- * has been recorded since the first run, so either direction is a real break.
+ * has been recorded since the first run, so either direction is a real change.
+ * That change is flagged for the hover badge; it does not break the line.
  */
 export function basisChangeFlags(values, { requireCurrent = false } = {}) {
   const list = values || [];
@@ -336,17 +337,15 @@ export function basisChangeFlags(values, { requireCurrent = false } = {}) {
 /**
  * The segment boundaries for one provider-tier line, in observation order.
  *
- * Three independent things can make two adjacent points incomparable, and all
- * three have to break the line rather than be drawn as drift:
+ * A new model stays on the same line. The node is marked (`newModelAt`) so the
+ * chart can badge it; the line is not a gap. Two other changes still break
+ * the line, because the quantity itself changed:
  *
- * - `model` — the provider re-pinned the panel's flagship or workhorse, so the
- *   series continues under a different model. This is the one the reader sees
- *   most often, because flagship and workhorse both version over time.
  * - `fitBasis` — the fitted overhead/content split was estimated from a
  *   different task set, so the parameter is not quite the same quantity.
  * - `corpus` — the prompts themselves were replaced, so a pack total is a sum
- *   over different text. The strongest break: the other two mean the
- *   measurement moved, this one means the thing measured did.
+ *   over different text. The strongest break: the measurement is of different
+ *   text, not a new model reading the same text.
  *
  * `model` is compared as a *basis* — the set of models the point aggregates, not
  * whichever row happened to be summed first. A day that served two model
@@ -365,7 +364,7 @@ export function computeSeriesBreaks(points) {
     list.map((p) => p?.corpus_basis || ""),
     { requireCurrent: true },
   );
-  const breakAt = newModelAt.map((changed, i) => changed || newBasisAt[i] || newCorpusAt[i]);
+  const breakAt = newBasisAt.map((changed, i) => changed || newCorpusAt[i]);
   return { modelAt, newModelAt, newBasisAt, newCorpusAt, breakAt };
 }
 
