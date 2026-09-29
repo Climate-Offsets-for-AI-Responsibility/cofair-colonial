@@ -82,13 +82,14 @@ def model_role(provider_id: str, model_id: str) -> str | None:
     if provider_id == "anthropic":
         if "claude-opus-" in name:
             return "flagship"
-        if "claude-haiku-" in name:
+        # Sonnet is the step under Opus. Haiku is the floor. Price picks.
+        if "claude-sonnet-" in name or "claude-haiku-" in name:
             return "workhorse"
     elif provider_id == "openai":
-        # Within one generation the suffix is the product line, not a version.
-        # Astra is the top line; Sol is the prior top line and only wins when
-        # no Astra is present. Luna and chat-latest are the workhorse line.
-        if re.fullmatch(r"gpt-[\d.]+-astra", name) or re.fullmatch(r"gpt-[\d.]+-sol", name):
+        # Astra is the top line. Sol is that line when Astra is absent, and the
+        # everyday line under Astra when both are priced. Luna and chat-latest
+        # are cheaper-line candidates; price decides which one is the workhorse.
+        if re.fullmatch(r"gpt-[\d.]+-(?:astra|sol)", name):
             return "flagship"
         if name == "chat-latest" or re.fullmatch(r"gpt-[\d.]+-luna", name):
             return "workhorse"
@@ -124,7 +125,8 @@ def model_role(provider_id: str, model_id: str) -> str | None:
     elif provider_id == "qwen":
         if re.match(r"^qwen[\d.]*-max(?:-|$)", name):
             return "flagship"
-        if re.match(r"^qwen[\d.]*-flash(?:-|$)", name):
+        # Plus is the step under Max. Flash is the floor. Price picks.
+        if re.match(r"^qwen[\d.]*-(?:plus|flash)(?:-|$)", name):
             return "workhorse"
     return None
 
@@ -142,6 +144,153 @@ def deepseek_family_role(model_id: str) -> str | None:
     if not is_eligible_model("deepseek", model_id):
         return None
     return model_role("deepseek", model_id)
+
+
+def everyday_list_price(rows: list[dict]) -> float | None:
+    """Input plus output per 1M tokens on the short-context standard rate.
+
+    A long-context or long-prompt row is a different product. The comparison
+    uses the everyday rate, and the lower published sum when a model has no
+    short-context marker.
+    """
+    scored: list[tuple[int, float]] = []
+    for row in rows:
+        raw_in = row.get("latest_input", row.get("input_price"))
+        raw_out = row.get("latest_output", row.get("output_price"))
+        if raw_in is None or raw_out is None:
+            continue
+        text = f"{row.get('context_window') or ''} {row.get('billing_variant') or ''}".lower()
+        if "short" in text or "lt-200" in text:
+            band = 1
+        elif "long" in text or "gte-200" in text:
+            band = -1
+        else:
+            band = 0
+        scored.append((band, float(raw_in) + float(raw_out)))
+    if not scored:
+        return None
+    # Prefer the short-context band. Inside a band, the lower sum is the
+    # everyday rate rather than a long-prompt surcharge.
+    band, _total = max(scored, key=lambda item: (item[0], -item[1]))
+    return min(total for item_band, total in scored if item_band == band)
+
+
+def product_line(provider_id: str, model_id: str) -> str | None:
+    """The product line inside a provider, ignoring the generation number."""
+    name = (model_id or "").lower()
+    if provider_id == "openai":
+        if name == "chat-latest":
+            return "chat"
+        match = re.fullmatch(r"gpt-[\d.]+-(astra|sol|luna)", name)
+        return match.group(1) if match else None
+    if provider_id == "anthropic":
+        for line in ("opus", "sonnet", "haiku"):
+            if f"claude-{line}-" in name:
+                return line
+    if provider_id == "google":
+        if re.fullmatch(r"gemini-[\d.]+-pro", name):
+            return "pro"
+        if re.fullmatch(r"gemini-[\d.]+-flash", name):
+            return "flash"
+    if provider_id == "xai":
+        if re.fullmatch(r"grok-build-\d+(?:\.\d+)*", name):
+            return "build"
+        if re.fullmatch(r"grok-\d+(?:\.\d+)?", name):
+            return "grok"
+    if provider_id == "aws":
+        if "premier" in name:
+            return "premier"
+        if re.search(r"(?:^nova-[\d.]+-pro(?:-|$)|(?:^nova-pro$))", name):
+            return "pro"
+        if "micro" in name:
+            return "micro"
+        if "lite" in name:
+            return "lite"
+    if provider_id == "deepseek":
+        if "flash" in name:
+            return "flash"
+        if re.search(r"-pro(?:-|$)", name):
+            return "pro"
+    if provider_id == "qwen":
+        for line in ("max", "plus", "flash"):
+            if re.search(rf"(?:^|-){line}(?:-|$)", name):
+                return line
+    return None
+
+
+# Sol is the flagship when Astra is absent, and the everyday line under Astra.
+STEP_DOWN_LINES = {("openai", "sol")}
+
+
+def _newer_than(model_id: str, other: str) -> bool:
+    return (
+        model_version_key(model_id),
+        -model_id.count("-"),
+        -len(model_id),
+    ) > (
+        model_version_key(other),
+        -other.count("-"),
+        -len(other),
+    )
+
+
+def order_workhorses(
+    provider_id: str,
+    model_ids: list[str],
+    prices: dict[str, float],
+    flagship_id: str | None,
+    as_of: date | None = None,
+) -> list[str]:
+    """Newest member of each cheaper line, dearest-under-the-flagship first.
+
+    The workhorse is the everyday line: strictly cheaper than the flagship, and
+    the closest such line rather than the floor. An alias priced at or above
+    the flagship (chat-latest today) cannot take the slot. Lines with no price
+    stay eligible so a missing rate does not drop the panel.
+    """
+    flagship_price = prices.get(flagship_id) if flagship_id else None
+    flagship_line = product_line(provider_id, flagship_id) if flagship_id else None
+    by_line: dict[str, str] = {}
+    for model_id in model_ids:
+        if not is_eligible_model(provider_id, model_id, as_of=as_of):
+            continue
+        role = model_role(provider_id, model_id)
+        line = product_line(provider_id, model_id)
+        step_down = (provider_id, line) in STEP_DOWN_LINES and line != flagship_line
+        if role != "workhorse" and not step_down:
+            continue
+        if line is None:
+            continue
+        current = by_line.get(line)
+        if current is None or _newer_than(model_id, current):
+            by_line[line] = model_id
+
+    def under_flagship(model_id: str) -> bool:
+        price = prices.get(model_id)
+        if flagship_price is None or price is None:
+            return True
+        return price < flagship_price
+
+    priced = [model_id for model_id in by_line.values() if under_flagship(model_id)]
+    pool = priced or list(by_line.values())
+
+    def sort_key(model_id: str) -> tuple:
+        price = prices.get(model_id)
+        return (
+            price if price is not None else -1.0,
+            model_version_key(model_id),
+            openai_brand_rank(model_id) if provider_id == "openai" else 0,
+            -model_id.count("-"),
+            -len(model_id),
+        )
+
+    pool.sort(key=sort_key, reverse=True)
+    rest = [
+        model_id
+        for model_id in rank_ids_for_tier(provider_id, "workhorse", model_ids, as_of)
+        if model_id not in pool
+    ]
+    return pool + rest
 
 
 def openai_brand_rank(model_id: str) -> int:

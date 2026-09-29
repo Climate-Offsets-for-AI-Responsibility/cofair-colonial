@@ -43,7 +43,11 @@ if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent / "ops"))
 from cost_events import load_cost_events  # noqa: E402
-from model_families import rank_ids_for_tier  # noqa: E402
+from model_families import (  # noqa: E402
+    everyday_list_price,
+    order_workhorses,
+    rank_ids_for_tier,
+)
 from provider_faults import remedy_for_error  # noqa: E402
 from task_corpus import (  # noqa: E402
     CHAT_CORPUS_VERSION,
@@ -245,11 +249,11 @@ RUNS_PER_YEAR_BY_CADENCE = {
 TIER_CANDIDATES = {
     "anthropic": {
         "flagship": ["claude-opus-5", "claude-opus-4.8"],
-        "workhorse": ["claude-haiku-4.5"],
+        "workhorse": ["claude-sonnet-5", "claude-haiku-4.5"],
     },
     "openai": {
         "flagship": ["gpt-6-astra", "gpt-6-sol", "gpt-5.6-sol"],
-        "workhorse": ["chat-latest", "gpt-6-luna", "gpt-5.6-luna"],
+        "workhorse": ["gpt-6-sol", "gpt-6-luna", "gpt-5.6-luna", "chat-latest"],
     },
     "google": {
         "flagship": ["gemini-3.1-pro", "gemini-2.5-pro"],
@@ -272,7 +276,7 @@ TIER_CANDIDATES = {
     },
     "qwen": {
         "flagship": ["qwen3.7-max", "qwen3-max"],
-        "workhorse": ["qwen-flash", "qwen3.5-flash"],
+        "workhorse": ["qwen3.7-plus", "qwen-flash", "qwen3.5-flash"],
     },
 }
 
@@ -313,6 +317,19 @@ PROVIDER_AUTH_REQUIREMENTS = {
         "purpose": "weekly task billing runs",
     },
 }
+
+
+def _billing_variant(row: dict) -> str | None:
+    """Prompt-length band when the snapshot did not store one on the series row."""
+    explicit = row.get("billing_variant")
+    if explicit:
+        return explicit
+    pricing_id = row.get("pricing_id") or ""
+    if "lt-200k-prompt" in pricing_id:
+        return "lt-200k-prompt"
+    if "gte-200k-prompt" in pricing_id:
+        return "gte-200k-prompt"
+    return None
 
 
 def _name_marks_deprecation(name: str) -> bool:
@@ -382,6 +399,8 @@ def build_models(series: list[dict], schema_by_date: dict[str, str]) -> list[dic
             "latest_output": last.get("output_price"),
             "latest_cached_input": last.get("cached_input_price"),
             "currency": last.get("currency", "USD"),
+            "context_window": last.get("context_window"),
+            "billing_variant": _billing_variant(last),
         })
 
     models.sort(key=lambda m: (m["provider_id"], m["model_id"]))
@@ -405,15 +424,11 @@ def build_index(series: list[dict], schema_by_date: dict[str, str]) -> dict:
     }
 
 
-def _expand_tier_ids(
+def _catalog_ids(
     by_provider_model: dict[tuple[str, str], dict],
     provider_id: str,
-    tier_name: str,
-    pinned: list[str],
-    as_of: Date | None = None,
 ) -> list[str]:
-    """Newest provider-role catalog member first, then pinned fallbacks."""
-    catalog_ids = [
+    return [
         model_id
         for (pid, model_id), row in by_provider_model.items()
         if pid == provider_id
@@ -421,12 +436,34 @@ def _expand_tier_ids(
         and row.get("latest_input", row.get("input_price")) is not None
         and row.get("latest_output", row.get("output_price")) is not None
     ]
-    ranked = rank_ids_for_tier(provider_id, tier_name, catalog_ids, as_of)
+
+
+def _expand_tier_ids(
+    by_provider_model: dict[tuple[str, str], dict],
+    provider_id: str,
+    tier_name: str,
+    pinned: list[str],
+    as_of: Date | None = None,
+    prices: dict[str, float] | None = None,
+    flagship_id: str | None = None,
+) -> tuple[list[str], list[str]]:
+    """Preference order, then the ranked catalog ids that order came from.
+
+    Flagship stays the newest top line. Workhorse is the dearest current line
+    still cheaper than that flagship, then pinned fallbacks.
+    """
+    catalog_ids = _catalog_ids(by_provider_model, provider_id)
+    if tier_name == "workhorse":
+        ranked = order_workhorses(
+            provider_id, catalog_ids, prices or {}, flagship_id, as_of
+        )
+    else:
+        ranked = rank_ids_for_tier(provider_id, tier_name, catalog_ids, as_of)
     ordered: list[str] = []
     for model_id in [*ranked, *pinned]:
         if model_id not in ordered:
             ordered.append(model_id)
-    return ordered
+    return ordered, ranked
 
 
 def _pick_tier_model(
@@ -497,35 +534,36 @@ def _load_equivalence_runs() -> list[dict]:
 
 
 def _load_live_model_map() -> dict[tuple[str, str], dict]:
+    """Today's scrape, one everyday-rate row per model.
+
+    A model can publish a short-context rate and a long-context rate. The panel
+    compares the short one. Taking the first complete row kept the long rate
+    whenever it appeared first in the file.
+    """
     if not LIVE_FILE.exists():
         return {}
     payload = json.loads(LIVE_FILE.read_text())
     live_rows = normalize_snapshot(payload, datetime.now(timezone.utc).date().isoformat())
-    by_provider_model: dict[tuple[str, str], dict] = {}
-    for row in live_rows:
-        key = (row["provider_id"], row["model_id"])
-        candidate = {
+    shaped = [
+        {
             "provider_id": row["provider_id"],
             "model_id": row["model_id"],
             "display_name": row.get("display_name") or row["model_id"],
+            "latest_input": row.get("input_price"),
+            "latest_output": row.get("output_price"),
             "input_price": row.get("input_price"),
             "output_price": row.get("output_price"),
             "currency": row.get("currency", "USD"),
             "is_active": row.get("is_active", True),
+            "currently_active": row.get("is_active", True),
+            "context_window": row.get("context_window"),
+            "billing_variant": _billing_variant(row),
+            "pricing_id": row.get("pricing_id"),
         }
-        existing = by_provider_model.get(key)
-        if existing is None:
-            by_provider_model[key] = candidate
-            continue
-        existing_input = existing.get("input_price")
-        existing_output = existing.get("output_price")
-        incoming_input = candidate.get("input_price")
-        incoming_output = candidate.get("output_price")
-        existing_score = int(existing.get("is_active", False)) + int(existing_input is not None) + int(existing_output is not None)
-        incoming_score = int(candidate.get("is_active", False)) + int(incoming_input is not None) + int(incoming_output is not None)
-        if incoming_score > existing_score:
-            by_provider_model[key] = candidate
-    return by_provider_model
+        for row in live_rows
+    ]
+    collapsed, _prices = _collapse_catalog(shaped)
+    return collapsed
 
 
 def _median(values: list[float]) -> float:
@@ -1567,18 +1605,67 @@ def write_cost_details(costs: dict, directory: Path = COST_DETAIL_DIR) -> dict:
     return index
 
 
+def _price_sum(row: dict) -> float | None:
+    raw_in = row.get("latest_input", row.get("input_price"))
+    raw_out = row.get("latest_output", row.get("output_price"))
+    if raw_in is None or raw_out is None:
+        return None
+    return float(raw_in) + float(raw_out)
+
+
+def _representative_price_row(rows: list[dict], price: float | None) -> dict:
+    """The catalog row whose published rate is the everyday comparison price.
+
+    When no row has both an input and an output price, keep the input-priced
+    row. Google publishes those sides on separate ids, and the previous
+    collapse kept the input side for fallback candidates.
+    """
+    if price is None:
+        for row in rows:
+            if row.get("latest_input", row.get("input_price")) is not None:
+                return row
+        return rows[-1]
+
+    def score(row: dict) -> tuple[int, int]:
+        total = _price_sum(row)
+        matches = 1 if total is not None and abs(total - price) <= 1e-6 else 0
+        text = f"{row.get('context_window') or ''} {row.get('billing_variant') or ''}".lower()
+        short = 1 if "short" in text or "lt-200" in text else 0
+        return (matches, short)
+
+    return max(rows, key=score)
+
+
+def _collapse_catalog(
+    models: list[dict],
+) -> tuple[dict[tuple[str, str], dict], dict[tuple[str, str], float]]:
+    """One row per model, priced at the short-context standard rate."""
+    grouped: dict[tuple[str, str], list[dict]] = {}
+    for row in models:
+        grouped.setdefault((row["provider_id"], row["model_id"]), []).append(row)
+    collapsed: dict[tuple[str, str], dict] = {}
+    prices: dict[tuple[str, str], float] = {}
+    for key, rows in grouped.items():
+        price = everyday_list_price(rows)
+        collapsed[key] = _representative_price_row(rows, price)
+        if price is not None:
+            prices[key] = price
+    return collapsed, prices
+
+
 def build_equivalence(
     models: list[dict],
     index: dict,
     live_model_map: dict[tuple[str, str], dict] | None = None,
     cost_events: list[dict] | None = None,
 ) -> dict:
-    by_provider_model_history = {
-        (row["provider_id"], row["model_id"]): row
-        for row in models
-    }
+    by_provider_model_history, list_prices = _collapse_catalog(models)
     effective_live_map = _load_live_model_map() if live_model_map is None else live_model_map
     by_provider_model = {**by_provider_model_history, **effective_live_map}
+    for key, row in effective_live_map.items():
+        price = everyday_list_price([row])
+        if price is not None:
+            list_prices[key] = price
 
     selected = []
     selected_by_mode = {"two": [], "three": []}
@@ -1588,28 +1675,27 @@ def build_equivalence(
     except (KeyError, TypeError, ValueError):
         selection_as_of = Date.today()
     for provider_id, tiers in TIER_CANDIDATES.items():
+        provider_prices = {
+            model_id: price
+            for (pid, model_id), price in list_prices.items()
+            if pid == provider_id
+        }
+        flagship_id = None
         for tier_name in TIER_ORDER:
-            tier_ids = _expand_tier_ids(
+            tier_ids, ranked_candidates = _expand_tier_ids(
                 by_provider_model,
                 provider_id,
                 tier_name,
                 tiers.get(tier_name, []),
                 selection_as_of,
+                provider_prices,
+                flagship_id,
             )
             row = _pick_tier_model(by_provider_model, provider_id, tier_ids)
             if row is None:
                 continue
-            catalog_ids = [
-                model_id
-                for (pid, model_id), candidate in by_provider_model.items()
-                if pid == provider_id
-                and candidate.get("currently_active", candidate.get("is_active", True))
-                and candidate.get("latest_input", candidate.get("input_price")) is not None
-                and candidate.get("latest_output", candidate.get("output_price")) is not None
-            ]
-            ranked_candidates = rank_ids_for_tier(
-                provider_id, tier_name, catalog_ids, selection_as_of
-            )
+            if tier_name == "flagship":
+                flagship_id = row["model_id"]
             entry = {
                 "provider_id": provider_id,
                 "tier": tier_name,

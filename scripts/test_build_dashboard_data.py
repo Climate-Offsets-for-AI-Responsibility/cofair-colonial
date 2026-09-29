@@ -386,6 +386,107 @@ class BuildEquivalenceTest(unittest.TestCase):
         self.assertEqual(google["selection_source"], "catalog")
         self.assertEqual(google["ranked_candidates"][0], "gemini-3.7-flash")
 
+    def test_workhorse_is_the_dearest_line_priced_under_the_flagship(self) -> None:
+        def row(provider_id: str, model_id: str, input_price: float, output_price: float, **extra) -> dict:
+            return {
+                "provider_id": provider_id,
+                "model_id": model_id,
+                "display_name": model_id,
+                "latest_input": input_price,
+                "latest_output": output_price,
+                "currency": "USD",
+                "currently_active": True,
+                **extra,
+            }
+
+        models = [
+            row("openai", "gpt-6-astra", 50.0, 2.0, context_window="long_context"),
+            row("openai", "gpt-6-astra", 10.0, 12.5, context_window="short_context"),
+            row("openai", "gpt-6-sol", 2.0, 2.5, context_window="short_context"),
+            row("openai", "gpt-6-luna", 0.1, 0.125, context_window="short_context"),
+            row("openai", "chat-latest", 5.0, 30.0),
+            row("anthropic", "claude-opus-5.5", 4.0, 20.0),
+            row("anthropic", "claude-sonnet-5", 2.0, 10.0),
+            row("anthropic", "claude-haiku-4.5", 1.0, 5.0),
+            row("qwen", "qwen3.7-max", 2.5, 7.5),
+            row("qwen", "qwen3.7-plus", 0.4, 1.6),
+            row("qwen", "qwen-flash", 0.05, 0.4),
+            row("aws", "nova-2.0-pro", 1.375, 11.0),
+            row("aws", "nova-pro", 0.8, 3.2),
+            row("aws", "nova-2.0-lite", 0.33, 2.75),
+        ]
+        eq = build_equivalence(
+            models,
+            {"generated_at": "2026-09-28T00:00:00Z", "last_date": "2026-09-28"},
+            live_model_map={},
+        )
+        selected = {
+            (item["provider_id"], item["tier"]): item
+            for item in eq["selected_models"]
+        }
+        openai_flagship = selected[("openai", "flagship")]
+        openai_workhorse = selected[("openai", "workhorse")]
+        self.assertEqual(openai_flagship["model_id"], "gpt-6-astra")
+        self.assertEqual(openai_flagship["input_price"], 10.0)
+        self.assertEqual(openai_flagship["output_price"], 12.5)
+        self.assertEqual(openai_workhorse["model_id"], "gpt-6-sol")
+        self.assertEqual(selected[("anthropic", "workhorse")]["model_id"], "claude-sonnet-5")
+        self.assertEqual(selected[("qwen", "workhorse")]["model_id"], "qwen3.7-plus")
+        self.assertEqual(selected[("aws", "workhorse")]["model_id"], "nova-2.0-lite")
+
+        diagnostics = {
+            (item["provider_id"], item["tier"]): item
+            for item in eq["selection_diagnostics"]
+        }
+        openai = diagnostics[("openai", "workhorse")]
+        self.assertEqual(openai["selection_source"], "catalog")
+        self.assertEqual(openai["ranked_candidates"][0], "gpt-6-sol")
+
+    def test_split_input_and_output_rows_keep_the_input_price(self) -> None:
+        models = [
+            {
+                "provider_id": "google",
+                "model_id": "gemini-3.1-pro",
+                "display_name": "Gemini 3.1 Pro",
+                "latest_input": 2.0,
+                "latest_output": 12.0,
+                "currency": "USD",
+                "currently_active": True,
+            },
+            {
+                "provider_id": "google",
+                "model_id": "gemini-2.5-pro",
+                "display_name": "Gemini 2.5 Pro",
+                "latest_input": 2.5,
+                "latest_output": None,
+                "currency": "USD",
+                "currently_active": True,
+                "context_window": ">200k",
+            },
+            {
+                "provider_id": "google",
+                "model_id": "gemini-2.5-pro",
+                "display_name": "Gemini 2.5 Pro",
+                "latest_input": None,
+                "latest_output": 15.0,
+                "currency": "USD",
+                "currently_active": True,
+                "context_window": ">200k",
+            },
+        ]
+        eq = build_equivalence(
+            models,
+            {"generated_at": "2026-09-28T00:00:00Z", "last_date": "2026-09-28"},
+            live_model_map={},
+        )
+        flagship = next(
+            row for row in eq["selected_models"]
+            if row["provider_id"] == "google" and row["tier"] == "flagship"
+        )
+        fallback = flagship["api_candidates"][0]
+        self.assertEqual(fallback["model_id"], "gemini-2.5-pro")
+        self.assertEqual(fallback["input_price"], 2.5)
+
 
 class BuildTokenRunsTest(unittest.TestCase):
     def test_normalizes_density_and_flags_censored_output(self) -> None:
