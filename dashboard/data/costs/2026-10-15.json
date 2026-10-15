@@ -1,910 +1,13 @@
 {
   "date": "2026-10-15",
-  "complete": false,
-  "estimated_spend_usd": 0.1617698,
-  "input_cost_usd": 0,
-  "output_cost_usd": 0,
+  "complete": true,
+  "estimated_spend_usd": 1.1458889900000002,
+  "input_cost_usd": 0.26925828999999996,
+  "output_cost_usd": 0.7148609000000002,
   "supporting_cost_usd": 0.1617698,
-  "event_count": 70,
+  "event_count": 182,
   "incomplete_event_count": 0,
-  "missing_requests": [
-    {
-      "provider_id": "anthropic",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "A",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "anthropic",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "B",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "anthropic",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "C",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "anthropic",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "D",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "anthropic",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 1,
-      "replicate": 1
-    },
-    {
-      "provider_id": "anthropic",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 2,
-      "replicate": 1
-    },
-    {
-      "provider_id": "anthropic",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 3,
-      "replicate": 1
-    },
-    {
-      "provider_id": "anthropic",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "F",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "anthropic",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "A",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "anthropic",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "B",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "anthropic",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "C",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "anthropic",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "D",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "anthropic",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 1,
-      "replicate": 1
-    },
-    {
-      "provider_id": "anthropic",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 2,
-      "replicate": 1
-    },
-    {
-      "provider_id": "anthropic",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 3,
-      "replicate": 1
-    },
-    {
-      "provider_id": "anthropic",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "F",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "openai",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "A",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "openai",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "B",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "openai",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "C",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "openai",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "D",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "openai",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 1,
-      "replicate": 1
-    },
-    {
-      "provider_id": "openai",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 2,
-      "replicate": 1
-    },
-    {
-      "provider_id": "openai",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 3,
-      "replicate": 1
-    },
-    {
-      "provider_id": "openai",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "F",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "openai",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "A",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "openai",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "B",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "openai",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "C",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "openai",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "D",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "openai",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 1,
-      "replicate": 1
-    },
-    {
-      "provider_id": "openai",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 2,
-      "replicate": 1
-    },
-    {
-      "provider_id": "openai",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 3,
-      "replicate": 1
-    },
-    {
-      "provider_id": "openai",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "F",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "google",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "A",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "google",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "B",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "google",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "C",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "google",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "D",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "google",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 1,
-      "replicate": 1
-    },
-    {
-      "provider_id": "google",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 2,
-      "replicate": 1
-    },
-    {
-      "provider_id": "google",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 3,
-      "replicate": 1
-    },
-    {
-      "provider_id": "google",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "F",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "google",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "A",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "google",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "B",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "google",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "C",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "google",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "D",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "google",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 1,
-      "replicate": 1
-    },
-    {
-      "provider_id": "google",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 2,
-      "replicate": 1
-    },
-    {
-      "provider_id": "google",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 3,
-      "replicate": 1
-    },
-    {
-      "provider_id": "google",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "F",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "xai",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "A",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "xai",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "B",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "xai",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "C",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "xai",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "D",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "xai",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 1,
-      "replicate": 1
-    },
-    {
-      "provider_id": "xai",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 2,
-      "replicate": 1
-    },
-    {
-      "provider_id": "xai",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 3,
-      "replicate": 1
-    },
-    {
-      "provider_id": "xai",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "F",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "xai",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "A",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "xai",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "B",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "xai",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "C",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "xai",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "D",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "xai",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 1,
-      "replicate": 1
-    },
-    {
-      "provider_id": "xai",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 2,
-      "replicate": 1
-    },
-    {
-      "provider_id": "xai",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 3,
-      "replicate": 1
-    },
-    {
-      "provider_id": "xai",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "F",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "aws",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "A",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "aws",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "B",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "aws",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "C",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "aws",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "D",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "aws",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 1,
-      "replicate": 1
-    },
-    {
-      "provider_id": "aws",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 2,
-      "replicate": 1
-    },
-    {
-      "provider_id": "aws",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 3,
-      "replicate": 1
-    },
-    {
-      "provider_id": "aws",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "F",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "aws",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "A",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "aws",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "B",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "aws",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "C",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "aws",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "D",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "aws",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 1,
-      "replicate": 1
-    },
-    {
-      "provider_id": "aws",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 2,
-      "replicate": 1
-    },
-    {
-      "provider_id": "aws",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 3,
-      "replicate": 1
-    },
-    {
-      "provider_id": "aws",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "F",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "deepseek",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "A",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "deepseek",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "B",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "deepseek",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "C",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "deepseek",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "D",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "deepseek",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 1,
-      "replicate": 1
-    },
-    {
-      "provider_id": "deepseek",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 2,
-      "replicate": 1
-    },
-    {
-      "provider_id": "deepseek",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 3,
-      "replicate": 1
-    },
-    {
-      "provider_id": "deepseek",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "F",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "deepseek",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "A",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "deepseek",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "B",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "deepseek",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "C",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "deepseek",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "D",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "deepseek",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 1,
-      "replicate": 1
-    },
-    {
-      "provider_id": "deepseek",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 2,
-      "replicate": 1
-    },
-    {
-      "provider_id": "deepseek",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 3,
-      "replicate": 1
-    },
-    {
-      "provider_id": "deepseek",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "F",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "qwen",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "A",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "qwen",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "B",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "qwen",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "C",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "qwen",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "D",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "qwen",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 1,
-      "replicate": 1
-    },
-    {
-      "provider_id": "qwen",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 2,
-      "replicate": 1
-    },
-    {
-      "provider_id": "qwen",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 3,
-      "replicate": 1
-    },
-    {
-      "provider_id": "qwen",
-      "tier": "flagship",
-      "source": "meter",
-      "task_id": "F",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "qwen",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "A",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "qwen",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "B",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "qwen",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "C",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "qwen",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "D",
-      "turn": null,
-      "replicate": 1
-    },
-    {
-      "provider_id": "qwen",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 1,
-      "replicate": 1
-    },
-    {
-      "provider_id": "qwen",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 2,
-      "replicate": 1
-    },
-    {
-      "provider_id": "qwen",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "E",
-      "turn": 3,
-      "replicate": 1
-    },
-    {
-      "provider_id": "qwen",
-      "tier": "workhorse",
-      "source": "meter",
-      "task_id": "F",
-      "turn": null,
-      "replicate": 1
-    }
-  ],
+  "missing_requests": [],
   "duplicate_requests": [],
   "unexpected_requests": [],
   "provider_tiers": [
@@ -914,83 +17,44 @@
       "model_id": "claude-opus-5.5",
       "display_name": "Claude Opus 5.5",
       "on_panel": true,
-      "estimated_spend_usd": 0.045464,
-      "input_cost_usd": 0,
-      "output_cost_usd": 0,
+      "estimated_spend_usd": 0.38961199999999996,
+      "input_cost_usd": 0.070788,
+      "output_cost_usd": 0.27336,
       "supporting_cost_usd": 0.045464,
-      "complete": false,
-      "missing_requests": [
-        {
-          "source": "meter",
-          "task_id": "A",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "B",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "C",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "D",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 1,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 2,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 3,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "F",
-          "turn": null,
-          "replicate": 1
-        }
-      ],
+      "complete": true,
+      "missing_requests": [],
       "duplicate_requests": [],
       "unexpected_requests": [],
       "incomplete_event_count": 0,
       "tasks": [
         {
           "task_id": "A",
-          "estimated_spend_usd": 0.000264,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.010808,
+          "input_cost_usd": 0.000244,
+          "output_cost_usd": 0.0103,
           "supporting_cost_usd": 0.000264,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "A",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:anthropic:flagship:A:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "A",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "claude-opus-5-5",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 61,
+              "output_tokens": 515,
+              "input_cost_usd": 0.000244,
+              "output_cost_usd": 0.0103,
+              "estimated_cost_usd": 0.010544
+            },
             {
               "event_id": "2026-10-15:ledger:anthropic:flagship:A:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -1012,22 +76,32 @@
         },
         {
           "task_id": "B",
-          "estimated_spend_usd": 0.001052,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.009444000000000001,
+          "input_cost_usd": 0.001032,
+          "output_cost_usd": 0.00736,
           "supporting_cost_usd": 0.001052,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "B",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:anthropic:flagship:B:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "B",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "claude-opus-5-5",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 258,
+              "output_tokens": 368,
+              "input_cost_usd": 0.001032,
+              "output_cost_usd": 0.00736,
+              "estimated_cost_usd": 0.008392
+            },
             {
               "event_id": "2026-10-15:ledger:anthropic:flagship:B:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -1049,22 +123,32 @@
         },
         {
           "task_id": "C",
-          "estimated_spend_usd": 0.000396,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.038792,
+          "input_cost_usd": 0.000376,
+          "output_cost_usd": 0.03802,
           "supporting_cost_usd": 0.000396,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "C",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:anthropic:flagship:C:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "C",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "claude-opus-5-5",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 94,
+              "output_tokens": 1901,
+              "input_cost_usd": 0.000376,
+              "output_cost_usd": 0.03802,
+              "estimated_cost_usd": 0.038396
+            },
             {
               "event_id": "2026-10-15:ledger:anthropic:flagship:C:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -1086,22 +170,32 @@
         },
         {
           "task_id": "D",
-          "estimated_spend_usd": 0.032116,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.081072,
+          "input_cost_usd": 0.032096,
+          "output_cost_usd": 0.01686,
           "supporting_cost_usd": 0.032116,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "D",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:anthropic:flagship:D:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "D",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "claude-opus-5-5",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 8024,
+              "output_tokens": 843,
+              "input_cost_usd": 0.032096,
+              "output_cost_usd": 0.01686,
+              "estimated_cost_usd": 0.048956
+            },
             {
               "event_id": "2026-10-15:ledger:anthropic:flagship:D:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -1123,53 +217,96 @@
         },
         {
           "task_id": "E",
-          "estimated_spend_usd": 0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.203604,
+          "input_cost_usd": 0.025424000000000002,
+          "output_cost_usd": 0.17818,
           "supporting_cost_usd": 0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 1,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 2,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 3,
-              "replicate": 1
-            }
-          ],
-          "duplicate_requests": [],
-          "unexpected_requests": [],
-          "details": []
-        },
-        {
-          "task_id": "F",
-          "estimated_spend_usd": 0.011635999999999999,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
-          "supporting_cost_usd": 0.011635999999999999,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "F",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:anthropic:flagship:E:1:generation:2026-10-15:two:1:a1:claude-opus-5-5:t1:n1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 1,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "claude-opus-5-5",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 60,
+              "output_tokens": 2142,
+              "input_cost_usd": 0.00024,
+              "output_cost_usd": 0.042839999999999996,
+              "estimated_cost_usd": 0.04307999999999999
+            },
+            {
+              "event_id": "2026-10-15:meter:anthropic:flagship:E:2:generation:2026-10-15:two:1:a1:claude-opus-5-5:t2:n2:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 2,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "claude-opus-5-5",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1967,
+              "output_tokens": 3235,
+              "input_cost_usd": 0.007868,
+              "output_cost_usd": 0.06470000000000001,
+              "estimated_cost_usd": 0.07256800000000001
+            },
+            {
+              "event_id": "2026-10-15:meter:anthropic:flagship:E:3:generation:2026-10-15:two:1:a1:claude-opus-5-5:t3:n3:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 3,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "claude-opus-5-5",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 4329,
+              "output_tokens": 3532,
+              "input_cost_usd": 0.017316,
+              "output_cost_usd": 0.07064,
+              "estimated_cost_usd": 0.08795599999999999
+            }
+          ]
+        },
+        {
+          "task_id": "F",
+          "estimated_spend_usd": 0.045892,
+          "input_cost_usd": 0.011616,
+          "output_cost_usd": 0.02264,
+          "supporting_cost_usd": 0.011635999999999999,
+          "complete": true,
+          "missing_requests": [],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": [
+            {
+              "event_id": "2026-10-15:meter:anthropic:flagship:F:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "F",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "claude-opus-5-5",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 2904,
+              "output_tokens": 1132,
+              "input_cost_usd": 0.011616,
+              "output_cost_usd": 0.02264,
+              "estimated_cost_usd": 0.034256
+            },
             {
               "event_id": "2026-10-15:ledger:anthropic:flagship:F:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -1197,83 +334,44 @@
       "model_id": "claude-sonnet-5",
       "display_name": "Claude Sonnet 5",
       "on_panel": true,
-      "estimated_spend_usd": 0.022712,
-      "input_cost_usd": 0,
-      "output_cost_usd": 0,
+      "estimated_spend_usd": 0.13258799999999998,
+      "input_cost_usd": 0.031346,
+      "output_cost_usd": 0.07853,
       "supporting_cost_usd": 0.022712,
-      "complete": false,
-      "missing_requests": [
-        {
-          "source": "meter",
-          "task_id": "A",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "B",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "C",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "D",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 1,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 2,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 3,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "F",
-          "turn": null,
-          "replicate": 1
-        }
-      ],
+      "complete": true,
+      "missing_requests": [],
       "duplicate_requests": [],
       "unexpected_requests": [],
       "incomplete_event_count": 0,
       "tasks": [
         {
           "task_id": "A",
-          "estimated_spend_usd": 0.000128,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.005265999999999999,
+          "input_cost_usd": 0.000118,
+          "output_cost_usd": 0.005019999999999999,
           "supporting_cost_usd": 0.000128,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "A",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:anthropic:workhorse:A:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "A",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "claude-sonnet-5",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 59,
+              "output_tokens": 502,
+              "input_cost_usd": 0.000118,
+              "output_cost_usd": 0.005019999999999999,
+              "estimated_cost_usd": 0.005137999999999999
+            },
             {
               "event_id": "2026-10-15:ledger:anthropic:workhorse:A:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -1295,22 +393,32 @@
         },
         {
           "task_id": "B",
-          "estimated_spend_usd": 0.000522,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.005234000000000001,
+          "input_cost_usd": 0.000512,
+          "output_cost_usd": 0.004200000000000001,
           "supporting_cost_usd": 0.000522,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "B",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:anthropic:workhorse:B:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "B",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "claude-sonnet-5",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 256,
+              "output_tokens": 420,
+              "input_cost_usd": 0.000512,
+              "output_cost_usd": 0.004200000000000001,
+              "estimated_cost_usd": 0.004712000000000001
+            },
             {
               "event_id": "2026-10-15:ledger:anthropic:workhorse:B:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -1332,22 +440,32 @@
         },
         {
           "task_id": "C",
-          "estimated_spend_usd": 0.000194,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.013878000000000001,
+          "input_cost_usd": 0.000184,
+          "output_cost_usd": 0.013500000000000002,
           "supporting_cost_usd": 0.000194,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "C",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:anthropic:workhorse:C:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "C",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "claude-sonnet-5",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 92,
+              "output_tokens": 1350,
+              "input_cost_usd": 0.000184,
+              "output_cost_usd": 0.013500000000000002,
+              "estimated_cost_usd": 0.013684000000000002
+            },
             {
               "event_id": "2026-10-15:ledger:anthropic:workhorse:C:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -1369,22 +487,32 @@
         },
         {
           "task_id": "D",
-          "estimated_spend_usd": 0.016054,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.040838,
+          "input_cost_usd": 0.016044,
+          "output_cost_usd": 0.00874,
           "supporting_cost_usd": 0.016054,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "D",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:anthropic:workhorse:D:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "D",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "claude-sonnet-5",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 8022,
+              "output_tokens": 874,
+              "input_cost_usd": 0.016044,
+              "output_cost_usd": 0.00874,
+              "estimated_cost_usd": 0.024784
+            },
             {
               "event_id": "2026-10-15:ledger:anthropic:workhorse:D:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -1406,53 +534,96 @@
         },
         {
           "task_id": "E",
-          "estimated_spend_usd": 0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.051254,
+          "input_cost_usd": 0.008684,
+          "output_cost_usd": 0.042570000000000004,
           "supporting_cost_usd": 0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 1,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 2,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 3,
-              "replicate": 1
-            }
-          ],
-          "duplicate_requests": [],
-          "unexpected_requests": [],
-          "details": []
-        },
-        {
-          "task_id": "F",
-          "estimated_spend_usd": 0.005814,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
-          "supporting_cost_usd": 0.005814,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "F",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:anthropic:workhorse:E:1:generation:2026-10-15:two:1:a1:claude-sonnet-5:t1:n1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 1,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "claude-sonnet-5",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 58,
+              "output_tokens": 1250,
+              "input_cost_usd": 0.000116,
+              "output_cost_usd": 0.0125,
+              "estimated_cost_usd": 0.012616
+            },
+            {
+              "event_id": "2026-10-15:meter:anthropic:workhorse:E:2:generation:2026-10-15:two:1:a1:claude-sonnet-5:t2:n2:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 2,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "claude-sonnet-5",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1337,
+              "output_tokens": 1804,
+              "input_cost_usd": 0.002674,
+              "output_cost_usd": 0.01804,
+              "estimated_cost_usd": 0.020714
+            },
+            {
+              "event_id": "2026-10-15:meter:anthropic:workhorse:E:3:generation:2026-10-15:two:1:a1:claude-sonnet-5:t3:n3:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 3,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "claude-sonnet-5",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 2947,
+              "output_tokens": 1203,
+              "input_cost_usd": 0.005894,
+              "output_cost_usd": 0.01203,
+              "estimated_cost_usd": 0.017924000000000002
+            }
+          ]
+        },
+        {
+          "task_id": "F",
+          "estimated_spend_usd": 0.016118,
+          "input_cost_usd": 0.005804,
+          "output_cost_usd": 0.0045,
+          "supporting_cost_usd": 0.005814,
+          "complete": true,
+          "missing_requests": [],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": [
+            {
+              "event_id": "2026-10-15:meter:anthropic:workhorse:F:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "F",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "claude-sonnet-5",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 2902,
+              "output_tokens": 450,
+              "input_cost_usd": 0.005804,
+              "output_cost_usd": 0.0045,
+              "estimated_cost_usd": 0.010304
+            },
             {
               "event_id": "2026-10-15:ledger:anthropic:workhorse:F:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -1480,83 +651,44 @@
       "model_id": "gpt-6.1-sol",
       "display_name": "gpt-6.1-sol",
       "on_panel": true,
-      "estimated_spend_usd": 0.01482,
-      "input_cost_usd": 0,
-      "output_cost_usd": 0,
+      "estimated_spend_usd": 0.0394205,
+      "input_cost_usd": 0.017648,
+      "output_cost_usd": 0.0069525,
       "supporting_cost_usd": 0.01482,
-      "complete": false,
-      "missing_requests": [
-        {
-          "source": "meter",
-          "task_id": "A",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "B",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "C",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "D",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 1,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 2,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 3,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "F",
-          "turn": null,
-          "replicate": 1
-        }
-      ],
+      "complete": true,
+      "missing_requests": [],
       "duplicate_requests": [],
       "unexpected_requests": [],
       "incomplete_event_count": 0,
       "tasks": [
         {
           "task_id": "A",
-          "estimated_spend_usd": 0.000108,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0006185,
+          "input_cost_usd": 6.8e-05,
+          "output_cost_usd": 0.00044249999999999997,
           "supporting_cost_usd": 0.000108,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "A",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:openai:flagship:A:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "A",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gpt-6.1-sol",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 34,
+              "output_tokens": 177,
+              "input_cost_usd": 6.8e-05,
+              "output_cost_usd": 0.00044249999999999997,
+              "estimated_cost_usd": 0.0005105
+            },
             {
               "event_id": "2026-10-15:ledger:openai:flagship:A:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -1578,22 +710,32 @@
         },
         {
           "task_id": "B",
-          "estimated_spend_usd": 0.00035,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.00099,
+          "input_cost_usd": 0.00031,
+          "output_cost_usd": 0.00033,
           "supporting_cost_usd": 0.00035,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "B",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:openai:flagship:B:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "B",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gpt-6.1-sol",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 155,
+              "output_tokens": 132,
+              "input_cost_usd": 0.00031,
+              "output_cost_usd": 0.00033,
+              "estimated_cost_usd": 0.0006399999999999999
+            },
             {
               "event_id": "2026-10-15:ledger:openai:flagship:B:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -1615,22 +757,32 @@
         },
         {
           "task_id": "C",
-          "estimated_spend_usd": 0.000176,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.001577,
+          "input_cost_usd": 0.000136,
+          "output_cost_usd": 0.001265,
           "supporting_cost_usd": 0.000176,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "C",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:openai:flagship:C:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "C",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gpt-6.1-sol",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 68,
+              "output_tokens": 506,
+              "input_cost_usd": 0.000136,
+              "output_cost_usd": 0.001265,
+              "estimated_cost_usd": 0.0014010000000000001
+            },
             {
               "event_id": "2026-10-15:ledger:openai:flagship:C:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -1652,22 +804,32 @@
         },
         {
           "task_id": "D",
-          "estimated_spend_usd": 0.010374,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.021428,
+          "input_cost_usd": 0.010334,
+          "output_cost_usd": 0.00072,
           "supporting_cost_usd": 0.010374,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "D",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:openai:flagship:D:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "D",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gpt-6.1-sol",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 5167,
+              "output_tokens": 288,
+              "input_cost_usd": 0.010334,
+              "output_cost_usd": 0.00072,
+              "estimated_cost_usd": 0.011054
+            },
             {
               "event_id": "2026-10-15:ledger:openai:flagship:D:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -1689,53 +851,96 @@
         },
         {
           "task_id": "E",
-          "estimated_spend_usd": 0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0064805,
+          "input_cost_usd": 0.003028,
+          "output_cost_usd": 0.0034525,
           "supporting_cost_usd": 0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 1,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 2,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 3,
-              "replicate": 1
-            }
-          ],
-          "duplicate_requests": [],
-          "unexpected_requests": [],
-          "details": []
-        },
-        {
-          "task_id": "F",
-          "estimated_spend_usd": 0.0038120000000000003,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
-          "supporting_cost_usd": 0.0038120000000000003,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "F",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:openai:flagship:E:1:generation:2026-10-15:two:1:a1:gpt-6-1-sol:t1:n1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 1,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gpt-6.1-sol",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 41,
+              "output_tokens": 465,
+              "input_cost_usd": 8.2e-05,
+              "output_cost_usd": 0.0011625000000000001,
+              "estimated_cost_usd": 0.0012445000000000002
+            },
+            {
+              "event_id": "2026-10-15:meter:openai:flagship:E:2:generation:2026-10-15:two:1:a1:gpt-6-1-sol:t2:n2:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 2,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gpt-6.1-sol",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 483,
+              "output_tokens": 479,
+              "input_cost_usd": 0.000966,
+              "output_cost_usd": 0.0011975,
+              "estimated_cost_usd": 0.0021635
+            },
+            {
+              "event_id": "2026-10-15:meter:openai:flagship:E:3:generation:2026-10-15:two:1:a1:gpt-6-1-sol:t3:n3:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 3,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gpt-6.1-sol",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 990,
+              "output_tokens": 437,
+              "input_cost_usd": 0.00198,
+              "output_cost_usd": 0.0010925,
+              "estimated_cost_usd": 0.0030724999999999997
+            }
+          ]
+        },
+        {
+          "task_id": "F",
+          "estimated_spend_usd": 0.0083265,
+          "input_cost_usd": 0.003772,
+          "output_cost_usd": 0.0007425,
+          "supporting_cost_usd": 0.0038120000000000003,
+          "complete": true,
+          "missing_requests": [],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": [
+            {
+              "event_id": "2026-10-15:meter:openai:flagship:F:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "F",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gpt-6.1-sol",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1886,
+              "output_tokens": 297,
+              "input_cost_usd": 0.003772,
+              "output_cost_usd": 0.0007425,
+              "estimated_cost_usd": 0.0045145
+            },
             {
               "event_id": "2026-10-15:ledger:openai:flagship:F:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -1763,83 +968,44 @@
       "model_id": "gpt-6-luna",
       "display_name": "gpt-6-luna",
       "on_panel": true,
-      "estimated_spend_usd": 0.0007410000000000001,
-      "input_cost_usd": 0,
-      "output_cost_usd": 0,
+      "estimated_spend_usd": 0.0020549,
+      "input_cost_usd": 0.0008584000000000002,
+      "output_cost_usd": 0.0004555,
       "supporting_cost_usd": 0.0007410000000000001,
-      "complete": false,
-      "missing_requests": [
-        {
-          "source": "meter",
-          "task_id": "A",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "B",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "C",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "D",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 1,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 2,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 3,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "F",
-          "turn": null,
-          "replicate": 1
-        }
-      ],
+      "complete": true,
+      "missing_requests": [],
       "duplicate_requests": [],
       "unexpected_requests": [],
       "incomplete_event_count": 0,
       "tasks": [
         {
           "task_id": "A",
-          "estimated_spend_usd": 5.4e-06,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 3.1175e-05,
+          "input_cost_usd": 3.4e-06,
+          "output_cost_usd": 2.2375e-05,
           "supporting_cost_usd": 5.4e-06,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "A",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:openai:workhorse:A:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "A",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gpt-6-luna",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 34,
+              "output_tokens": 179,
+              "input_cost_usd": 3.4e-06,
+              "output_cost_usd": 2.2375e-05,
+              "estimated_cost_usd": 2.5775e-05
+            },
             {
               "event_id": "2026-10-15:ledger:openai:workhorse:A:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -1861,22 +1027,32 @@
         },
         {
           "task_id": "B",
-          "estimated_spend_usd": 1.7500000000000002e-05,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 5.162500000000001e-05,
+          "input_cost_usd": 1.55e-05,
+          "output_cost_usd": 1.8625e-05,
           "supporting_cost_usd": 1.7500000000000002e-05,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "B",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:openai:workhorse:B:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "B",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gpt-6-luna",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 155,
+              "output_tokens": 149,
+              "input_cost_usd": 1.55e-05,
+              "output_cost_usd": 1.8625e-05,
+              "estimated_cost_usd": 3.4125e-05
+            },
             {
               "event_id": "2026-10-15:ledger:openai:workhorse:B:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -1898,22 +1074,32 @@
         },
         {
           "task_id": "C",
-          "estimated_spend_usd": 8.8e-06,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.000160725,
+          "input_cost_usd": 6.8e-06,
+          "output_cost_usd": 0.000145125,
           "supporting_cost_usd": 8.8e-06,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "C",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:openai:workhorse:C:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "C",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gpt-6-luna",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 68,
+              "output_tokens": 1161,
+              "input_cost_usd": 6.8e-06,
+              "output_cost_usd": 0.000145125,
+              "estimated_cost_usd": 0.000151925
+            },
             {
               "event_id": "2026-10-15:ledger:openai:workhorse:C:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -1935,22 +1121,32 @@
         },
         {
           "task_id": "D",
-          "estimated_spend_usd": 0.0005187000000000001,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0010985250000000002,
+          "input_cost_usd": 0.0005167,
+          "output_cost_usd": 6.3125e-05,
           "supporting_cost_usd": 0.0005187000000000001,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "D",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:openai:workhorse:D:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "D",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gpt-6-luna",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 5167,
+              "output_tokens": 505,
+              "input_cost_usd": 0.0005167,
+              "output_cost_usd": 6.3125e-05,
+              "estimated_cost_usd": 0.0005798250000000001
+            },
             {
               "event_id": "2026-10-15:ledger:openai:workhorse:D:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -1972,53 +1168,96 @@
         },
         {
           "task_id": "E",
-          "estimated_spend_usd": 0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.00028189999999999997,
+          "input_cost_usd": 0.0001274,
+          "output_cost_usd": 0.0001545,
           "supporting_cost_usd": 0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 1,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 2,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 3,
-              "replicate": 1
-            }
-          ],
-          "duplicate_requests": [],
-          "unexpected_requests": [],
-          "details": []
-        },
-        {
-          "task_id": "F",
-          "estimated_spend_usd": 0.00019060000000000003,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
-          "supporting_cost_usd": 0.00019060000000000003,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "F",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:openai:workhorse:E:1:generation:2026-10-15:two:1:a1:gpt-6-luna:t1:n1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 1,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gpt-6-luna",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 41,
+              "output_tokens": 477,
+              "input_cost_usd": 4.1000000000000006e-06,
+              "output_cost_usd": 5.9625e-05,
+              "estimated_cost_usd": 6.3725e-05
+            },
+            {
+              "event_id": "2026-10-15:meter:openai:workhorse:E:2:generation:2026-10-15:two:1:a1:gpt-6-luna:t2:n2:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 2,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gpt-6-luna",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 463,
+              "output_tokens": 396,
+              "input_cost_usd": 4.63e-05,
+              "output_cost_usd": 4.95e-05,
+              "estimated_cost_usd": 9.58e-05
+            },
+            {
+              "event_id": "2026-10-15:meter:openai:workhorse:E:3:generation:2026-10-15:two:1:a1:gpt-6-luna:t3:n3:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 3,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gpt-6-luna",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 770,
+              "output_tokens": 363,
+              "input_cost_usd": 7.7e-05,
+              "output_cost_usd": 4.5375e-05,
+              "estimated_cost_usd": 0.000122375
+            }
+          ]
+        },
+        {
+          "task_id": "F",
+          "estimated_spend_usd": 0.00043095000000000004,
+          "input_cost_usd": 0.00018860000000000003,
+          "output_cost_usd": 5.175e-05,
+          "supporting_cost_usd": 0.00019060000000000003,
+          "complete": true,
+          "missing_requests": [],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": [
+            {
+              "event_id": "2026-10-15:meter:openai:workhorse:F:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "F",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gpt-6-luna",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1886,
+              "output_tokens": 414,
+              "input_cost_usd": 0.00018860000000000003,
+              "output_cost_usd": 5.175e-05,
+              "estimated_cost_usd": 0.00024035000000000001
+            },
             {
               "event_id": "2026-10-15:ledger:openai:workhorse:F:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -2046,83 +1285,44 @@
       "model_id": "gemini-3.1-pro",
       "display_name": "Gemini 3.1 Pro",
       "on_panel": true,
-      "estimated_spend_usd": 0.0,
-      "input_cost_usd": 0,
-      "output_cost_usd": 0,
+      "estimated_spend_usd": 0.08144,
+      "input_cost_usd": 0.022123999999999998,
+      "output_cost_usd": 0.059315999999999994,
       "supporting_cost_usd": 0.0,
-      "complete": false,
-      "missing_requests": [
-        {
-          "source": "meter",
-          "task_id": "A",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "B",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "C",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "D",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 1,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 2,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 3,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "F",
-          "turn": null,
-          "replicate": 1
-        }
-      ],
+      "complete": true,
+      "missing_requests": [],
       "duplicate_requests": [],
       "unexpected_requests": [],
       "incomplete_event_count": 0,
       "tasks": [
         {
           "task_id": "A",
-          "estimated_spend_usd": 0.0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.003372,
+          "input_cost_usd": 6e-05,
+          "output_cost_usd": 0.003312,
           "supporting_cost_usd": 0.0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "A",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:google:flagship:A:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "A",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gemini-pro-latest",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 30,
+              "output_tokens": 276,
+              "input_cost_usd": 6e-05,
+              "output_cost_usd": 0.003312,
+              "estimated_cost_usd": 0.003372
+            },
             {
               "event_id": "2026-10-15:ledger:google:flagship:A:0:count_endpoint:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -2144,22 +1344,32 @@
         },
         {
           "task_id": "B",
-          "estimated_spend_usd": 0.0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0025599999999999998,
+          "input_cost_usd": 0.000304,
+          "output_cost_usd": 0.0022559999999999998,
           "supporting_cost_usd": 0.0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "B",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:google:flagship:B:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "B",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gemini-pro-latest",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 152,
+              "output_tokens": 188,
+              "input_cost_usd": 0.000304,
+              "output_cost_usd": 0.0022559999999999998,
+              "estimated_cost_usd": 0.0025599999999999998
+            },
             {
               "event_id": "2026-10-15:ledger:google:flagship:B:0:count_endpoint:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -2181,22 +1391,32 @@
         },
         {
           "task_id": "C",
-          "estimated_spend_usd": 0.0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.011680000000000001,
+          "input_cost_usd": 0.000148,
+          "output_cost_usd": 0.011532,
           "supporting_cost_usd": 0.0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "C",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:google:flagship:C:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "C",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gemini-pro-latest",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 74,
+              "output_tokens": 961,
+              "input_cost_usd": 0.000148,
+              "output_cost_usd": 0.011532,
+              "estimated_cost_usd": 0.011680000000000001
+            },
             {
               "event_id": "2026-10-15:ledger:google:flagship:C:0:count_endpoint:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -2218,22 +1438,32 @@
         },
         {
           "task_id": "D",
-          "estimated_spend_usd": 0.0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.013774000000000002,
+          "input_cost_usd": 0.010798,
+          "output_cost_usd": 0.0029760000000000003,
           "supporting_cost_usd": 0.0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "D",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:google:flagship:D:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "D",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gemini-pro-latest",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 5399,
+              "output_tokens": 248,
+              "input_cost_usd": 0.010798,
+              "output_cost_usd": 0.0029760000000000003,
+              "estimated_cost_usd": 0.013774000000000002
+            },
             {
               "event_id": "2026-10-15:ledger:google:flagship:D:0:count_endpoint:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -2255,53 +1485,96 @@
         },
         {
           "task_id": "E",
-          "estimated_spend_usd": 0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.043,
+          "input_cost_usd": 0.0068920000000000006,
+          "output_cost_usd": 0.036108,
           "supporting_cost_usd": 0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 1,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 2,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 3,
-              "replicate": 1
-            }
-          ],
-          "duplicate_requests": [],
-          "unexpected_requests": [],
-          "details": []
-        },
-        {
-          "task_id": "F",
-          "estimated_spend_usd": 0.0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
-          "supporting_cost_usd": 0.0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "F",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:google:flagship:E:1:generation:2026-10-15:two:1:a1:gemini-pro-latest:t1:n1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 1,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gemini-pro-latest",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 36,
+              "output_tokens": 1140,
+              "input_cost_usd": 7.2e-05,
+              "output_cost_usd": 0.01368,
+              "estimated_cost_usd": 0.013751999999999999
+            },
+            {
+              "event_id": "2026-10-15:meter:google:flagship:E:2:generation:2026-10-15:two:1:a1:gemini-pro-latest:t2:n2:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 2,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gemini-pro-latest",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1194,
+              "output_tokens": 998,
+              "input_cost_usd": 0.002388,
+              "output_cost_usd": 0.011976,
+              "estimated_cost_usd": 0.014364
+            },
+            {
+              "event_id": "2026-10-15:meter:google:flagship:E:3:generation:2026-10-15:two:1:a1:gemini-pro-latest:t3:n3:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 3,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gemini-pro-latest",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 2216,
+              "output_tokens": 871,
+              "input_cost_usd": 0.004432,
+              "output_cost_usd": 0.010452,
+              "estimated_cost_usd": 0.014884
+            }
+          ]
+        },
+        {
+          "task_id": "F",
+          "estimated_spend_usd": 0.007054,
+          "input_cost_usd": 0.003922,
+          "output_cost_usd": 0.0031320000000000002,
+          "supporting_cost_usd": 0.0,
+          "complete": true,
+          "missing_requests": [],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": [
+            {
+              "event_id": "2026-10-15:meter:google:flagship:F:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "F",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gemini-pro-latest",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1961,
+              "output_tokens": 261,
+              "input_cost_usd": 0.003922,
+              "output_cost_usd": 0.0031320000000000002,
+              "estimated_cost_usd": 0.007054
+            },
             {
               "event_id": "2026-10-15:ledger:google:flagship:F:0:count_endpoint:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -2329,83 +1602,44 @@
       "model_id": "gemini-3.8-flash",
       "display_name": "Gemini 3.8 Flash *",
       "on_panel": true,
-      "estimated_spend_usd": 0.0,
-      "input_cost_usd": 0,
-      "output_cost_usd": 0,
+      "estimated_spend_usd": 0.052898999999999995,
+      "input_cost_usd": 0.016524,
+      "output_cost_usd": 0.036375,
       "supporting_cost_usd": 0.0,
-      "complete": false,
-      "missing_requests": [
-        {
-          "source": "meter",
-          "task_id": "A",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "B",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "C",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "D",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 1,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 2,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 3,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "F",
-          "turn": null,
-          "replicate": 1
-        }
-      ],
+      "complete": true,
+      "missing_requests": [],
       "duplicate_requests": [],
       "unexpected_requests": [],
       "incomplete_event_count": 0,
       "tasks": [
         {
           "task_id": "A",
-          "estimated_spend_usd": 0.0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0014399999999999999,
+          "input_cost_usd": 4.5e-05,
+          "output_cost_usd": 0.001395,
           "supporting_cost_usd": 0.0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "A",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:google:workhorse:A:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "A",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gemini-flash-latest",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 30,
+              "output_tokens": 186,
+              "input_cost_usd": 4.5e-05,
+              "output_cost_usd": 0.001395,
+              "estimated_cost_usd": 0.0014399999999999999
+            },
             {
               "event_id": "2026-10-15:ledger:google:workhorse:A:0:count_endpoint:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -2427,22 +1661,32 @@
         },
         {
           "task_id": "B",
-          "estimated_spend_usd": 0.0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0016005,
+          "input_cost_usd": 0.000228,
+          "output_cost_usd": 0.0013725,
           "supporting_cost_usd": 0.0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "B",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:google:workhorse:B:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "B",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gemini-flash-latest",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 152,
+              "output_tokens": 183,
+              "input_cost_usd": 0.000228,
+              "output_cost_usd": 0.0013725,
+              "estimated_cost_usd": 0.0016005
+            },
             {
               "event_id": "2026-10-15:ledger:google:workhorse:B:0:count_endpoint:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -2464,22 +1708,32 @@
         },
         {
           "task_id": "C",
-          "estimated_spend_usd": 0.0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.005436,
+          "input_cost_usd": 0.00011099999999999999,
+          "output_cost_usd": 0.005325,
           "supporting_cost_usd": 0.0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "C",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:google:workhorse:C:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "C",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gemini-flash-latest",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 74,
+              "output_tokens": 710,
+              "input_cost_usd": 0.00011099999999999999,
+              "output_cost_usd": 0.005325,
+              "estimated_cost_usd": 0.005436
+            },
             {
               "event_id": "2026-10-15:ledger:google:workhorse:C:0:count_endpoint:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -2501,22 +1755,32 @@
         },
         {
           "task_id": "D",
-          "estimated_spend_usd": 0.0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.010378499999999999,
+          "input_cost_usd": 0.0080985,
+          "output_cost_usd": 0.00228,
           "supporting_cost_usd": 0.0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "D",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:google:workhorse:D:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "D",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gemini-flash-latest",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 5399,
+              "output_tokens": 304,
+              "input_cost_usd": 0.0080985,
+              "output_cost_usd": 0.00228,
+              "estimated_cost_usd": 0.010378499999999999
+            },
             {
               "event_id": "2026-10-15:ledger:google:workhorse:D:0:count_endpoint:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -2538,53 +1802,96 @@
         },
         {
           "task_id": "E",
-          "estimated_spend_usd": 0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.028695,
+          "input_cost_usd": 0.0050999999999999995,
+          "output_cost_usd": 0.023594999999999998,
           "supporting_cost_usd": 0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 1,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 2,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 3,
-              "replicate": 1
-            }
-          ],
-          "duplicate_requests": [],
-          "unexpected_requests": [],
-          "details": []
-        },
-        {
-          "task_id": "F",
-          "estimated_spend_usd": 0.0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
-          "supporting_cost_usd": 0.0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "F",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:google:workhorse:E:1:generation:2026-10-15:two:1:a1:gemini-flash-latest:t1:n1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 1,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gemini-flash-latest",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 36,
+              "output_tokens": 1138,
+              "input_cost_usd": 5.4e-05,
+              "output_cost_usd": 0.008535,
+              "estimated_cost_usd": 0.008589
+            },
+            {
+              "event_id": "2026-10-15:meter:google:workhorse:E:2:generation:2026-10-15:two:1:a1:gemini-flash-latest:t2:n2:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 2,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gemini-flash-latest",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1192,
+              "output_tokens": 956,
+              "input_cost_usd": 0.0017879999999999999,
+              "output_cost_usd": 0.00717,
+              "estimated_cost_usd": 0.008958
+            },
+            {
+              "event_id": "2026-10-15:meter:google:workhorse:E:3:generation:2026-10-15:two:1:a1:gemini-flash-latest:t3:n3:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 3,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gemini-flash-latest",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 2172,
+              "output_tokens": 1052,
+              "input_cost_usd": 0.0032579999999999996,
+              "output_cost_usd": 0.00789,
+              "estimated_cost_usd": 0.011147999999999998
+            }
+          ]
+        },
+        {
+          "task_id": "F",
+          "estimated_spend_usd": 0.005349,
+          "input_cost_usd": 0.0029415,
+          "output_cost_usd": 0.0024075,
+          "supporting_cost_usd": 0.0,
+          "complete": true,
+          "missing_requests": [],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": [
+            {
+              "event_id": "2026-10-15:meter:google:workhorse:F:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "F",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "gemini-flash-latest",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1961,
+              "output_tokens": 321,
+              "input_cost_usd": 0.0029415,
+              "output_cost_usd": 0.0024075,
+              "estimated_cost_usd": 0.005349
+            },
             {
               "event_id": "2026-10-15:ledger:google:workhorse:F:0:count_endpoint:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -2612,83 +1919,44 @@
       "model_id": "grok-4.7",
       "display_name": "grok-4.7",
       "on_panel": true,
-      "estimated_spend_usd": 0.027104,
-      "input_cost_usd": 0,
-      "output_cost_usd": 0,
+      "estimated_spend_usd": 0.081598,
+      "input_cost_usd": 0.038114,
+      "output_cost_usd": 0.01638,
       "supporting_cost_usd": 0.027104,
-      "complete": false,
-      "missing_requests": [
-        {
-          "source": "meter",
-          "task_id": "A",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "B",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "C",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "D",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 1,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 2,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 3,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "F",
-          "turn": null,
-          "replicate": 1
-        }
-      ],
+      "complete": true,
+      "missing_requests": [],
       "duplicate_requests": [],
       "unexpected_requests": [],
       "incomplete_event_count": 0,
       "tasks": [
         {
           "task_id": "A",
-          "estimated_spend_usd": 0.002552,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0061779999999999995,
+          "input_cost_usd": 0.002546,
+          "output_cost_usd": 0.00108,
           "supporting_cost_usd": 0.002552,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "A",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:xai:flagship:A:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "A",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "grok-4.7",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1273,
+              "output_tokens": 180,
+              "input_cost_usd": 0.002546,
+              "output_cost_usd": 0.00108,
+              "estimated_cost_usd": 0.003626
+            },
             {
               "event_id": "2026-10-15:ledger:xai:flagship:A:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -2710,22 +1978,32 @@
         },
         {
           "task_id": "B",
-          "estimated_spend_usd": 0.0027919999999999998,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.006484,
+          "input_cost_usd": 0.002786,
+          "output_cost_usd": 0.0009060000000000001,
           "supporting_cost_usd": 0.0027919999999999998,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "B",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:xai:flagship:B:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "B",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "grok-4.7",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1393,
+              "output_tokens": 151,
+              "input_cost_usd": 0.002786,
+              "output_cost_usd": 0.0009060000000000001,
+              "estimated_cost_usd": 0.003692
+            },
             {
               "event_id": "2026-10-15:ledger:xai:flagship:B:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -2747,22 +2025,32 @@
         },
         {
           "task_id": "C",
-          "estimated_spend_usd": 0.002618,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.007126,
+          "input_cost_usd": 0.002612,
+          "output_cost_usd": 0.001896,
           "supporting_cost_usd": 0.002618,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "C",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:xai:flagship:C:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "C",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "grok-4.7",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1306,
+              "output_tokens": 316,
+              "input_cost_usd": 0.002612,
+              "output_cost_usd": 0.001896,
+              "estimated_cost_usd": 0.004508
+            },
             {
               "event_id": "2026-10-15:ledger:xai:flagship:C:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -2784,22 +2072,32 @@
         },
         {
           "task_id": "D",
-          "estimated_spend_usd": 0.012836,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.026667999999999997,
+          "input_cost_usd": 0.01283,
+          "output_cost_usd": 0.0010019999999999999,
           "supporting_cost_usd": 0.012836,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "D",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:xai:flagship:D:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "D",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "grok-4.7",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 6415,
+              "output_tokens": 167,
+              "input_cost_usd": 0.01283,
+              "output_cost_usd": 0.0010019999999999999,
+              "estimated_cost_usd": 0.013831999999999999
+            },
             {
               "event_id": "2026-10-15:ledger:xai:flagship:D:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -2821,53 +2119,96 @@
         },
         {
           "task_id": "E",
-          "estimated_spend_usd": 0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.021168,
+          "input_cost_usd": 0.01104,
+          "output_cost_usd": 0.010128,
           "supporting_cost_usd": 0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 1,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 2,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 3,
-              "replicate": 1
-            }
-          ],
-          "duplicate_requests": [],
-          "unexpected_requests": [],
-          "details": []
-        },
-        {
-          "task_id": "F",
-          "estimated_spend_usd": 0.006306,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
-          "supporting_cost_usd": 0.006306,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "F",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:xai:flagship:E:1:generation:2026-10-15:two:1:a1:grok-4-7:t1:n1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 1,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "grok-4.7",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1279,
+              "output_tokens": 538,
+              "input_cost_usd": 0.002558,
+              "output_cost_usd": 0.003228,
+              "estimated_cost_usd": 0.0057859999999999995
+            },
+            {
+              "event_id": "2026-10-15:meter:xai:flagship:E:2:generation:2026-10-15:two:1:a1:grok-4-7:t2:n2:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 2,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "grok-4.7",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1841,
+              "output_tokens": 529,
+              "input_cost_usd": 0.003682,
+              "output_cost_usd": 0.0031739999999999997,
+              "estimated_cost_usd": 0.006855999999999999
+            },
+            {
+              "event_id": "2026-10-15:meter:xai:flagship:E:3:generation:2026-10-15:two:1:a1:grok-4-7:t3:n3:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 3,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "grok-4.7",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 2400,
+              "output_tokens": 621,
+              "input_cost_usd": 0.0048,
+              "output_cost_usd": 0.003726,
+              "estimated_cost_usd": 0.008525999999999999
+            }
+          ]
+        },
+        {
+          "task_id": "F",
+          "estimated_spend_usd": 0.013974,
+          "input_cost_usd": 0.0063,
+          "output_cost_usd": 0.001368,
+          "supporting_cost_usd": 0.006306,
+          "complete": true,
+          "missing_requests": [],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": [
+            {
+              "event_id": "2026-10-15:meter:xai:flagship:F:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "F",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "grok-4.7",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 3150,
+              "output_tokens": 228,
+              "input_cost_usd": 0.0063,
+              "output_cost_usd": 0.001368,
+              "estimated_cost_usd": 0.007668
+            },
             {
               "event_id": "2026-10-15:ledger:xai:flagship:F:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -2895,83 +2236,44 @@
       "model_id": "grok-build-0.1",
       "display_name": "grok-build-0.1",
       "on_panel": true,
-      "estimated_spend_usd": 0.008123,
-      "input_cost_usd": 0,
-      "output_cost_usd": 0,
+      "estimated_spend_usd": 0.028182,
+      "input_cost_usd": 0.011859000000000001,
+      "output_cost_usd": 0.0082,
       "supporting_cost_usd": 0.008123,
-      "complete": false,
-      "missing_requests": [
-        {
-          "source": "meter",
-          "task_id": "A",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "B",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "C",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "D",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 1,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 2,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 3,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "F",
-          "turn": null,
-          "replicate": 1
-        }
-      ],
+      "complete": true,
+      "missing_requests": [],
       "duplicate_requests": [],
       "unexpected_requests": [],
       "incomplete_event_count": 0,
       "tasks": [
         {
           "task_id": "A",
-          "estimated_spend_usd": 0.000217,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0007499999999999999,
+          "input_cost_usd": 0.000215,
+          "output_cost_usd": 0.000318,
           "supporting_cost_usd": 0.000217,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "A",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:xai:workhorse:A:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "A",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "grok-build-0.1",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 215,
+              "output_tokens": 159,
+              "input_cost_usd": 0.000215,
+              "output_cost_usd": 0.000318,
+              "estimated_cost_usd": 0.0005329999999999999
+            },
             {
               "event_id": "2026-10-15:ledger:xai:workhorse:A:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -2993,22 +2295,32 @@
         },
         {
           "task_id": "B",
-          "estimated_spend_usd": 0.000335,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.000972,
+          "input_cost_usd": 0.000333,
+          "output_cost_usd": 0.000304,
           "supporting_cost_usd": 0.000335,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "B",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:xai:workhorse:B:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "B",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "grok-build-0.1",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 333,
+              "output_tokens": 152,
+              "input_cost_usd": 0.000333,
+              "output_cost_usd": 0.000304,
+              "estimated_cost_usd": 0.000637
+            },
             {
               "event_id": "2026-10-15:ledger:xai:workhorse:B:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -3030,22 +2342,32 @@
         },
         {
           "task_id": "C",
-          "estimated_spend_usd": 0.00025,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.00168,
+          "input_cost_usd": 0.000248,
+          "output_cost_usd": 0.001182,
           "supporting_cost_usd": 0.00025,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "C",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:xai:workhorse:C:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "C",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "grok-build-0.1",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 248,
+              "output_tokens": 591,
+              "input_cost_usd": 0.000248,
+              "output_cost_usd": 0.001182,
+              "estimated_cost_usd": 0.00143
+            },
             {
               "event_id": "2026-10-15:ledger:xai:workhorse:C:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -3067,22 +2389,32 @@
         },
         {
           "task_id": "D",
-          "estimated_spend_usd": 0.005276,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.010974000000000001,
+          "input_cost_usd": 0.005274,
+          "output_cost_usd": 0.000424,
           "supporting_cost_usd": 0.005276,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "D",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:xai:workhorse:D:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "D",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "grok-build-0.1",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 5274,
+              "output_tokens": 212,
+              "input_cost_usd": 0.005274,
+              "output_cost_usd": 0.000424,
+              "estimated_cost_usd": 0.005698
+            },
             {
               "event_id": "2026-10-15:ledger:xai:workhorse:D:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -3104,53 +2436,96 @@
         },
         {
           "task_id": "E",
-          "estimated_spend_usd": 0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.00935,
+          "input_cost_usd": 0.003746,
+          "output_cost_usd": 0.0056040000000000005,
           "supporting_cost_usd": 0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 1,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 2,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 3,
-              "replicate": 1
-            }
-          ],
-          "duplicate_requests": [],
-          "unexpected_requests": [],
-          "details": []
-        },
-        {
-          "task_id": "F",
-          "estimated_spend_usd": 0.002045,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
-          "supporting_cost_usd": 0.002045,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "F",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:xai:workhorse:E:1:generation:2026-10-15:two:1:a1:grok-build-0-1:t1:n1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 1,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "grok-build-0.1",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 221,
+              "output_tokens": 1056,
+              "input_cost_usd": 0.000221,
+              "output_cost_usd": 0.002112,
+              "estimated_cost_usd": 0.002333
+            },
+            {
+              "event_id": "2026-10-15:meter:xai:workhorse:E:2:generation:2026-10-15:two:1:a1:grok-build-0-1:t2:n2:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 2,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "grok-build-0.1",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1301,
+              "output_tokens": 894,
+              "input_cost_usd": 0.001301,
+              "output_cost_usd": 0.001788,
+              "estimated_cost_usd": 0.003089
+            },
+            {
+              "event_id": "2026-10-15:meter:xai:workhorse:E:3:generation:2026-10-15:two:1:a1:grok-build-0-1:t3:n3:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 3,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "grok-build-0.1",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 2224,
+              "output_tokens": 852,
+              "input_cost_usd": 0.002224,
+              "output_cost_usd": 0.001704,
+              "estimated_cost_usd": 0.003928
+            }
+          ]
+        },
+        {
+          "task_id": "F",
+          "estimated_spend_usd": 0.004456,
+          "input_cost_usd": 0.002043,
+          "output_cost_usd": 0.000368,
+          "supporting_cost_usd": 0.002045,
+          "complete": true,
+          "missing_requests": [],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": [
+            {
+              "event_id": "2026-10-15:meter:xai:workhorse:F:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "F",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "grok-build-0.1",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 2043,
+              "output_tokens": 184,
+              "input_cost_usd": 0.002043,
+              "output_cost_usd": 0.000368,
+              "estimated_cost_usd": 0.002411
+            },
             {
               "event_id": "2026-10-15:ledger:xai:workhorse:F:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -3178,83 +2553,44 @@
       "model_id": "nova-2.0-pro",
       "display_name": "Nova 2.0 Pro",
       "on_panel": true,
-      "estimated_spend_usd": 0.0060552,
-      "input_cost_usd": 0,
-      "output_cost_usd": 0,
+      "estimated_spend_usd": 0.025167999999999996,
+      "input_cost_usd": 0.0080696,
+      "output_cost_usd": 0.011043200000000001,
       "supporting_cost_usd": 0.0060552,
-      "complete": false,
-      "missing_requests": [
-        {
-          "source": "meter",
-          "task_id": "A",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "B",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "C",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "D",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 1,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 2,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 3,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "F",
-          "turn": null,
-          "replicate": 1
-        }
-      ],
+      "complete": true,
+      "missing_requests": [],
       "duplicate_requests": [],
       "unexpected_requests": [],
       "incomplete_event_count": 0,
       "tasks": [
         {
           "task_id": "A",
-          "estimated_spend_usd": 2.64e-05,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0005904,
+          "input_cost_usd": 2.32e-05,
+          "output_cost_usd": 0.0005408,
           "supporting_cost_usd": 2.64e-05,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "A",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:aws:flagship:A:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "A",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "amazon.nova-pro-v1:0",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 29,
+              "output_tokens": 169,
+              "input_cost_usd": 2.32e-05,
+              "output_cost_usd": 0.0005408,
+              "estimated_cost_usd": 0.000564
+            },
             {
               "event_id": "2026-10-15:ledger:aws:flagship:A:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -3276,22 +2612,32 @@
         },
         {
           "task_id": "B",
-          "estimated_spend_usd": 0.0001264,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0007360000000000001,
+          "input_cost_usd": 0.0001232,
+          "output_cost_usd": 0.00048640000000000006,
           "supporting_cost_usd": 0.0001264,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "B",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:aws:flagship:B:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "B",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "amazon.nova-pro-v1:0",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 154,
+              "output_tokens": 152,
+              "input_cost_usd": 0.0001232,
+              "output_cost_usd": 0.00048640000000000006,
+              "estimated_cost_usd": 0.0006096000000000001
+            },
             {
               "event_id": "2026-10-15:ledger:aws:flagship:B:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -3313,22 +2659,32 @@
         },
         {
           "task_id": "C",
-          "estimated_spend_usd": 6.16e-05,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0016752,
+          "input_cost_usd": 5.84e-05,
+          "output_cost_usd": 0.0015552,
           "supporting_cost_usd": 6.16e-05,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "C",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:aws:flagship:C:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "C",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "amazon.nova-pro-v1:0",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 73,
+              "output_tokens": 486,
+              "input_cost_usd": 5.84e-05,
+              "output_cost_usd": 0.0015552,
+              "estimated_cost_usd": 0.0016136
+            },
             {
               "event_id": "2026-10-15:ledger:aws:flagship:C:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -3350,22 +2706,32 @@
         },
         {
           "task_id": "D",
-          "estimated_spend_usd": 0.0042864,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.008944,
+          "input_cost_usd": 0.0042832,
+          "output_cost_usd": 0.0003744,
           "supporting_cost_usd": 0.0042864,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "D",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:aws:flagship:D:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "D",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "amazon.nova-pro-v1:0",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 5354,
+              "output_tokens": 117,
+              "input_cost_usd": 0.0042832,
+              "output_cost_usd": 0.0003744,
+              "estimated_cost_usd": 0.0046576
+            },
             {
               "event_id": "2026-10-15:ledger:aws:flagship:D:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -3387,53 +2753,96 @@
         },
         {
           "task_id": "E",
-          "estimated_spend_usd": 0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0095856,
+          "input_cost_usd": 0.0020304,
+          "output_cost_usd": 0.0075552,
           "supporting_cost_usd": 0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 1,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 2,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 3,
-              "replicate": 1
-            }
-          ],
-          "duplicate_requests": [],
-          "unexpected_requests": [],
-          "details": []
-        },
-        {
-          "task_id": "F",
-          "estimated_spend_usd": 0.0015544,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
-          "supporting_cost_usd": 0.0015544,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "F",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:aws:flagship:E:1:generation:2026-10-15:two:1:a1:amazon-nova-pro-v1-0:t1:n1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 1,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "amazon.nova-pro-v1:0",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 34,
+              "output_tokens": 798,
+              "input_cost_usd": 2.72e-05,
+              "output_cost_usd": 0.0025536,
+              "estimated_cost_usd": 0.0025808
+            },
+            {
+              "event_id": "2026-10-15:meter:aws:flagship:E:2:generation:2026-10-15:two:1:a1:amazon-nova-pro-v1-0:t2:n2:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 2,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "amazon.nova-pro-v1:0",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 852,
+              "output_tokens": 774,
+              "input_cost_usd": 0.0006816000000000001,
+              "output_cost_usd": 0.0024768,
+              "estimated_cost_usd": 0.0031584
+            },
+            {
+              "event_id": "2026-10-15:meter:aws:flagship:E:3:generation:2026-10-15:two:1:a1:amazon-nova-pro-v1-0:t3:n3:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 3,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "amazon.nova-pro-v1:0",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1652,
+              "output_tokens": 789,
+              "input_cost_usd": 0.0013216,
+              "output_cost_usd": 0.0025248000000000002,
+              "estimated_cost_usd": 0.0038464000000000003
+            }
+          ]
+        },
+        {
+          "task_id": "F",
+          "estimated_spend_usd": 0.0036368,
+          "input_cost_usd": 0.0015512,
+          "output_cost_usd": 0.0005312,
+          "supporting_cost_usd": 0.0015544,
+          "complete": true,
+          "missing_requests": [],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": [
+            {
+              "event_id": "2026-10-15:meter:aws:flagship:F:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "F",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "amazon.nova-pro-v1:0",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1939,
+              "output_tokens": 166,
+              "input_cost_usd": 0.0015512,
+              "output_cost_usd": 0.0005312,
+              "estimated_cost_usd": 0.0020824
+            },
             {
               "event_id": "2026-10-15:ledger:aws:flagship:F:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -3461,83 +2870,44 @@
       "model_id": "nova-2.0-lite",
       "display_name": "Nova 2.0 Lite",
       "on_panel": true,
-      "estimated_spend_usd": 0.00247742,
-      "input_cost_usd": 0,
-      "output_cost_usd": 0,
+      "estimated_spend_usd": 0.02157375,
+      "input_cost_usd": 0.00402633,
+      "output_cost_usd": 0.015069999999999998,
       "supporting_cost_usd": 0.00247742,
-      "complete": false,
-      "missing_requests": [
-        {
-          "source": "meter",
-          "task_id": "A",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "B",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "C",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "D",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 1,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 2,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 3,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "F",
-          "turn": null,
-          "replicate": 1
-        }
-      ],
+      "complete": true,
+      "missing_requests": [],
       "duplicate_requests": [],
       "unexpected_requests": [],
       "incomplete_event_count": 0,
       "tasks": [
         {
           "task_id": "A",
-          "estimated_spend_usd": 3.0249999999999997e-05,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0006792500000000001,
+          "input_cost_usd": 2.475e-05,
+          "output_cost_usd": 0.00062425,
           "supporting_cost_usd": 3.0249999999999997e-05,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "A",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:aws:workhorse:A:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "A",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "us.amazon.nova-2-lite-v1:0",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 75,
+              "output_tokens": 227,
+              "input_cost_usd": 2.475e-05,
+              "output_cost_usd": 0.00062425,
+              "estimated_cost_usd": 0.0006490000000000001
+            },
             {
               "event_id": "2026-10-15:ledger:aws:workhorse:A:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -3559,22 +2929,32 @@
         },
         {
           "task_id": "B",
-          "estimated_spend_usd": 6.853000000000001e-05,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.00061006,
+          "input_cost_usd": 6.303000000000001e-05,
+          "output_cost_usd": 0.0004785,
           "supporting_cost_usd": 6.853000000000001e-05,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "B",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:aws:workhorse:B:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "B",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "us.amazon.nova-2-lite-v1:0",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 191,
+              "output_tokens": 174,
+              "input_cost_usd": 6.303000000000001e-05,
+              "output_cost_usd": 0.0004785,
+              "estimated_cost_usd": 0.00054153
+            },
             {
               "event_id": "2026-10-15:ledger:aws:workhorse:B:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -3596,22 +2976,32 @@
         },
         {
           "task_id": "C",
-          "estimated_spend_usd": 4.1139999999999996e-05,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0023455299999999998,
+          "input_cost_usd": 3.564e-05,
+          "output_cost_usd": 0.00226875,
           "supporting_cost_usd": 4.1139999999999996e-05,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "C",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:aws:workhorse:C:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "C",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "us.amazon.nova-2-lite-v1:0",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 108,
+              "output_tokens": 825,
+              "input_cost_usd": 3.564e-05,
+              "output_cost_usd": 0.00226875,
+              "estimated_cost_usd": 0.00230439
+            },
             {
               "event_id": "2026-10-15:ledger:aws:workhorse:C:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -3633,22 +3023,32 @@
         },
         {
           "task_id": "D",
-          "estimated_spend_usd": 0.0017013700000000002,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0036832400000000004,
+          "input_cost_usd": 0.0016958700000000001,
+          "output_cost_usd": 0.00028599999999999996,
           "supporting_cost_usd": 0.0017013700000000002,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "D",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:aws:workhorse:D:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "D",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "us.amazon.nova-2-lite-v1:0",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 5139,
+              "output_tokens": 104,
+              "input_cost_usd": 0.0016958700000000001,
+              "output_cost_usd": 0.00028599999999999996,
+              "estimated_cost_usd": 0.00198187
+            },
             {
               "event_id": "2026-10-15:ledger:aws:workhorse:D:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -3670,53 +3070,96 @@
         },
         {
           "task_id": "E",
-          "estimated_spend_usd": 0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.012491160000000001,
+          "input_cost_usd": 0.0015764099999999999,
+          "output_cost_usd": 0.010914749999999999,
           "supporting_cost_usd": 0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 1,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 2,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 3,
-              "replicate": 1
-            }
-          ],
-          "duplicate_requests": [],
-          "unexpected_requests": [],
-          "details": []
-        },
-        {
-          "task_id": "F",
-          "estimated_spend_usd": 0.0006361299999999999,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
-          "supporting_cost_usd": 0.0006361299999999999,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "F",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:aws:workhorse:E:1:generation:2026-10-15:two:1:a1:us-amazon-nova-2-lite-v1-0:t1:n1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 1,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "us.amazon.nova-2-lite-v1:0",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 80,
+              "output_tokens": 1496,
+              "input_cost_usd": 2.6400000000000005e-05,
+              "output_cost_usd": 0.004114,
+              "estimated_cost_usd": 0.0041404
+            },
+            {
+              "event_id": "2026-10-15:meter:aws:workhorse:E:2:generation:2026-10-15:two:1:a1:us-amazon-nova-2-lite-v1-0:t2:n2:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 2,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "us.amazon.nova-2-lite-v1:0",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1594,
+              "output_tokens": 1486,
+              "input_cost_usd": 0.00052602,
+              "output_cost_usd": 0.0040865,
+              "estimated_cost_usd": 0.00461252
+            },
+            {
+              "event_id": "2026-10-15:meter:aws:workhorse:E:3:generation:2026-10-15:two:1:a1:us-amazon-nova-2-lite-v1-0:t3:n3:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 3,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "us.amazon.nova-2-lite-v1:0",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 3103,
+              "output_tokens": 987,
+              "input_cost_usd": 0.00102399,
+              "output_cost_usd": 0.00271425,
+              "estimated_cost_usd": 0.0037382400000000003
+            }
+          ]
+        },
+        {
+          "task_id": "F",
+          "estimated_spend_usd": 0.00176451,
+          "input_cost_usd": 0.00063063,
+          "output_cost_usd": 0.00049775,
+          "supporting_cost_usd": 0.0006361299999999999,
+          "complete": true,
+          "missing_requests": [],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": [
+            {
+              "event_id": "2026-10-15:meter:aws:workhorse:F:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "F",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "us.amazon.nova-2-lite-v1:0",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1911,
+              "output_tokens": 181,
+              "input_cost_usd": 0.00063063,
+              "output_cost_usd": 0.00049775,
+              "estimated_cost_usd": 0.00112838
+            },
             {
               "event_id": "2026-10-15:ledger:aws:workhorse:F:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -3744,83 +3187,44 @@
       "model_id": "deepseek-v4-pro",
       "display_name": "deepseek-v4-pro",
       "on_panel": true,
-      "estimated_spend_usd": 0.010235280000000001,
-      "input_cost_usd": 0,
-      "output_cost_usd": 0,
+      "estimated_spend_usd": 0.16068624,
+      "input_cost_usd": 0.01456356,
+      "output_cost_usd": 0.1358874,
       "supporting_cost_usd": 0.010235280000000001,
-      "complete": false,
-      "missing_requests": [
-        {
-          "source": "meter",
-          "task_id": "A",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "B",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "C",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "D",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 1,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 2,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 3,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "F",
-          "turn": null,
-          "replicate": 1
-        }
-      ],
+      "complete": true,
+      "missing_requests": [],
       "duplicate_requests": [],
       "unexpected_requests": [],
       "incomplete_event_count": 0,
       "tasks": [
         {
           "task_id": "A",
-          "estimated_spend_usd": 0.00015312,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0027416400000000005,
+          "input_cost_usd": 0.00014916,
+          "output_cost_usd": 0.0024393600000000002,
           "supporting_cost_usd": 0.00015312,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "A",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:deepseek:flagship:A:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "A",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "deepseek-v4-pro",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 113,
+              "output_tokens": 616,
+              "input_cost_usd": 0.00014916,
+              "output_cost_usd": 0.0024393600000000002,
+              "estimated_cost_usd": 0.0025885200000000004
+            },
             {
               "event_id": "2026-10-15:ledger:deepseek:flagship:A:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -3842,22 +3246,32 @@
         },
         {
           "task_id": "B",
-          "estimated_spend_usd": 0.00031284,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.00246708,
+          "input_cost_usd": 0.00030888,
+          "output_cost_usd": 0.0018453599999999999,
           "supporting_cost_usd": 0.00031284,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "B",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:deepseek:flagship:B:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "B",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "deepseek-v4-pro",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 234,
+              "output_tokens": 466,
+              "input_cost_usd": 0.00030888,
+              "output_cost_usd": 0.0018453599999999999,
+              "estimated_cost_usd": 0.00215424
+            },
             {
               "event_id": "2026-10-15:ledger:deepseek:flagship:B:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -3879,22 +3293,32 @@
         },
         {
           "task_id": "C",
-          "estimated_spend_usd": 0.00019536000000000003,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.04657224,
+          "input_cost_usd": 0.00019140000000000002,
+          "output_cost_usd": 0.04618548,
           "supporting_cost_usd": 0.00019536000000000003,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "C",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:deepseek:flagship:C:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "C",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "deepseek-v4-pro",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 145,
+              "output_tokens": 11663,
+              "input_cost_usd": 0.00019140000000000002,
+              "output_cost_usd": 0.04618548,
+              "estimated_cost_usd": 0.04637688
+            },
             {
               "event_id": "2026-10-15:ledger:deepseek:flagship:C:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -3916,22 +3340,32 @@
         },
         {
           "task_id": "D",
-          "estimated_spend_usd": 0.00696432,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.06579276,
+          "input_cost_usd": 0.0069603600000000005,
+          "output_cost_usd": 0.051868080000000004,
           "supporting_cost_usd": 0.00696432,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "D",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:deepseek:flagship:D:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "D",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "deepseek-v4-pro",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 5273,
+              "output_tokens": 13098,
+              "input_cost_usd": 0.0069603600000000005,
+              "output_cost_usd": 0.051868080000000004,
+              "estimated_cost_usd": 0.05882844
+            },
             {
               "event_id": "2026-10-15:ledger:deepseek:flagship:D:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -3953,53 +3387,96 @@
         },
         {
           "task_id": "E",
-          "estimated_spend_usd": 0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.02874168,
+          "input_cost_usd": 0.004348080000000001,
+          "output_cost_usd": 0.024393599999999998,
           "supporting_cost_usd": 0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 1,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 2,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 3,
-              "replicate": 1
-            }
-          ],
-          "duplicate_requests": [],
-          "unexpected_requests": [],
-          "details": []
-        },
-        {
-          "task_id": "F",
-          "estimated_spend_usd": 0.0026096400000000003,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
-          "supporting_cost_usd": 0.0026096400000000003,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "F",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:deepseek:flagship:E:1:generation:2026-10-15:two:1:a1:deepseek-v4-pro:t1:n1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 1,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "deepseek-v4-pro",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 118,
+              "output_tokens": 1640,
+              "input_cost_usd": 0.00015576,
+              "output_cost_usd": 0.0064944,
+              "estimated_cost_usd": 0.0066501600000000004
+            },
+            {
+              "event_id": "2026-10-15:meter:deepseek:flagship:E:2:generation:2026-10-15:two:1:a1:deepseek-v4-pro:t2:n2:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 2,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "deepseek-v4-pro",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1039,
+              "output_tokens": 2214,
+              "input_cost_usd": 0.00137148,
+              "output_cost_usd": 0.00876744,
+              "estimated_cost_usd": 0.01013892
+            },
+            {
+              "event_id": "2026-10-15:meter:deepseek:flagship:E:3:generation:2026-10-15:two:1:a1:deepseek-v4-pro:t3:n3:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 3,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "deepseek-v4-pro",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 2137,
+              "output_tokens": 2306,
+              "input_cost_usd": 0.0028208400000000002,
+              "output_cost_usd": 0.00913176,
+              "estimated_cost_usd": 0.011952599999999999
+            }
+          ]
+        },
+        {
+          "task_id": "F",
+          "estimated_spend_usd": 0.01437084,
+          "input_cost_usd": 0.0026056800000000004,
+          "output_cost_usd": 0.009155519999999999,
+          "supporting_cost_usd": 0.0026096400000000003,
+          "complete": true,
+          "missing_requests": [],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": [
+            {
+              "event_id": "2026-10-15:meter:deepseek:flagship:F:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "F",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "deepseek-v4-pro",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1974,
+              "output_tokens": 2312,
+              "input_cost_usd": 0.0026056800000000004,
+              "output_cost_usd": 0.009155519999999999,
+              "estimated_cost_usd": 0.0117612
+            },
             {
               "event_id": "2026-10-15:ledger:deepseek:flagship:F:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -4027,83 +3504,44 @@
       "model_id": "deepseek-flash",
       "display_name": "deepseek-flash",
       "on_panel": true,
-      "estimated_spend_usd": 0.0022482,
-      "input_cost_usd": 0,
-      "output_cost_usd": 0,
+      "estimated_spend_usd": 0.0391023,
+      "input_cost_usd": 0.0030800999999999997,
+      "output_cost_usd": 0.033774,
       "supporting_cost_usd": 0.0022482,
-      "complete": false,
-      "missing_requests": [
-        {
-          "source": "meter",
-          "task_id": "A",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "B",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "C",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "D",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 1,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 2,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 3,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "F",
-          "turn": null,
-          "replicate": 1
-        }
-      ],
+      "complete": true,
+      "missing_requests": [],
       "duplicate_requests": [],
       "unexpected_requests": [],
       "incomplete_event_count": 0,
       "tasks": [
         {
           "task_id": "A",
-          "estimated_spend_usd": 1.92e-05,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0013332,
+          "input_cost_usd": 1.8e-05,
+          "output_cost_usd": 0.001296,
           "supporting_cost_usd": 1.92e-05,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "A",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:deepseek:workhorse:A:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "A",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "deepseek-flash",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 60,
+              "output_tokens": 1080,
+              "input_cost_usd": 1.8e-05,
+              "output_cost_usd": 0.001296,
+              "estimated_cost_usd": 0.001314
+            },
             {
               "event_id": "2026-10-15:ledger:deepseek:workhorse:A:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -4125,22 +3563,32 @@
         },
         {
           "task_id": "B",
-          "estimated_spend_usd": 5.55e-05,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0005118000000000001,
+          "input_cost_usd": 5.43e-05,
+          "output_cost_usd": 0.000402,
           "supporting_cost_usd": 5.55e-05,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "B",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:deepseek:workhorse:B:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "B",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "deepseek-flash",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 181,
+              "output_tokens": 335,
+              "input_cost_usd": 5.43e-05,
+              "output_cost_usd": 0.000402,
+              "estimated_cost_usd": 0.00045630000000000003
+            },
             {
               "event_id": "2026-10-15:ledger:deepseek:workhorse:B:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -4162,22 +3610,32 @@
         },
         {
           "task_id": "C",
-          "estimated_spend_usd": 2.88e-05,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0047532,
+          "input_cost_usd": 2.76e-05,
+          "output_cost_usd": 0.0046968,
           "supporting_cost_usd": 2.88e-05,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "C",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:deepseek:workhorse:C:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "C",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "deepseek-flash",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 92,
+              "output_tokens": 3914,
+              "input_cost_usd": 2.76e-05,
+              "output_cost_usd": 0.0046968,
+              "estimated_cost_usd": 0.0047244
+            },
             {
               "event_id": "2026-10-15:ledger:deepseek:workhorse:C:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -4199,22 +3657,32 @@
         },
         {
           "task_id": "D",
-          "estimated_spend_usd": 0.0015672,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.014765999999999998,
+          "input_cost_usd": 0.001566,
+          "output_cost_usd": 0.011632799999999999,
           "supporting_cost_usd": 0.0015672,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "D",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:deepseek:workhorse:D:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "D",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "deepseek-flash",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 5220,
+              "output_tokens": 9694,
+              "input_cost_usd": 0.001566,
+              "output_cost_usd": 0.011632799999999999,
+              "estimated_cost_usd": 0.013198799999999998
+            },
             {
               "event_id": "2026-10-15:ledger:deepseek:workhorse:D:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -4236,53 +3704,96 @@
         },
         {
           "task_id": "E",
-          "estimated_spend_usd": 0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0121095,
+          "input_cost_usd": 0.0008378999999999999,
+          "output_cost_usd": 0.0112716,
           "supporting_cost_usd": 0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 1,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 2,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 3,
-              "replicate": 1
-            }
-          ],
-          "duplicate_requests": [],
-          "unexpected_requests": [],
-          "details": []
-        },
-        {
-          "task_id": "F",
-          "estimated_spend_usd": 0.0005775,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
-          "supporting_cost_usd": 0.0005775,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "F",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:deepseek:workhorse:E:1:generation:2026-10-15:two:1:a1:deepseek-flash:t1:n1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 1,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "deepseek-flash",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 65,
+              "output_tokens": 3609,
+              "input_cost_usd": 1.9499999999999996e-05,
+              "output_cost_usd": 0.004330799999999999,
+              "estimated_cost_usd": 0.0043503
+            },
+            {
+              "event_id": "2026-10-15:meter:deepseek:workhorse:E:2:generation:2026-10-15:two:1:a1:deepseek-flash:t2:n2:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 2,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "deepseek-flash",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 869,
+              "output_tokens": 3035,
+              "input_cost_usd": 0.0002607,
+              "output_cost_usd": 0.003642,
+              "estimated_cost_usd": 0.0039027
+            },
+            {
+              "event_id": "2026-10-15:meter:deepseek:workhorse:E:3:generation:2026-10-15:two:1:a1:deepseek-flash:t3:n3:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 3,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "deepseek-flash",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1859,
+              "output_tokens": 2749,
+              "input_cost_usd": 0.0005577,
+              "output_cost_usd": 0.0032988,
+              "estimated_cost_usd": 0.0038565
+            }
+          ]
+        },
+        {
+          "task_id": "F",
+          "estimated_spend_usd": 0.0056286,
+          "input_cost_usd": 0.0005763,
+          "output_cost_usd": 0.0044748,
+          "supporting_cost_usd": 0.0005775,
+          "complete": true,
+          "missing_requests": [],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": [
+            {
+              "event_id": "2026-10-15:meter:deepseek:workhorse:F:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "F",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "deepseek-flash",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1921,
+              "output_tokens": 3729,
+              "input_cost_usd": 0.0005763,
+              "output_cost_usd": 0.0044748,
+              "estimated_cost_usd": 0.0050511
+            },
             {
               "event_id": "2026-10-15:ledger:deepseek:workhorse:F:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -4310,83 +3821,44 @@
       "model_id": "qwen3.7-max",
       "display_name": "qwen3.7-max",
       "on_panel": true,
-      "estimated_spend_usd": 0.0187825,
-      "input_cost_usd": 0,
-      "output_cost_usd": 0,
+      "estimated_spend_usd": 0.07429749999999999,
+      "input_cost_usd": 0.0256425,
+      "output_cost_usd": 0.029872500000000003,
       "supporting_cost_usd": 0.0187825,
-      "complete": false,
-      "missing_requests": [
-        {
-          "source": "meter",
-          "task_id": "A",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "B",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "C",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "D",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 1,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 2,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 3,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "F",
-          "turn": null,
-          "replicate": 1
-        }
-      ],
+      "complete": true,
+      "missing_requests": [],
       "duplicate_requests": [],
       "unexpected_requests": [],
       "incomplete_event_count": 0,
       "tasks": [
         {
           "task_id": "A",
-          "estimated_spend_usd": 9.999999999999999e-05,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.002195,
+          "input_cost_usd": 9.25e-05,
+          "output_cost_usd": 0.0020025,
           "supporting_cost_usd": 9.999999999999999e-05,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "A",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:qwen:flagship:A:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "A",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "qwen-max",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 37,
+              "output_tokens": 267,
+              "input_cost_usd": 9.25e-05,
+              "output_cost_usd": 0.0020025,
+              "estimated_cost_usd": 0.002095
+            },
             {
               "event_id": "2026-10-15:ledger:qwen:flagship:A:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -4408,22 +3880,32 @@
         },
         {
           "task_id": "B",
-          "estimated_spend_usd": 0.000405,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0020175,
+          "input_cost_usd": 0.00039749999999999996,
+          "output_cost_usd": 0.0012150000000000002,
           "supporting_cost_usd": 0.000405,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "B",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:qwen:flagship:B:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "B",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "qwen-max",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 159,
+              "output_tokens": 162,
+              "input_cost_usd": 0.00039749999999999996,
+              "output_cost_usd": 0.0012150000000000002,
+              "estimated_cost_usd": 0.0016125000000000002
+            },
             {
               "event_id": "2026-10-15:ledger:qwen:flagship:B:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -4445,22 +3927,32 @@
         },
         {
           "task_id": "C",
-          "estimated_spend_usd": 0.0002,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.00511,
+          "input_cost_usd": 0.00019250000000000002,
+          "output_cost_usd": 0.0047175,
           "supporting_cost_usd": 0.0002,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "C",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:qwen:flagship:C:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "C",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "qwen-max",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 77,
+              "output_tokens": 629,
+              "input_cost_usd": 0.00019250000000000002,
+              "output_cost_usd": 0.0047175,
+              "estimated_cost_usd": 0.00491
+            },
             {
               "event_id": "2026-10-15:ledger:qwen:flagship:C:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -4482,22 +3974,32 @@
         },
         {
           "task_id": "D",
-          "estimated_spend_usd": 0.0132675,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.027479999999999997,
+          "input_cost_usd": 0.01326,
+          "output_cost_usd": 0.0009525,
           "supporting_cost_usd": 0.0132675,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "D",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:qwen:flagship:D:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "D",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "qwen-max",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 5304,
+              "output_tokens": 127,
+              "input_cost_usd": 0.01326,
+              "output_cost_usd": 0.0009525,
+              "estimated_cost_usd": 0.0142125
+            },
             {
               "event_id": "2026-10-15:ledger:qwen:flagship:D:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -4519,53 +4021,96 @@
         },
         {
           "task_id": "E",
-          "estimated_spend_usd": 0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.026404999999999998,
+          "input_cost_usd": 0.0068975,
+          "output_cost_usd": 0.019507499999999997,
           "supporting_cost_usd": 0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 1,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 2,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 3,
-              "replicate": 1
-            }
-          ],
-          "duplicate_requests": [],
-          "unexpected_requests": [],
-          "details": []
-        },
-        {
-          "task_id": "F",
-          "estimated_spend_usd": 0.004809999999999999,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
-          "supporting_cost_usd": 0.004809999999999999,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "F",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:qwen:flagship:E:1:generation:2026-10-15:two:1:a1:qwen-max:t1:n1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 1,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "qwen-max",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 43,
+              "output_tokens": 850,
+              "input_cost_usd": 0.00010750000000000001,
+              "output_cost_usd": 0.006375,
+              "estimated_cost_usd": 0.0064824999999999995
+            },
+            {
+              "event_id": "2026-10-15:meter:qwen:flagship:E:2:generation:2026-10-15:two:1:a1:qwen-max:t2:n2:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 2,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "qwen-max",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 919,
+              "output_tokens": 847,
+              "input_cost_usd": 0.0022975,
+              "output_cost_usd": 0.0063525,
+              "estimated_cost_usd": 0.00865
+            },
+            {
+              "event_id": "2026-10-15:meter:qwen:flagship:E:3:generation:2026-10-15:two:1:a1:qwen-max:t3:n3:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 3,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "qwen-max",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1797,
+              "output_tokens": 904,
+              "input_cost_usd": 0.0044925,
+              "output_cost_usd": 0.00678,
+              "estimated_cost_usd": 0.0112725
+            }
+          ]
+        },
+        {
+          "task_id": "F",
+          "estimated_spend_usd": 0.01109,
+          "input_cost_usd": 0.0048024999999999995,
+          "output_cost_usd": 0.0014774999999999999,
+          "supporting_cost_usd": 0.004809999999999999,
+          "complete": true,
+          "missing_requests": [],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": [
+            {
+              "event_id": "2026-10-15:meter:qwen:flagship:F:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "F",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "qwen-max",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1921,
+              "output_tokens": 197,
+              "input_cost_usd": 0.0048024999999999995,
+              "output_cost_usd": 0.0014774999999999999,
+              "estimated_cost_usd": 0.006279999999999999
+            },
             {
               "event_id": "2026-10-15:ledger:qwen:flagship:F:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -4593,83 +4138,44 @@
       "model_id": "qwen3.7-plus",
       "display_name": "qwen3.7-plus",
       "on_panel": true,
-      "estimated_spend_usd": 0.0030072,
-      "input_cost_usd": 0,
-      "output_cost_usd": 0,
+      "estimated_spend_usd": 0.0172668,
+      "input_cost_usd": 0.0046148000000000005,
+      "output_cost_usd": 0.0096448,
       "supporting_cost_usd": 0.0030072,
-      "complete": false,
-      "missing_requests": [
-        {
-          "source": "meter",
-          "task_id": "A",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "B",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "C",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "D",
-          "turn": null,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 1,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 2,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "E",
-          "turn": 3,
-          "replicate": 1
-        },
-        {
-          "source": "meter",
-          "task_id": "F",
-          "turn": null,
-          "replicate": 1
-        }
-      ],
+      "complete": true,
+      "missing_requests": [],
       "duplicate_requests": [],
       "unexpected_requests": [],
       "incomplete_event_count": 0,
       "tasks": [
         {
           "task_id": "A",
-          "estimated_spend_usd": 1.64e-05,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0003912,
+          "input_cost_usd": 1.48e-05,
+          "output_cost_usd": 0.00036,
           "supporting_cost_usd": 1.64e-05,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "A",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:qwen:workhorse:A:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "A",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "qwen-plus",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 37,
+              "output_tokens": 225,
+              "input_cost_usd": 1.48e-05,
+              "output_cost_usd": 0.00036,
+              "estimated_cost_usd": 0.0003748
+            },
             {
               "event_id": "2026-10-15:ledger:qwen:workhorse:A:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -4691,22 +4197,32 @@
         },
         {
           "task_id": "B",
-          "estimated_spend_usd": 6.52e-05,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.00044560000000000004,
+          "input_cost_usd": 6.36e-05,
+          "output_cost_usd": 0.0003168,
           "supporting_cost_usd": 6.52e-05,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "B",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:qwen:workhorse:B:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "B",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "qwen-plus",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 159,
+              "output_tokens": 198,
+              "input_cost_usd": 6.36e-05,
+              "output_cost_usd": 0.0003168,
+              "estimated_cost_usd": 0.00038040000000000003
+            },
             {
               "event_id": "2026-10-15:ledger:qwen:workhorse:B:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -4728,22 +4244,32 @@
         },
         {
           "task_id": "C",
-          "estimated_spend_usd": 3.24e-05,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0017288000000000002,
+          "input_cost_usd": 3.08e-05,
+          "output_cost_usd": 0.0016656000000000002,
           "supporting_cost_usd": 3.24e-05,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "C",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:qwen:workhorse:C:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "C",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "qwen-plus",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 77,
+              "output_tokens": 1041,
+              "input_cost_usd": 3.08e-05,
+              "output_cost_usd": 0.0016656000000000002,
+              "estimated_cost_usd": 0.0016964000000000003
+            },
             {
               "event_id": "2026-10-15:ledger:qwen:workhorse:C:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -4765,22 +4291,32 @@
         },
         {
           "task_id": "D",
-          "estimated_spend_usd": 0.0021232,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.0046879999999999995,
+          "input_cost_usd": 0.0021216,
+          "output_cost_usd": 0.00044320000000000004,
           "supporting_cost_usd": 0.0021232,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "D",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:qwen:workhorse:D:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "D",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "qwen-plus",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 5304,
+              "output_tokens": 277,
+              "input_cost_usd": 0.0021216,
+              "output_cost_usd": 0.00044320000000000004,
+              "estimated_cost_usd": 0.0025648
+            },
             {
               "event_id": "2026-10-15:ledger:qwen:workhorse:D:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
@@ -4802,53 +4338,96 @@
         },
         {
           "task_id": "E",
-          "estimated_spend_usd": 0,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
+          "estimated_spend_usd": 0.008151600000000002,
+          "input_cost_usd": 0.0016156,
+          "output_cost_usd": 0.006536,
           "supporting_cost_usd": 0,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 1,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 2,
-              "replicate": 1
-            },
-            {
-              "source": "meter",
-              "task_id": "E",
-              "turn": 3,
-              "replicate": 1
-            }
-          ],
-          "duplicate_requests": [],
-          "unexpected_requests": [],
-          "details": []
-        },
-        {
-          "task_id": "F",
-          "estimated_spend_usd": 0.0007700000000000001,
-          "input_cost_usd": 0,
-          "output_cost_usd": 0,
-          "supporting_cost_usd": 0.0007700000000000001,
-          "complete": false,
-          "missing_requests": [
-            {
-              "source": "meter",
-              "task_id": "F",
-              "turn": null,
-              "replicate": 1
-            }
-          ],
+          "complete": true,
+          "missing_requests": [],
           "duplicate_requests": [],
           "unexpected_requests": [],
           "details": [
+            {
+              "event_id": "2026-10-15:meter:qwen:workhorse:E:1:generation:2026-10-15:two:1:a1:qwen-plus:t1:n1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 1,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "qwen-plus",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 43,
+              "output_tokens": 1161,
+              "input_cost_usd": 1.72e-05,
+              "output_cost_usd": 0.0018576,
+              "estimated_cost_usd": 0.0018748
+            },
+            {
+              "event_id": "2026-10-15:meter:qwen:workhorse:E:2:generation:2026-10-15:two:1:a1:qwen-plus:t2:n2:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 2,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "qwen-plus",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1230,
+              "output_tokens": 1505,
+              "input_cost_usd": 0.000492,
+              "output_cost_usd": 0.0024080000000000004,
+              "estimated_cost_usd": 0.0029000000000000007
+            },
+            {
+              "event_id": "2026-10-15:meter:qwen:workhorse:E:3:generation:2026-10-15:two:1:a1:qwen-plus:t3:n3:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "E",
+              "turn": 3,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "qwen-plus",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 2766,
+              "output_tokens": 1419,
+              "input_cost_usd": 0.0011064,
+              "output_cost_usd": 0.0022704,
+              "estimated_cost_usd": 0.0033768
+            }
+          ]
+        },
+        {
+          "task_id": "F",
+          "estimated_spend_usd": 0.0018616000000000001,
+          "input_cost_usd": 0.0007684,
+          "output_cost_usd": 0.00032320000000000005,
+          "supporting_cost_usd": 0.0007700000000000001,
+          "complete": true,
+          "missing_requests": [],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": [
+            {
+              "event_id": "2026-10-15:meter:qwen:workhorse:F:0:generation:2026-10-15:two:1:1",
+              "source": "meter",
+              "request_kind": "generation",
+              "task_id": "F",
+              "turn": null,
+              "attempt": 1,
+              "replicate": 1,
+              "api_model": "qwen-plus",
+              "canonical": true,
+              "complete": true,
+              "input_tokens": 1921,
+              "output_tokens": 202,
+              "input_cost_usd": 0.0007684,
+              "output_cost_usd": 0.00032320000000000005,
+              "estimated_cost_usd": 0.0010916
+            },
             {
               "event_id": "2026-10-15:ledger:qwen:workhorse:F:0:completion_probe:2026-10-15:two:ledger:1",
               "source": "ledger",
