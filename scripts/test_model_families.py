@@ -15,8 +15,11 @@ from model_families import (
 class ModelRoleTest(unittest.TestCase):
     def test_provider_role_policies_cover_the_panel(self) -> None:
         cases = [
+            ("anthropic", "claude-fable-5.1", "flagship"),
             ("anthropic", "claude-opus-5", "flagship"),
+            ("anthropic", "claude-mythos-5.1", None),
             ("anthropic", "claude-haiku-4.5", "workhorse"),
+            ("google", "gemini-4-argon", "flagship"),
             ("openai", "gpt-6-astra", "flagship"),
             ("openai", "gpt-5.6-sol", "flagship"),
             ("openai", "chat-latest", "workhorse"),
@@ -89,7 +92,10 @@ class ModelRankingTest(unittest.TestCase):
         cases = [
             ("anthropic", "flagship", ["claude-opus-4.8", "claude-opus-5"], "claude-opus-5"),
             ("openai", "flagship", ["gpt-5.6-sol", "gpt-6-sol", "gpt-6-astra", "chat-latest"], "gpt-6-astra"),
+            ("openai", "flagship", ["gpt-6-astra", "gpt-6.1-sol"], "gpt-6-astra"),
             ("openai", "flagship", ["gpt-5.6-sol", "gpt-6-sol", "chat-latest"], "gpt-6-sol"),
+            ("anthropic", "flagship", ["claude-opus-5.5", "claude-fable-5", "claude-fable-5.1", "claude-mythos-5.1"], "claude-fable-5.1"),
+            ("google", "flagship", ["gemini-3.1-pro", "gemini-4-argon", "gemini-4-argon-cyber-permissive"], "gemini-4-argon"),
             ("openai", "workhorse", ["gpt-6-luna", "chat-latest"], "chat-latest"),
             (
                 "google",
@@ -221,6 +227,37 @@ class WorkhorsePriceTest(unittest.TestCase):
             self.AS_OF,
         )
         self.assertEqual(ordered[0], "gpt-6-luna")
+
+    def test_newer_sol_is_the_workhorse_under_astra(self) -> None:
+        ordered = order_workhorses(
+            "openai",
+            ["gpt-6-astra", "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna", "chat-latest"],
+            {
+                "gpt-6-astra": 60.0,
+                "gpt-6.1-sol": 12.0,
+                "gpt-6-sol": 12.0,
+                "gpt-6-luna": 0.6,
+                "chat-latest": 35.0,
+            },
+            "gpt-6-astra",
+            self.AS_OF,
+        )
+        self.assertEqual(ordered[0], "gpt-6.1-sol")
+
+    def test_opus_is_the_workhorse_under_fable(self) -> None:
+        ordered = order_workhorses(
+            "anthropic",
+            ["claude-fable-5.1", "claude-opus-5.5", "claude-sonnet-5.5", "claude-haiku-5.5"],
+            {
+                "claude-fable-5.1": 60.0,
+                "claude-opus-5.5": 24.0,
+                "claude-sonnet-5.5": 12.0,
+                "claude-haiku-5.5": 0.6,
+            },
+            "claude-fable-5.1",
+            self.AS_OF,
+        )
+        self.assertEqual(ordered[0], "claude-opus-5.5")
 
     def test_anthropic_workhorse_is_the_step_under_opus(self) -> None:
         ordered = order_workhorses(

@@ -7,12 +7,17 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from datetime import date
+
 from scrape_pricing import (
     is_amazon_owned_model,
     is_deepseek_owned_model,
     parse_amazon_bedrock,
+    parse_claude,
     parse_deepseek,
+    parse_openai,
     parse_qwen,
+    parse_vertex,
     parse_xai,
 )
 
@@ -354,6 +359,207 @@ class ParseQwenTest(unittest.TestCase):
         )
         self.assertEqual(max_input["price"], 2.5)
         self.assertEqual(max_input["provider_id"], "qwen")
+
+
+OPENAI_MARKDOWN = """
+Flagship models
+
+Standard
+
+| Model | Short context input | Short context cached input | Short context cache writes | Short context output | Long context input | Long context cached input | Long context cache writes | Long context output |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| gpt-6-astra | $10.00 | $1.00 | $12.50 | $50.00 | $20.00 | $2.00 | $25.00 | $75.00 |
+| gpt-6.1-sol | $2.00 | $0.10 | $2.50 | $10.00 | $4.00 | $0.20 | $5.00 | $15.00 |
+| gpt-6-sol | $2.00 | $0.20 | $2.50 | $10.00 | $4.00 | $0.40 | $5.00 | $15.00 |
+| gpt-5.5 (<272K context length) | $5.00 | $0.50 | - | $30.00 | $10.00 | $1.00 | - | $45.00 |
+| gpt-4o | $2.50 | $1.25 | - | $10.00 | - | - | - | - |
+
+Fast
+
+| Model | Short context input | Short context cached input | Short context cache writes | Short context output | Long context input | Long context cached input | Long context cache writes | Long context output |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| gpt-6-astra | $20.00 | $2.00 | $25.00 | $100.00 | $40.00 | $4.00 | $50.00 | $150.00 |
+"""
+
+CLAUDE_HTML = """
+<table>
+  <tr><th>Model</th><th>Base tokens</th><th>Prompt caching</th></tr>
+  <tr><th>Name</th><th>Input</th><th>Output</th><th>5m writes</th><th>1h writes</th><th>Hits and refreshes</th></tr>
+  <tr>
+    <td>Claude Fable 5.1 For demanding reasoning and long-horizon agentic work</td>
+    <td>$10 / MTok</td><td>$50 / MTok</td><td>$12.50 / MTok</td><td>$20 / MTok</td><td>$0.25 / MTok</td>
+  </tr>
+  <tr>
+    <td>Claude Opus 5.5 For long-running agentic coding and knowledge work</td>
+    <td>$4 / MTok</td><td>$20 / MTok</td><td>$5 / MTok</td><td>$8 / MTok</td><td>$0.20 / MTok</td>
+  </tr>
+  <tr>
+    <td>Claude Sonnet 5.5 The best combination of speed and intelligence</td>
+    <td>$2 / MTok</td><td>$10 / MTok</td><td>$2.50 / MTok</td><td>$4 / MTok</td><td>$0.10 / MTok</td>
+  </tr>
+  <tr>
+    <td>Claude Haiku 5.5 For high-volume, latency-sensitive tasks</td>
+    <td>$0.10 / MTok for prompts up to 100,000 tokens</td><td>$0.50 / MTok</td>
+    <td>$0.125 / MTok</td><td>$0.20 / MTok</td><td>$0.01 / MTok</td>
+  </tr>
+  <tr>
+    <td>$0.50 / MTok for prompts over 100,000 tokens</td><td>$2.50 / MTok</td>
+    <td>$0.625 / MTok</td><td>$1 / MTok</td><td>$0.05 / MTok</td>
+  </tr>
+  <tr>
+    <td>Claude Mythos 5.1 </td>
+    <td>$10 / MTok</td><td>$50 / MTok</td><td>$12.50 / MTok</td><td>$20 / MTok</td><td>$0.25 / MTok</td>
+  </tr>
+  <tr>
+    <td>Claude Opus 4 </td>
+    <td>$15 / MTok</td><td>$75 / MTok</td><td>$18.75 / MTok</td><td>$30 / MTok</td><td>$1.50 / MTok</td>
+  </tr>
+</table>
+"""
+
+VERTEX_HTML = """
+<html><body>
+<h2>Gemini 4</h2>
+<table>
+  <tr><th>Model</th><th>Type</th><th>Region</th><th>Price (/1M tokens)</th></tr>
+  <tr>
+    <td>Gemini 4 Argon* through November 30, 2026</td>
+    <td>Input (text, image, video, audio)</td><td>Global</td><td>$2</td>
+  </tr>
+  <tr>
+    <td></td><td>Text output (response and reasoning)</td><td>Global</td><td>$10</td>
+  </tr>
+  <tr>
+    <td>Gemini 4 Argon (Starting December 1, 2026), Gemini 4 Argon Cyber Permissive</td>
+    <td>Input (text, image, video, audio)</td><td>Global</td><td>$4</td>
+  </tr>
+  <tr>
+    <td></td><td>Text output (response and reasoning)</td><td>Global</td><td>$20</td>
+  </tr>
+</table>
+<table>
+  <tr><th>Model</th><th>Type</th><th>Region</th><th>Price (/1M tokens)</th></tr>
+  <tr>
+    <td>Gemini 4 Argon* through November 30, 2026</td>
+    <td>Input (text, image, video, audio)</td><td>Global</td><td>$1</td>
+  </tr>
+  <tr>
+    <td></td><td>Text output (response and reasoning)</td><td>Global</td><td>$5</td>
+  </tr>
+</table>
+<h2>Gemini 3</h2>
+<table>
+  <tr><th>Model</th><th>Type</th><th>Region</th><th>Price (/1M tokens)</th></tr>
+  <tr>
+    <td>Gemini 3.8 Flash* through December 31, 2026</td>
+    <td>Input (text)</td><td>Global</td><td>$0.75</td>
+  </tr>
+  <tr>
+    <td></td><td>Text output (response and reasoning)</td><td>Global</td><td>$4.50</td>
+  </tr>
+  <tr>
+    <td>Gemini 3.8 Flash Starting January 1, 2027</td>
+    <td>Input (text)</td><td>Global</td><td>$1.50</td>
+  </tr>
+</table>
+<h2>CodeMender</h2>
+<table>
+  <tr><th>Model</th><th>Type</th><th>Model Price /1M tokens (USD)</th></tr>
+  <tr><td>Gemini 3.1 Pro</td><td>Input tokens</td><td>$2.00</td></tr>
+  <tr><td>Gemini 4 Argon* Gemini 4 Argon Cyber Permissive</td><td>Input tokens</td><td>$4.00</td></tr>
+  <tr><td>Gemini 3.8 Flash *</td><td>Input tokens</td><td>$1.50</td></tr>
+</table>
+</body></html>
+"""
+
+
+def _price(rows, model_id, component, **match):
+    for row in rows:
+        if row["model_id"] != model_id or row["component"] != component:
+            continue
+        if all(row.get(key) == value for key, value in match.items()):
+            return row["price"]
+    return None
+
+
+class CurrentCatalogAccuracyTest(unittest.TestCase):
+    """Pricing pages changed shape. These fixtures are the accuracy contract."""
+
+    AS_OF = date(2026, 10, 16)
+
+    def test_openai_markdown_keeps_output_distinct_from_cache_writes(self) -> None:
+        rows = parse_openai(OPENAI_MARKDOWN)
+        self.assertEqual(
+            _price(rows, "gpt-6-astra", "output", service_tier="standard", context_window="short_context"),
+            50.0,
+        )
+        self.assertEqual(
+            _price(rows, "gpt-6-astra", "output", service_tier="standard", context_window="long_context"),
+            75.0,
+        )
+        self.assertEqual(
+            _price(rows, "gpt-6-astra", "input", service_tier="standard", context_window="short_context"),
+            10.0,
+        )
+        self.assertEqual(
+            _price(rows, "gpt-6-astra", "cache_write", service_tier="standard", context_window="short_context"),
+            12.5,
+        )
+        self.assertEqual(
+            _price(rows, "gpt-6-astra", "output", service_tier="fast", context_window="short_context"),
+            100.0,
+        )
+        models = {row["model_id"] for row in rows}
+        self.assertIn("gpt-6-sol", models)
+        self.assertIn("gpt-4o", models)
+        self.assertIn("gpt-5.5", models)
+        self.assertNotIn("gpt-5.5-272k-context-length", models)
+
+    def test_claude_grouped_header_strips_blurbs_and_splits_haiku_context(self) -> None:
+        rows = parse_claude(CLAUDE_HTML)
+        self.assertEqual(_price(rows, "claude-fable-5.1", "input"), 10.0)
+        self.assertEqual(_price(rows, "claude-fable-5.1", "output"), 50.0)
+        self.assertEqual(_price(rows, "claude-sonnet-5.5", "input"), 2.0)
+        self.assertEqual(_price(rows, "claude-sonnet-5.5", "output"), 10.0)
+        self.assertEqual(
+            _price(rows, "claude-haiku-5.5", "input", context_window="<=100k"),
+            0.10,
+        )
+        self.assertEqual(
+            _price(rows, "claude-haiku-5.5", "output", context_window=">100k"),
+            2.50,
+        )
+        fable = next(row for row in rows if row["model_id"] == "claude-fable-5.1")
+        self.assertEqual(fable["display_name"], "Claude Fable 5.1")
+        self.assertNotIn("demanding", fable["model_id"])
+        mythos = next(row for row in rows if row["model_id"] == "claude-mythos-5.1")
+        self.assertIn("limited availability", mythos["display_name"].lower())
+        retired = next(row for row in rows if row["model_id"] == "claude-opus-4")
+        self.assertFalse(retired["is_active"])
+
+    def test_vertex_publishes_the_in_effect_argon_and_flash_rates(self) -> None:
+        rows = parse_vertex(VERTEX_HTML, as_of=self.AS_OF)
+        ids = {row["model_id"] for row in rows}
+        self.assertIn("gemini-4-argon", ids)
+        self.assertNotIn("gemini-4-argon-cyber-permissive", ids)
+        self.assertNotIn("gemini-4-argon-gemini-4-argon-cyber-permissive", ids)
+        self.assertNotIn("gemini-3.1-pro", ids)
+        self.assertEqual(
+            _price(rows, "gemini-4-argon", "input", service_tier="standard"),
+            2.0,
+        )
+        self.assertEqual(
+            _price(rows, "gemini-4-argon", "output", service_tier="standard"),
+            10.0,
+        )
+        self.assertEqual(
+            _price(rows, "gemini-4-argon", "input", service_tier="priority"),
+            1.0,
+        )
+        self.assertEqual(_price(rows, "gemini-3.8-flash", "input"), 0.75)
+        self.assertEqual(_price(rows, "gemini-3.8-flash", "output"), 4.50)
+        self.assertFalse(any(row["price"] == 1.5 and row["model_id"] == "gemini-3.8-flash" for row in rows))
+        self.assertFalse(any(row["price"] == 4.0 and row["model_id"] == "gemini-4-argon" for row in rows))
 
 
 if __name__ == "__main__":

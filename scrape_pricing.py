@@ -5,7 +5,7 @@ import sys
 import time
 import uuid
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import requests
@@ -45,7 +45,7 @@ REQUEST_HEADERS = {
 PRICING_JSON_PATH = Path("pricing.json")
 RUN_REPORT_PATH = Path("run_report.json")
 
-OPENAI_SERVICE_TIERS = {"Standard", "Batch", "Flex", "Priority"}
+OPENAI_SERVICE_TIERS = {"Standard", "Batch", "Flex", "Priority", "Fast", "Ultrafast"}
 OPENAI_CATEGORIES = {
     "Flagship models": "flagship",
     "Realtime and audio generation models": "realtime_audio",
@@ -58,6 +58,8 @@ OPENAI_CATEGORIES = {
 
 VERTEX_SERVICE_TIERS = {"Standard", "Priority", "Flex/Batch"}
 VERTEX_MODEL_GROUPS = {
+    "Gemini 4": "gemini_4",
+    "Gemini Omni": "gemini_omni",
     "Gemini 3": "gemini_3",
     "Gemini 2.5": "gemini_2_5",
     "Gemini 2.0": "gemini_2_0",
@@ -103,6 +105,25 @@ def http_get(url, retries=3):
                 raise RuntimeError(f"Unexpected response body while fetching {url}")
 
             return html
+        except Exception as exc:
+            last_error = exc
+            if attempt == retries - 1:
+                break
+            time.sleep(5)
+
+    raise RuntimeError(f"Failed after {retries} attempts: {last_error}") from last_error
+
+
+def http_get_text(url, retries=3):
+    """Fetch a text document. OpenAI's HTML shell truncates pricing tables; the `.md` mirror does not."""
+    last_error = None
+
+    for attempt in range(retries):
+        try:
+            print(f"FETCHING text via requests: {url}")
+            response = requests.get(url, headers=REQUEST_HEADERS, timeout=60)
+            response.raise_for_status()
+            return response.text
         except Exception as exc:
             last_error = exc
             if attempt == retries - 1:
@@ -979,6 +1000,177 @@ def parse_qwen(html):
     return rows_out
 
 
+_CLAUDE_NAME = re.compile(
+    r"Claude\s+(Fable|Mythos|Opus|Sonnet|Haiku)\s+(\d+(?:\.\d+)?)",
+    re.I,
+)
+_CLAUDE_RETIRED = ""
+_CLAUDE_LIMITED = ""
+
+
+def _claude_identity(cell):
+    """Marketing blurb and status icons stay out of the model id."""
+    match = _CLAUDE_NAME.search(cell or "")
+    if not match:
+        return None
+    family = match.group(1).title()
+    version = match.group(2)
+    limited = (
+        family.lower() == "mythos"
+        or "limited" in cell.lower()
+        or _CLAUDE_LIMITED in cell
+    )
+    retired = (
+        "retired" in cell.lower()
+        or "deprecated" in cell.lower()
+        or _CLAUDE_RETIRED in cell
+    )
+    display = f"Claude {family} {version}"
+    if limited:
+        display += " (limited availability)"
+    if retired:
+        display += " (retired)"
+    return {
+        "model_id": slugify(f"claude {family} {version}"),
+        "display_name": display,
+        "is_active": not retired,
+    }
+
+
+def _claude_context(text):
+    lowered = (text or "").lower()
+    if "over 100" in lowered:
+        return ">100k"
+    if "up to 100" in lowered:
+        return "<=100k"
+    return None
+
+
+def _claude_header_index(headers, *needles):
+    for index, header in enumerate(headers):
+        if all(needle in header for needle in needles):
+            return index
+    return None
+
+
+def _claude_append(rows_out, identity, component, price, service_tier, context_window, billing_variant=None):
+    if price is None:
+        return
+    rows_out.append(
+        make_row(
+            model_id=identity["model_id"],
+            display_name=identity["display_name"],
+            provider_id="anthropic",
+            component=component,
+            price=price,
+            unit="per_1M_tokens",
+            service_tier=service_tier,
+            context_window=context_window,
+            category="standard_api",
+            billing_variant=billing_variant,
+            is_active=identity["is_active"],
+        )
+    )
+
+
+def _parse_claude_grouped(mat):
+    """Two-row header: group titles, then Input / Output / cache columns.
+
+    A Haiku long-context continuation omits the model cell, so its prices sit
+    one column left of the header.
+    """
+    if len(mat) < 3:
+        return None
+    headers0 = [header.lower() for header in mat[0]]
+    headers1 = [header.lower() for header in mat[1]]
+    if "model" not in " ".join(headers0):
+        return None
+    if "input" not in headers1 or "output" not in headers1:
+        return None
+    # The legacy single-row table puts "base input" on row 0. Leave it alone.
+    if "base input" in " ".join(headers0):
+        return None
+
+    service_tier = "batch" if "batch" in " ".join(headers0) else "standard"
+    col_input = _claude_header_index(headers1, "input")
+    col_output = _claude_header_index(headers1, "output")
+    col_5m = _claude_header_index(headers1, "5m")
+    col_1h = _claude_header_index(headers1, "1h")
+    col_hit = next(
+        (index for index, header in enumerate(headers1) if "hit" in header or "refresh" in header),
+        None,
+    )
+    rows_out = []
+    current = None
+
+    def cell_at(row, column, shifted):
+        if column is None:
+            return None
+        index = column - 1 if shifted else column
+        if index < 0 or index >= len(row):
+            return None
+        return row[index]
+
+    for row in mat[2:]:
+        if not row:
+            continue
+        identity = _claude_identity(row[0])
+        shifted = False
+        if identity is None:
+            if current is None or _claude_context(row[0]) != ">100k":
+                continue
+            identity = current
+            shifted = True
+        else:
+            current = identity
+
+        source = row[0] if shifted else cell_at(row, col_input, False)
+        context_window = _claude_context(source if shifted else (cell_at(row, col_input, False) or ""))
+        _claude_append(
+            rows_out,
+            identity,
+            "input",
+            money(cell_at(row, col_input, shifted)),
+            service_tier,
+            context_window,
+        )
+        _claude_append(
+            rows_out,
+            identity,
+            "output",
+            money(cell_at(row, col_output, shifted)),
+            service_tier,
+            context_window,
+        )
+        _claude_append(
+            rows_out,
+            identity,
+            "cache_write",
+            money(cell_at(row, col_5m, shifted)),
+            service_tier,
+            context_window,
+            "5m",
+        )
+        _claude_append(
+            rows_out,
+            identity,
+            "cache_write",
+            money(cell_at(row, col_1h, shifted)),
+            service_tier,
+            context_window,
+            "1h",
+        )
+        _claude_append(
+            rows_out,
+            identity,
+            "cache_read",
+            money(cell_at(row, col_hit, shifted)),
+            service_tier,
+            context_window,
+        )
+    return rows_out
+
+
 def parse_claude(html):
     soup = BeautifulSoup(html, "html.parser")
     rows_out = []
@@ -986,6 +1178,11 @@ def parse_claude(html):
     for table in soup.find_all("table"):
         mat = table_matrix(table)
         if len(mat) < 2:
+            continue
+
+        grouped = _parse_claude_grouped(mat)
+        if grouped is not None:
+            rows_out.extend(grouped)
             continue
 
         headers = [header.lower() for header in mat[0]]
@@ -1118,7 +1315,72 @@ def _vertex_context_window(header):
     return None
 
 
-def parse_vertex_model_tables(table, service_tier, category):
+_SCHEDULE_MONTHS = {
+    name: number
+    for number, name in enumerate(
+        (
+            "january",
+            "february",
+            "march",
+            "april",
+            "may",
+            "june",
+            "july",
+            "august",
+            "september",
+            "october",
+            "november",
+            "december",
+        ),
+        1,
+    )
+}
+_SCHEDULE_THROUGH = re.compile(
+    r"(?:\*|\s)+through\s+([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})",
+    re.I,
+)
+_SCHEDULE_STARTING = re.compile(
+    r"\(?\s*starting\s+([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})\s*\)?",
+    re.I,
+)
+
+
+def _schedule_date(month, day, year):
+    month_number = _SCHEDULE_MONTHS.get(month.lower())
+    if month_number is None:
+        return None
+    return date(int(year), month_number, int(day))
+
+
+def gemini_models_in_effect(cell, as_of):
+    """Canonical Gemini names whose published window includes ``as_of``.
+
+    A "through DATE" clause is the rate in effect until that date. A "starting
+    DATE" clause is not yet the rate. One cell can name several models; they
+    share the row's window.
+    """
+    text = norm(cell)
+    through = _SCHEDULE_THROUGH.search(text)
+    starting = _SCHEDULE_STARTING.search(text)
+    if through:
+        end = _schedule_date(*through.groups())
+        if end is not None and as_of > end:
+            return []
+    if starting:
+        start = _schedule_date(*starting.groups())
+        if start is not None and as_of < start:
+            return []
+    cleaned = _SCHEDULE_STARTING.sub(" ", _SCHEDULE_THROUGH.sub(" ", text))
+    cleaned = norm(cleaned.replace("*", " ")).strip(" ,")
+    if "gemini" not in cleaned.lower():
+        return []
+    names = []
+    for part in re.split(r",\s*(?=Gemini\b)", cleaned, flags=re.I):
+        names.extend(re.split(r"\s+(?=Gemini\b)", part.strip(), flags=re.I))
+    return [norm(name).strip(" ,") for name in names if "gemini" in name.lower()]
+
+
+def parse_vertex_model_tables(table, service_tier, category, as_of=None):
     """Parse Gemini model/type token tables.
 
     Current Vertex markup puts Model + Type (+ optional Region) on one row and
@@ -1135,16 +1397,21 @@ def parse_vertex_model_tables(table, service_tier, category):
         return []
 
     header_tier = infer_service_tier_from_headers(headers)
-    if header_tier:
+    # "token" in a price header is not a tier. Only an explicit Priority or
+    # Flex/Batch column title overrides the tier chosen by the caller.
+    if header_tier in {"priority", "flexbatch", "batch"}:
         service_tier = header_tier
+    elif service_tier is None:
+        service_tier = header_tier or "standard"
 
     type_idx = headers.index("type")
     region_idx = headers.index("region") if "region" in headers else None
     price_start = max(type_idx + 1, (region_idx + 1) if region_idx is not None else 0)
 
     rows_out = []
-    current_model = None
+    current_models = []
     current_label = None
+    as_of = as_of or date.today()
 
     for row in mat[1:]:
         if not row:
@@ -1152,14 +1419,14 @@ def parse_vertex_model_tables(table, service_tier, category):
 
         # Banner row (legacy): model name alone
         if row[0] and "gemini" in row[0].lower() and len(row) == 1:
-            current_model = norm(row[0])
+            current_models = gemini_models_in_effect(row[0], as_of)
             current_label = None
             continue
 
         if row[0] and "gemini" in row[0].lower():
-            current_model = norm(row[0])
+            current_models = gemini_models_in_effect(row[0], as_of)
 
-        if not current_model:
+        if not current_models:
             continue
 
         if region_idx is not None and region_idx < len(row):
@@ -1198,7 +1465,6 @@ def parse_vertex_model_tables(table, service_tier, category):
         else:
             component = slugify(label_l) or "price"
 
-        model_id = slugify(current_model)
         # Current markup: row width matches headers. Legacy data rows omit the
         # Model column, so price cells are shifted one left vs headers.
         shifted = len(row) == len(headers) - 1
@@ -1223,21 +1489,22 @@ def parse_vertex_model_tables(table, service_tier, category):
             elif "flex/batch" in header or "with flex" in header:
                 cell_tier = "flexbatch"
 
-            rows_out.append(
-                make_row(
-                    model_id=model_id,
-                    display_name=current_model,
-                    provider_id="google",
-                    component=component_name,
-                    price=price,
-                    unit="per_1M_tokens",
-                    service_tier=cell_tier,
-                    context_window=context_window,
-                    modality=modality,
-                    category=category,
-                    is_active=True,
+            for model_name in current_models:
+                rows_out.append(
+                    make_row(
+                        model_id=slugify(model_name),
+                        display_name=model_name,
+                        provider_id="google",
+                        component=component_name,
+                        price=price,
+                        unit="per_1M_tokens",
+                        service_tier=cell_tier,
+                        context_window=context_window,
+                        modality=modality,
+                        category=category,
+                        is_active=True,
+                    )
                 )
-            )
 
     return rows_out
 
@@ -1420,9 +1687,14 @@ def parse_vertex_embedding_tables(table):
     return rows_out
 
 
-def parse_vertex(html):
+def parse_vertex(html, as_of=None):
     soup = BeautifulSoup(html, "html.parser")
     rows_out = []
+    as_of = as_of or date.today()
+    # Gemini 4 repeats one table per tab without putting the tier in the header.
+    # Document order is Standard, Priority, Batch. Gemini 3 encodes the tier in
+    # the column title, so those tables are not counted here.
+    untiered_under_heading: dict[str, int] = {}
 
     for table in soup.find_all("table"):
         heading = previous_heading_text(table)
@@ -1434,9 +1706,15 @@ def parse_vertex(html):
         headers = [h.lower() for h in mat[0]] if mat else []
         header_tier = infer_service_tier_from_headers(headers) if headers else None
 
-        model_group = exact_previous_text(table, VERTEX_MODEL_GROUPS.keys())
-        if not model_group and heading in VERTEX_MODEL_GROUPS:
+        # A CodeMender or AlphaEvolve heading must not inherit an earlier
+        # Gemini generation. Those tables republish agent prices, not the
+        # token rate card.
+        if heading in VERTEX_MODEL_GROUPS:
             model_group = heading
+        elif not heading or heading in VERTEX_SERVICE_TIERS:
+            model_group = exact_previous_text(table, VERTEX_MODEL_GROUPS.keys())
+        else:
+            model_group = None
 
         # Prefer header-encoded tier; tab labels currently resolve to Flex/Batch
         # even for the Standard pane.
@@ -1453,11 +1731,18 @@ def parse_vertex(html):
         )
 
         if looks_like_gemini_table:
+            tier = service_tier or "standard"
+            header_names_tier = header_tier in {"priority", "flexbatch", "batch"}
+            if not header_names_tier:
+                seen = untiered_under_heading.get(heading or "", 0)
+                untiered_under_heading[heading or ""] = seen + 1
+                tier = ("standard", "priority", "batch")[seen] if seen < 3 else tier
             rows_out.extend(
                 parse_vertex_model_tables(
                     table=table,
-                    service_tier=service_tier or "standard",
+                    service_tier=tier,
                     category=VERTEX_MODEL_GROUPS[model_group],
+                    as_of=as_of,
                 )
             )
             continue
@@ -1472,122 +1757,112 @@ def parse_vertex(html):
     return [row for row in rows_out if row["component"] in allowed_components]
 
 
+def _openai_price_component(header):
+    name = header.lower()
+    if "cache write" in name:
+        return "cache_write"
+    if "cached" in name:
+        return "cached_input"
+    if "output" in name:
+        return "output"
+    if "input" in name:
+        return "input"
+    return None
+
+
+def _openai_catalog_name(name):
+    """Drop a parenthetical context note so ``gpt-5.5 (<272K ...)`` stays ``gpt-5.5``."""
+    return norm(re.sub(r"\s*\([^)]*\)", "", name or ""))
+
+
+def _flagship_price_columns(mat):
+    """Column map for the flagship rate card.
+
+    Markdown publishes one header row (``Short context output``). The HTML
+    shell publishes a grouped header (``Short context`` over Input / Cached
+    input / Cache writes / Output). Cache writes sit between cached input and
+    output; reading by fixed index stores the write rate as the output price.
+    """
+    if len(mat) < 2:
+        return None
+    row0 = [cell.lower() for cell in mat[0]]
+    if "model" in row0 and any("context" in cell and ("input" in cell or "output" in cell) for cell in row0):
+        columns = []
+        for index, header in enumerate(row0):
+            if "context" not in header:
+                continue
+            component = _openai_price_component(header)
+            if component is None:
+                continue
+            window = "long_context" if "long context" in header else "short_context"
+            columns.append((index, window, component))
+        return columns, mat[1:]
+
+    if len(mat) < 3:
+        return None
+    row1 = [cell.lower() for cell in mat[1]]
+    if "model" not in row1 or not any("context" in cell for cell in row0):
+        return None
+    model_idx = row1.index("model")
+    sub = row1[model_idx + 1 :]
+    groups = [cell for cell in row0 if "context" in cell]
+    if len(groups) >= 2 and sub and len(sub) % len(groups) == 0:
+        span = len(sub) // len(groups)
+        windows = ["long_context" if "long" in group else "short_context" for group in groups]
+    else:
+        span = len(sub)
+        windows = ["short_context"]
+    columns = []
+    for group_index, window in enumerate(windows):
+        for offset in range(span):
+            header_index = group_index * span + offset
+            if header_index >= len(sub):
+                break
+            component = _openai_price_component(sub[header_index])
+            if component is None:
+                continue
+            columns.append((model_idx + 1 + header_index, window, component))
+    return columns, mat[2:]
+
+
 def parse_openai_flagship_table(table, service_tier, category):
     mat = table_matrix(table)
-    if len(mat) < 3:
+    parsed = _flagship_price_columns(mat)
+    if not parsed:
         return []
-
-    first_row = [cell.lower() for cell in mat[0]]
-    second_row = [cell.lower() for cell in mat[1]]
-    if "model" not in second_row or not any("context" in cell for cell in first_row):
-        return []
+    columns, data_rows = parsed
 
     rows_out = []
-    for row in mat[2:]:
+    for row in data_rows:
         if len(row) < 4:
             continue
 
-        name = norm(row[0])
+        name = _openai_catalog_name(row[0])
         if not name:
             continue
 
         model_id = slugify(name)
-        short_input = money(row[1]) if len(row) > 1 else None
-        short_cached = money(row[2]) if len(row) > 2 else None
-        short_output = money(row[3]) if len(row) > 3 else None
-
-        if short_input is not None:
+        for index, window, component in columns:
+            if index >= len(row):
+                continue
+            price = money(row[index])
+            if price is None:
+                continue
             rows_out.append(
                 make_row(
                     model_id=model_id,
                     display_name=name,
                     provider_id="openai",
-                    component="input",
-                    price=short_input,
+                    component=component,
+                    price=price,
                     unit="per_1M_tokens",
                     service_tier=service_tier,
-                    context_window="short_context",
+                    context_window=window,
                     category=category,
                 )
             )
-        if short_cached is not None:
-            rows_out.append(
-                make_row(
-                    model_id=model_id,
-                    display_name=name,
-                    provider_id="openai",
-                    component="cached_input",
-                    price=short_cached,
-                    unit="per_1M_tokens",
-                    service_tier=service_tier,
-                    context_window="short_context",
-                    category=category,
-                )
-            )
-        if short_output is not None:
-            rows_out.append(
-                make_row(
-                    model_id=model_id,
-                    display_name=name,
-                    provider_id="openai",
-                    component="output",
-                    price=short_output,
-                    unit="per_1M_tokens",
-                    service_tier=service_tier,
-                    context_window="short_context",
-                    category=category,
-                )
-            )
-
-        if len(row) >= 7:
-            long_input = money(row[4])
-            long_cached = money(row[5])
-            long_output = money(row[6])
-
-            if long_input is not None:
-                rows_out.append(
-                    make_row(
-                        model_id=model_id,
-                        display_name=name,
-                        provider_id="openai",
-                        component="input",
-                        price=long_input,
-                        unit="per_1M_tokens",
-                        service_tier=service_tier,
-                        context_window="long_context",
-                        category=category,
-                    )
-                )
-            if long_cached is not None:
-                rows_out.append(
-                    make_row(
-                        model_id=model_id,
-                        display_name=name,
-                        provider_id="openai",
-                        component="cached_input",
-                        price=long_cached,
-                        unit="per_1M_tokens",
-                        service_tier=service_tier,
-                        context_window="long_context",
-                        category=category,
-                    )
-                )
-            if long_output is not None:
-                rows_out.append(
-                    make_row(
-                        model_id=model_id,
-                        display_name=name,
-                        provider_id="openai",
-                        component="output",
-                        price=long_output,
-                        unit="per_1M_tokens",
-                        service_tier=service_tier,
-                        context_window="long_context",
-                        category=category,
-                    )
-                )
-
     return rows_out
+
 
 
 def parse_openai_modality_table(table, category):
@@ -1899,7 +2174,46 @@ def parse_openai_finetuning_table(table, category, service_tier=None):
     return rows_out
 
 
+def _markdown_table_html(lines):
+    rows = []
+    for line in lines:
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if not any(cells):
+            continue
+        if all(re.fullmatch(r":?-{2,}:?", cell.replace(" ", "")) for cell in cells if cell):
+            continue
+        tag = "th" if not rows else "td"
+        rows.append("<tr>" + "".join(f"<{tag}>{cell}</{tag}>" for cell in cells) + "</tr>")
+    return "<table>" + "".join(rows) + "</table>"
+
+
+def _openai_markdown_to_html(text):
+    """Turn the documented `.md` pricing page into the tables ``parse_openai`` already reads."""
+    parts = ["<html><body>"]
+    lines = text.splitlines()
+    index = 0
+    while index < len(lines):
+        stripped = lines[index].strip()
+        if stripped.startswith("|"):
+            block = []
+            while index < len(lines) and lines[index].strip().startswith("|"):
+                block.append(lines[index])
+                index += 1
+            parts.append(_markdown_table_html(block))
+            continue
+        heading = re.sub(r"^#+\s*", "", stripped).strip()
+        if heading in OPENAI_SERVICE_TIERS or heading in OPENAI_CATEGORIES:
+            parts.append(f"<h2>{heading}</h2>")
+        index += 1
+    parts.append("</body></html>")
+    return "\n".join(parts)
+
+
 def parse_openai(html):
+    # The HTML shell server-renders only the first rows of each flagship table.
+    # Appending `.md` is the complete rate card OpenAI documents.
+    if "<table" not in html.lower() and "| Model |" in html:
+        html = _openai_markdown_to_html(html)
     soup = BeautifulSoup(html, "html.parser")
     rows_out = []
 
@@ -2317,7 +2631,7 @@ def main():
         provider_specs = [
             ("anthropic", CLAUDE_URL, parse_claude, http_get),
             ("google", VERTEX_URL, parse_vertex, http_get),
-            ("openai", OPENAI_URL, parse_openai, http_get),
+            ("openai", OPENAI_URL + ".md", parse_openai, http_get_text),
             ("xai", XAI_URL, parse_xai, http_get),
             ("aws", AMAZON_BEDROCK_URL, parse_amazon_bedrock, http_get_json),
             ("deepseek", DEEPSEEK_URL, parse_deepseek, http_get),

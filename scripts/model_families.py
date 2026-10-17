@@ -80,9 +80,14 @@ def model_role(provider_id: str, model_id: str) -> str | None:
     name = (model_id or "").lower()
 
     if provider_id == "anthropic":
-        if "claude-opus-" in name:
+        # Mythos is the limited-availability twin of Fable, not a panel tier.
+        if "mythos" in name:
+            return None
+        # Fable is the top line. Opus is that line when Fable is absent, and
+        # the step under Fable when both are priced. Sonnet then Haiku are
+        # cheaper lines; price picks the workhorse.
+        if "claude-fable-" in name or "claude-opus-" in name:
             return "flagship"
-        # Sonnet is the step under Opus. Haiku is the floor. Price picks.
         if "claude-sonnet-" in name or "claude-haiku-" in name:
             return "workhorse"
     elif provider_id == "openai":
@@ -96,8 +101,10 @@ def model_role(provider_id: str, model_id: str) -> str | None:
     elif provider_id == "google":
         if any(hint in name for hint in ("image", "vision", "audio", "live-api", "flash-lite")):
             return None
-        # End-anchored: a same-version specialty (`gemini-3.8-flash-cyber`) is
-        # not a newer workhorse than `gemini-3.8-flash`.
+        # End-anchored: a same-version specialty (`gemini-3.8-flash-cyber`,
+        # `gemini-4-argon-cyber-permissive`) is not the line itself.
+        if re.fullmatch(r"gemini-[\d.]+-argon", name):
+            return "flagship"
         if re.fullmatch(r"gemini-[\d.]+-pro", name):
             return "flagship"
         if re.fullmatch(r"gemini-[\d.]+-flash", name):
@@ -184,10 +191,12 @@ def product_line(provider_id: str, model_id: str) -> str | None:
         match = re.fullmatch(r"gpt-[\d.]+-(astra|sol|luna)", name)
         return match.group(1) if match else None
     if provider_id == "anthropic":
-        for line in ("opus", "sonnet", "haiku"):
+        for line in ("fable", "opus", "sonnet", "haiku"):
             if f"claude-{line}-" in name:
                 return line
     if provider_id == "google":
+        if re.fullmatch(r"gemini-[\d.]+-argon", name):
+            return "argon"
         if re.fullmatch(r"gemini-[\d.]+-pro", name):
             return "pro"
         if re.fullmatch(r"gemini-[\d.]+-flash", name):
@@ -218,8 +227,28 @@ def product_line(provider_id: str, model_id: str) -> str | None:
     return None
 
 
-# Sol is the flagship when Astra is absent, and the everyday line under Astra.
-STEP_DOWN_LINES = {("openai", "sol")}
+# A line that is the flagship when the line above it is absent, and the
+# everyday model under that line when both are priced.
+STEP_DOWN_LINES = {("openai", "sol"), ("anthropic", "opus")}
+
+
+def tier_line_rank(provider_id: str, tier: str, model_id: str) -> int:
+    """Prefer the top product line over a higher version of a lower line.
+
+    ``gpt-6.1-sol`` is newer than ``gpt-6-astra`` and ``claude-opus-5.5`` is
+    newer than ``claude-fable-5.1``, but Astra and Fable stay the flagship
+    while they are on the rate card. Version still orders members of one line.
+    """
+    if tier != "flagship":
+        return 0
+    line = product_line(provider_id, model_id)
+    if provider_id == "openai":
+        return openai_brand_rank(model_id)
+    if provider_id == "anthropic":
+        return {"fable": 2, "opus": 1}.get(line or "", 0)
+    if provider_id == "google":
+        return {"argon": 2, "pro": 1}.get(line or "", 0)
+    return 0
 
 
 def _newer_than(model_id: str, other: str) -> bool:
@@ -272,7 +301,14 @@ def order_workhorses(
         return price < flagship_price
 
     priced = [model_id for model_id in by_line.values() if under_flagship(model_id)]
-    pool = priced or list(by_line.values())
+    # chat-latest is a ChatGPT alias, not a generation line. A correct Astra
+    # price sits above it, and price-sorting would then pick the alias over Sol.
+    named = [
+        model_id
+        for model_id in priced
+        if product_line(provider_id, model_id) not in {"chat"}
+    ]
+    pool = named or priced or list(by_line.values())
 
     def sort_key(model_id: str) -> tuple:
         price = prices.get(model_id)
@@ -318,8 +354,8 @@ def rank_ids_for_tier(
     # suffixed variant cannot outrank the canonical model of the same version.
     matching.sort(
         key=lambda model_id: (
+            tier_line_rank(provider_id, tier, model_id),
             model_version_key(model_id),
-            openai_brand_rank(model_id) if provider_id == "openai" else 0,
             -model_id.count("-"),
             -len(model_id),
         ),

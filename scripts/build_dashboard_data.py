@@ -248,16 +248,16 @@ RUNS_PER_YEAR_BY_CADENCE = {
 
 TIER_CANDIDATES = {
     "anthropic": {
-        "flagship": ["claude-opus-5", "claude-opus-4.8"],
-        "workhorse": ["claude-sonnet-5", "claude-haiku-4.5"],
+        "flagship": ["claude-fable-5.1", "claude-opus-5.5", "claude-opus-5"],
+        "workhorse": ["claude-opus-5.5", "claude-sonnet-5.5", "claude-sonnet-5", "claude-haiku-4.5"],
     },
     "openai": {
-        "flagship": ["gpt-6-astra", "gpt-6-sol", "gpt-5.6-sol"],
-        "workhorse": ["gpt-6-sol", "gpt-6-luna", "gpt-5.6-luna", "chat-latest"],
+        "flagship": ["gpt-6-astra", "gpt-6.1-sol", "gpt-6-sol", "gpt-5.6-sol"],
+        "workhorse": ["gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna", "gpt-5.6-luna", "chat-latest"],
     },
     "google": {
-        "flagship": ["gemini-3.1-pro", "gemini-2.5-pro"],
-        "workhorse": ["gemini-3-flash", "gemini-2.0-flash"],
+        "flagship": ["gemini-4-argon", "gemini-3.1-pro", "gemini-2.5-pro"],
+        "workhorse": ["gemini-3.8-flash", "gemini-3-flash", "gemini-2.0-flash"],
     },
     "xai": {
         "flagship": ["grok-4.7", "grok-4.6", "grok-4.5"],

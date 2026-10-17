@@ -716,6 +716,27 @@ def _gemini_count_tokens(model: str, contents: list[dict[str, Any]], api_key: st
     )
 
 
+def prefer_gemini_candidates(names: list[str], tier_hint: str, preferred: str) -> list[str]:
+    """Callable Gemini ids, preferred catalog id first, then the tier's line.
+
+    Argon is the flagship line. A live ``gemini-4-argon`` must be tried before
+    an older pro id when the catalog name is not itself in the model list.
+    """
+    preferred = (preferred or "").replace("models/", "")
+    ordered: list[str] = []
+    if preferred in names:
+        ordered.append(preferred)
+    markers = ("argon", "pro", "flash") if tier_hint == "flagship" else ("flash", "argon", "pro")
+    for marker in markers:
+        for name in names:
+            if marker in name and name not in ordered:
+                ordered.append(name)
+    for name in names:
+        if name not in ordered:
+            ordered.append(name)
+    return ordered[:8]
+
+
 def _gemini_candidates(api_key: str, tier_hint: str, preferred: str) -> list[str]:
     response = request_with_retry(
         "GET",
@@ -736,12 +757,4 @@ def _gemini_candidates(api_key: str, tier_hint: str, preferred: str) -> list[str
         if any(bad in name for bad in ("embed", "tts", "vision", "image", "aqa")):
             continue
         names.append(name)
-    preferred = preferred.replace("models/", "")
-    ordered = []
-    if preferred in names:
-        ordered.append(preferred)
-    if tier_hint == "flagship":
-        ordered.extend(n for n in names if "pro" in n and n not in ordered)
-    ordered.extend(n for n in names if "flash" in n and n not in ordered)
-    ordered.extend(n for n in names if n not in ordered)
-    return ordered[:8]
+    return prefer_gemini_candidates(names, tier_hint, preferred)

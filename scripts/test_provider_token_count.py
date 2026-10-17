@@ -24,6 +24,7 @@ from provider_token_count import (
     api_model_candidates,
     normalize_messages,
     openai_compatible_body,
+    prefer_gemini_candidates,
 )
 
 
@@ -441,6 +442,16 @@ class GeminiTierResolutionTest(unittest.TestCase):
         self.assertEqual(status, "ok", error)
         self.assertEqual(tokens, 4031)
         return used
+
+    def test_flagship_prefers_a_live_argon_id_over_pro(self) -> None:
+        ordered = prefer_gemini_candidates(
+            ["gemini-2.5-pro", "gemini-4-argon", "gemini-3.8-flash"],
+            "flagship",
+            "gemini-4-argon",
+        )
+        self.assertEqual(ordered[0], "gemini-4-argon")
+        self.assertLess(ordered.index("gemini-4-argon"), ordered.index("gemini-2.5-pro"))
+        self.assertLess(ordered.index("gemini-2.5-pro"), ordered.index("gemini-3.8-flash"))
 
     def test_flagship_text_resolves_to_a_pro_model(self) -> None:
         self.assertEqual(self._resolved("flagship"), "gemini-pro-latest")
