@@ -486,6 +486,44 @@ class BuildEquivalenceTest(unittest.TestCase):
         fallback = flagship["api_candidates"][0]
         self.assertEqual(fallback["model_id"], "gemini-2.5-pro")
         self.assertEqual(fallback["input_price"], 2.5)
+        self.assertEqual(fallback["output_price"], 15.0)
+
+    def test_split_google_rows_select_the_current_lines(self) -> None:
+        def side(model_id: str, *, input_price=None, output_price=None, context_window=None) -> dict:
+            return {
+                "provider_id": "google",
+                "model_id": model_id,
+                "display_name": model_id,
+                "latest_input": input_price,
+                "latest_output": output_price,
+                "currency": "USD",
+                "currently_active": True,
+                "context_window": context_window,
+            }
+
+        models = [
+            side("gemini-4-argon", input_price=2.0),
+            side("gemini-4-argon", output_price=10.0),
+            side("gemini-3.8-flash", input_price=0.75, context_window=">200k"),
+            side("gemini-3.8-flash", output_price=3.75, context_window=">200k"),
+            side("gemini-2.0-flash", input_price=0.15, output_price=0.6),
+        ]
+        eq = build_equivalence(
+            models,
+            {"generated_at": "2026-10-17T00:00:00Z", "last_date": "2026-10-17"},
+            live_model_map={},
+        )
+        selected = {
+            (row["provider_id"], row["tier"]): row
+            for row in eq["selected_models"]
+            if row["provider_id"] == "google"
+        }
+        self.assertEqual(selected[("google", "flagship")]["model_id"], "gemini-4-argon")
+        self.assertEqual(selected[("google", "flagship")]["input_price"], 2.0)
+        self.assertEqual(selected[("google", "flagship")]["output_price"], 10.0)
+        self.assertEqual(selected[("google", "workhorse")]["model_id"], "gemini-3.8-flash")
+        self.assertEqual(selected[("google", "workhorse")]["input_price"], 0.75)
+        self.assertEqual(selected[("google", "workhorse")]["output_price"], 3.75)
 
 
 class BuildTokenRunsTest(unittest.TestCase):

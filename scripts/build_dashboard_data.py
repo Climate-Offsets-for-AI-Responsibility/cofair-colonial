@@ -1636,6 +1636,53 @@ def _representative_price_row(rows: list[dict], price: float | None) -> dict:
     return max(rows, key=score)
 
 
+def _context_band(row: dict) -> tuple[str, str, str]:
+    return (
+        str(row.get("context_window") or ""),
+        str(row.get("billing_variant") or ""),
+        str(row.get("service_tier") or "standard"),
+    )
+
+
+def _pair_split_price_rows(rows: list[dict]) -> list[dict]:
+    """Join input-only and output-only rows that share a context band.
+
+    Google publishes the two sides on separate pricing ids (multimodal input,
+    text output). A row that already carries both prices is left alone, and an
+    input row is never paired with an output from a different context window.
+    """
+    complete: list[dict] = []
+    inputs: list[dict] = []
+    outputs_by_band: dict[tuple[str, str, str], list[dict]] = {}
+    for row in rows:
+        raw_in = row.get("latest_input", row.get("input_price"))
+        raw_out = row.get("latest_output", row.get("output_price"))
+        if raw_in is not None and raw_out is not None:
+            complete.append(row)
+        elif raw_in is not None:
+            inputs.append(row)
+        elif raw_out is not None:
+            outputs_by_band.setdefault(_context_band(row), []).append(row)
+        else:
+            complete.append(row)
+
+    paired = list(complete)
+    for row in inputs:
+        matches = outputs_by_band.get(_context_band(row)) or []
+        if not matches:
+            paired.append(row)
+            continue
+        output_row = matches.pop(0)
+        raw_out = output_row.get("latest_output", output_row.get("output_price"))
+        merged = dict(row)
+        merged["latest_output"] = raw_out
+        merged["output_price"] = raw_out
+        paired.append(merged)
+    for leftover in outputs_by_band.values():
+        paired.extend(leftover)
+    return paired
+
+
 def _collapse_catalog(
     models: list[dict],
 ) -> tuple[dict[tuple[str, str], dict], dict[tuple[str, str], float]]:
@@ -1646,8 +1693,9 @@ def _collapse_catalog(
     collapsed: dict[tuple[str, str], dict] = {}
     prices: dict[tuple[str, str], float] = {}
     for key, rows in grouped.items():
-        price = everyday_list_price(rows)
-        collapsed[key] = _representative_price_row(rows, price)
+        priced_rows = _pair_split_price_rows(rows)
+        price = everyday_list_price(priced_rows)
+        collapsed[key] = _representative_price_row(priced_rows, price)
         if price is not None:
             prices[key] = price
     return collapsed, prices
