@@ -301,7 +301,7 @@
           </div>
         </div>
         <div class="cost-more" id="ledgerMore" hidden>
-          <button type="button" class="cofair-btn cofair-btn--secondary" id="ledgerLoadMore">
+          <button type="button" class="cofair-btn cofair-btn--secondary cofair-btn--md" id="ledgerLoadMore">
             Load earlier dates
           </button>
         </div>
@@ -328,6 +328,12 @@
             <p class="cofair-heading cofair-heading--3 cost-card__amount" data-cost-amount>—</p>
             <p class="cofair-text cofair-text--xs cost-card__comparison" data-cost-comparison>Comparison unavailable</p>
           </article>
+        </div>
+
+        <div class="cofair-card chart-card spend-chart-card">
+          <div class="chart-card__plot spend-chart-card__plot">
+            <canvas id="spendChart" aria-label="Rolling spend comparison"></canvas>
+          </div>
         </div>
 
         <div class="controls">
@@ -374,7 +380,7 @@
           </div>
         </div>
         <div class="cost-more" id="costMore" hidden>
-          <button type="button" class="cofair-btn cofair-btn--secondary" id="costLoadMore">
+          <button type="button" class="cofair-btn cofair-btn--secondary cofair-btn--md" id="costLoadMore">
             Load earlier dates
           </button>
         </div>

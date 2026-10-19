@@ -152,7 +152,15 @@
 .cost-more {
   display: flex;
   justify-content: center;
-  margin-top: var(--cofair-space-4);
+  margin-top: var(--cofair-space-5);
+}
+
+.spend-chart-card {
+  margin-bottom: var(--cofair-space-5);
+}
+
+.spend-chart-card__plot {
+  min-height: 14rem;
 }
 
 .cost-more[hidden] {

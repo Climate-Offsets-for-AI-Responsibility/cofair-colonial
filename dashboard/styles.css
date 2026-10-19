@@ -24,7 +24,7 @@ a { color: var(--cofair-color-primary); }
 
 /* Provider tint overrides (categorical series, not brand chrome).
  * Steps: 1 openai=forest, 2 anthropic=burnt orange, 3 google=blue,
- * 4 amazon=tan, 5 deepseek=magenta, 6 qwen=purple, 7 xai=neutral.
+ * 4 amazon=tan, 5 deepseek=magenta, 6 qwen=purple, 7 xai=neutral, 8 microsoft=blue.
  *
  * Step 1 is the design system's own forest anchor, left untouched. Step 7 is
  * achromatic on purpose: xAI is the seventh provider and D50(2) caps the hue
@@ -37,6 +37,7 @@ a { color: var(--cofair-color-primary); }
   --cofair-dataviz-5: #a92f77; /* deepseek · magenta */
   --cofair-dataviz-6: #7a5aa8; /* qwen · purple */
   --cofair-dataviz-7: #6e6e6e; /* xai · neutral */
+  --cofair-dataviz-8: #0078d4; /* microsoft · brand blue */
 }
 
 [data-theme="dark"] {
@@ -46,6 +47,7 @@ a { color: var(--cofair-color-primary); }
   --cofair-dataviz-5: #d972ae;
   --cofair-dataviz-6: #9b7bc4;
   --cofair-dataviz-7: #a6a6a6;
+  --cofair-dataviz-8: #3aa0f3;
 }
 
 /* No page-width token ships with the design system — its own shell owns that —
@@ -143,6 +145,10 @@ a { color: var(--cofair-color-primary); }
   max-width: 100%;
 }
 
+.controls__bottom-row {
+  flex-basis: 100%;
+}
+
 .choice-row {
   display: flex;
   flex-wrap: wrap;
@@ -190,6 +196,7 @@ a { color: var(--cofair-color-primary); }
 .chip[data-series="5"] .chip__swatch { background: var(--cofair-dataviz-5); }
 .chip[data-series="6"] .chip__swatch { background: var(--cofair-dataviz-6); }
 .chip[data-series="7"] .chip__swatch { background: var(--cofair-dataviz-7); }
+.chip[data-series="8"] .chip__swatch { background: var(--cofair-dataviz-8); }
 
 /* Badge fills follow the same series tint as chart lines / swatches. */
 .cofair-badge[data-series="1"],
@@ -226,6 +233,11 @@ a { color: var(--cofair-color-primary); }
 .chip.cofair-badge[data-series="7"] {
   background: color-mix(in srgb, var(--cofair-dataviz-7) 18%, transparent);
   color: var(--cofair-dataviz-7);
+}
+.cofair-badge[data-series="8"],
+.chip.cofair-badge[data-series="8"] {
+  background: color-mix(in srgb, var(--cofair-dataviz-8) 18%, transparent);
+  color: var(--cofair-dataviz-8);
 }
 
 /* Deselected reads as an outline, so state never rests on color alone: the tint

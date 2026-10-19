@@ -32,6 +32,11 @@ import {
   ledgerDayTotals,
 } from "../labels.js";
 import { setupSignupForm } from "../signup.js";
+import {
+  cycleProviderMode as cycleProviderModeShared,
+  providerChipAriaLabel,
+  providerVisible as providerVisibleShared,
+} from "../provider-mode.js";
 
 const Chart = window.Chart;
 
@@ -71,6 +76,7 @@ const state = {
   hoverLineKey: null,
   defaultHoverDate: null,
   chart: null,
+  spendChart: null,
   lastFocus: null,
   costDetailIndex: null,
   costDetailsByDate: new Map(),
@@ -90,7 +96,7 @@ const state = {
   costRangeKey: "",
 };
 
-const SERIES_COUNT = 7;
+const SERIES_COUNT = 8;
 
 const DEFAULT_METER_TASK_IDS = ["A", "B", "C", "D", "E", "F"];
 
@@ -103,6 +109,7 @@ const PREFERRED_PROVIDER_SERIES = new Map([
   ["deepseek", 4],
   ["qwen", 5],
   ["xai", 6],
+  ["microsoft", 7],
 ]);
 
 // Display-only relabel: snapshot provider_id "aws" stays for contract
@@ -252,6 +259,9 @@ function chartPalette() {
     sizeXs: px("--cofair-font-size-xs"),
     radiusSm: px("--cofair-radius-sm"),
     padding: px("--cofair-space-2"),
+    series: Array.from({ length: SERIES_COUNT }, (_, i) =>
+      token(`--cofair-dataviz-${i + 1}`),
+    ),
   };
 }
 
@@ -389,17 +399,8 @@ function corpusTasks() {
 
 // ---- provider visibility ---------------------------------------------------
 
-function soloProvider() {
-  for (const [providerId, mode] of state.providerMode) {
-    if (mode === "solo") return providerId;
-  }
-  return null;
-}
-
 function providerVisible(providerId) {
-  const solo = soloProvider();
-  if (solo) return providerId === solo;
-  return state.providerMode.get(providerId) !== "hidden";
+  return providerVisibleShared(state.providerMode, providerId);
 }
 
 function tierVisible(tier) {
@@ -419,22 +420,7 @@ function panelVisible(providerId, tier) {
  * chip happened to be left in before the isolation took effect.
  */
 function cycleProviderMode(providerId) {
-  const solo = soloProvider();
-  if (solo && solo !== providerId) {
-    state.providerMode.delete(solo);
-    state.providerMode.set(providerId, "solo");
-    return;
-  }
-  const mode = state.providerMode.get(providerId);
-  if (!mode) {
-    state.providerMode.set(providerId, "solo");
-    return;
-  }
-  if (mode === "solo") {
-    state.providerMode.set(providerId, "hidden");
-    return;
-  }
-  state.providerMode.delete(providerId);
+  cycleProviderModeShared(state.providerMode, providerId);
 }
 
 /**
@@ -625,6 +611,7 @@ function fillProviderChips(elementId) {
     chip.innerHTML = `<span class="chip__swatch"></span>${esc(providerLabel(provider))}`;
     chip.addEventListener("click", () => {
       cycleProviderMode(provider);
+      syncProviderChips();
       render();
     });
     el.appendChild(chip);
@@ -701,23 +688,15 @@ function renderProviderChips() {
  * just update the chip that was clicked.
  */
 function syncProviderChips() {
-  const solo = soloProvider();
   document.querySelectorAll(".chip[data-provider]").forEach((chip) => {
     const provider = chip.dataset.provider;
     const mode = state.providerMode.get(provider) || "";
     chip.dataset.mode = mode;
     chip.setAttribute("aria-pressed", String(providerVisible(provider)));
-    // State never rests on styling alone: say which of the three positions the
-    // chip is in and what clicking it does next.
-    const position =
-      mode === "solo"
-        ? "isolated — click to hide"
-        : mode === "hidden"
-          ? "hidden — click to restore"
-          : solo
-            ? "hidden while another provider is isolated — click to isolate"
-            : "shown — click to isolate";
-    chip.setAttribute("aria-label", `${providerLabel(provider)}: ${position}`);
+    chip.setAttribute(
+      "aria-label",
+      providerChipAriaLabel(providerLabel(provider), state.providerMode, provider),
+    );
   });
 }
 
@@ -1907,6 +1886,116 @@ function renderCostRows(datesNewestFirst) {
   return rows.join("");
 }
 
+const ROLLING_SPEND_DAYS = 30;
+
+function cumulativeSpendByDayOffset(daily, endDateIso, windowDays) {
+  const sorted = [...(daily || [])].sort((a, b) => a.date.localeCompare(b.date));
+  const byDate = new Map(
+    sorted.map((row) => [row.date, parseOptionalNumber(row.estimated_spend_usd) ?? 0]),
+  );
+  const end = new Date(`${endDateIso}T00:00:00Z`);
+  const start = new Date(end);
+  start.setUTCDate(start.getUTCDate() - (windowDays - 1));
+  const points = [{ x: 0, y: 0 }];
+  let running = 0;
+  for (let offset = 1; offset <= windowDays; offset += 1) {
+    const day = new Date(start);
+    day.setUTCDate(start.getUTCDate() + offset - 1);
+    const key = day.toISOString().slice(0, 10);
+    if (byDate.has(key)) running += byDate.get(key);
+    points.push({ x: offset, y: running });
+  }
+  return points;
+}
+
+function renderSpendChart() {
+  const canvas = document.getElementById("spendChart");
+  if (!canvas || !costsPanelVisible()) return;
+  const daily = state.eq?.costs?.daily || [];
+  if (!daily.length) {
+    if (state.spendChart) {
+      state.spendChart.destroy();
+      state.spendChart = null;
+    }
+    return;
+  }
+  const latest = daily.map((row) => row.date).filter(Boolean).sort().at(-1);
+  if (!latest) return;
+  const previousEnd = new Date(`${latest}T00:00:00Z`);
+  previousEnd.setUTCDate(previousEnd.getUTCDate() - ROLLING_SPEND_DAYS);
+  const previousEndIso = previousEnd.toISOString().slice(0, 10);
+
+  const palette = chartPalette();
+  const tickFont = { family: palette.mono, size: palette.sizeXs };
+  const labelFont = { family: palette.sans, size: palette.sizeXs };
+  const currentPoints = cumulativeSpendByDayOffset(daily, latest, ROLLING_SPEND_DAYS);
+  const previousPoints = cumulativeSpendByDayOffset(daily, previousEndIso, ROLLING_SPEND_DAYS);
+
+  if (state.spendChart) state.spendChart.destroy();
+  state.spendChart = new Chart(canvas, {
+    type: "line",
+    data: {
+      datasets: [
+        {
+          label: "Current 30 days",
+          data: currentPoints,
+          borderColor: palette.series[0] || palette.muted,
+          tension: 0,
+          pointRadius: 0,
+          borderWidth: 1.5,
+        },
+        {
+          label: "Previous 30 days",
+          data: previousPoints,
+          borderColor: palette.series[1] || palette.muted,
+          borderDash: [6, 4],
+          tension: 0,
+          pointRadius: 0,
+          borderWidth: 1.5,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          labels: { color: palette.muted, font: labelFont, boxWidth: 12 },
+        },
+      },
+      scales: {
+        x: {
+          type: "linear",
+          min: 0,
+          max: 31,
+          title: {
+            display: true,
+            text: "Day in window",
+            color: palette.muted,
+            font: labelFont,
+          },
+          grid: { color: palette.grid },
+          border: { color: palette.grid },
+          ticks: { color: palette.muted, font: tickFont, stepSize: 5 },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: palette.grid },
+          border: { color: palette.grid },
+          ticks: { color: palette.muted, font: tickFont },
+          title: {
+            display: true,
+            text: "Cumulative estimated spend (USD)",
+            color: palette.muted,
+            font: labelFont,
+          },
+        },
+      },
+    },
+  });
+}
+
 function renderCosts() {
   if (!costsPanelVisible()) return;
   const costs = state.eq?.costs || {};
@@ -1925,6 +2014,7 @@ function renderCosts() {
     card.dataset.costState = costComparisonTone(comparison);
   });
 
+  renderSpendChart();
   setupCostFilters();
   if (state.costIndexLoading) statusText = "Loading run-date index…";
   if (state.costIndexError) statusText = state.costIndexError;

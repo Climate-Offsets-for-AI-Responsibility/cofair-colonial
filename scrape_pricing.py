@@ -26,6 +26,9 @@ OPENAI_URL = "https://developers.openai.com/api/docs/pricing"
 XAI_URL = "https://docs.x.ai/developers/pricing"
 DEEPSEEK_URL = "https://api-docs.deepseek.com/quick_start/pricing"
 QWEN_URL = "https://www.alibabacloud.com/help/en/model-studio/model-pricing"
+MICROSOFT_URL = (
+    "https://azure.microsoft.com/en-us/pricing/details/ai-foundry-models/microsoft/"
+)
 AWS_BEDROCK_PRICING_REGION = os.getenv("AWS_BEDROCK_PRICING_REGION", "us-east-1")
 # Native Bedrock catalog: Amazon's own Nova/Titan models. The sibling
 # `AmazonBedrockFoundationModels` catalog is exclusively resold third-party
@@ -74,6 +77,7 @@ MIN_PROVIDER_TIERS = {
     "aws": 5,
     "deepseek": 2,
     "qwen": 3,
+    "microsoft": 4,
 }
 MIN_PROVIDER_RATIO = 0.45
 MIN_COMPONENT_ROWS = {
@@ -84,6 +88,7 @@ MIN_COMPONENT_ROWS = {
     "aws": 18,
     "deepseek": 6,
     "qwen": 6,
+    "microsoft": 8,
 }
 
 
@@ -746,6 +751,159 @@ def is_deepseek_owned_model(model_name):
     """
     name = norm(model_name).lower()
     return name.startswith("deepseek-") or name.startswith("deepseek ")
+
+
+def _microsoft_regional_price(cell) -> float | None:
+    """Read the US list price embedded in Azure's pricing table cells."""
+    span = cell.find("span", class_="price-data")
+    if not span or not span.get("data-amount"):
+        return None
+    try:
+        payload = json.loads(span["data-amount"])
+    except json.JSONDecodeError:
+        return None
+    regional = payload.get("regional") or {}
+    for key in ("us-east", "us-central", "us-east-2", "us-west-2"):
+        if key in regional:
+            return money(regional[key])
+    if regional:
+        return money(next(iter(regional.values())))
+    return None
+
+
+def is_microsoft_owned_model(model_name: str) -> bool:
+    """True for Microsoft-published Phi and MAI text models on Foundry."""
+    name = norm(model_name).lower()
+    if not (name.startswith("phi-") or name.startswith("mai-")):
+        return False
+    blocked = (
+        "image",
+        "voice",
+        "transcribe",
+        "ds-r1",
+        "router",
+        "ground",
+        "tiny-moe",
+        "mini-moe",
+    )
+    return not any(token in name for token in blocked)
+
+
+def _microsoft_context_token(context_label: str | None) -> str | None:
+    text = norm(context_label or "")
+    if not text:
+        return None
+    return text.lower().replace(" ", "")
+
+
+def parse_microsoft(html):
+    """Parse Microsoft first-party Foundry list prices from the Azure pricing page.
+
+    The visible table cells often read ``$-``; authoritative regional USD amounts
+    live in each cell's ``data-amount`` JSON. Only Microsoft-built Phi and MAI
+    text rows are kept — resold publishers on Foundry are out of scope here.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    rows_out = []
+
+    def append_price_rows(
+        *,
+        model_id: str,
+        display_name: str,
+        context_window: str | None,
+        modality: str,
+        input_price,
+        cached_price=None,
+        output_price=None,
+        is_active: bool = True,
+    ):
+        ctx = _microsoft_context_token(context_window)
+        for component, price in (
+            ("input", input_price),
+            ("cached_input", cached_price),
+            ("output", output_price),
+        ):
+            if price is None:
+                continue
+            rows_out.append(
+                make_row(
+                    model_id=model_id,
+                    display_name=display_name,
+                    provider_id="microsoft",
+                    component=component,
+                    price=price,
+                    unit="per_1M_tokens",
+                    service_tier="standard",
+                    context_window=ctx,
+                    modality=modality,
+                    category="foundry_microsoft",
+                    is_active=is_active,
+                )
+            )
+
+    for table in soup.find_all("table"):
+        trs = table.find_all("tr")
+        if not trs:
+            continue
+        header_cells = trs[0].find_all(["th", "td"])
+        header = [norm(cell.get_text(" ", strip=True)) for cell in header_cells]
+        if not header or header[0].lower() != "models":
+            continue
+        header_l = " ".join(header).lower()
+
+        if "context" in header_l and "input" in header_l:
+            for tr in trs[1:]:
+                tds = tr.find_all("td")
+                if len(tds) < 3:
+                    continue
+                display_name = norm(tds[0].get_text(" ", strip=True))
+                if not is_microsoft_owned_model(display_name):
+                    continue
+                modality = infer_modality(display_name) or "text"
+                if modality != "text":
+                    continue
+                context_window = norm(tds[1].get_text(" ", strip=True)) if len(tds) > 3 else None
+                model_id = slugify(display_name)
+                input_price = _microsoft_regional_price(tds[-2])
+                output_price = _microsoft_regional_price(tds[-1])
+                is_active = "deprecated" not in display_name.lower()
+                append_price_rows(
+                    model_id=model_id,
+                    display_name=display_name,
+                    context_window=context_window,
+                    modality=modality,
+                    input_price=input_price,
+                    output_price=output_price,
+                    is_active=is_active,
+                )
+            continue
+
+        if "cached input" in header_l:
+            for tr in trs[1:]:
+                tds = tr.find_all("td")
+                if len(tds) < 3:
+                    continue
+                display_name = norm(tds[0].get_text(" ", strip=True))
+                if not is_microsoft_owned_model(display_name):
+                    continue
+                modality = infer_modality(display_name) or "text"
+                if modality != "text":
+                    continue
+                model_id = slugify(display_name)
+                input_price = _microsoft_regional_price(tds[1])
+                cached_price = _microsoft_regional_price(tds[2]) if len(tds) > 3 else None
+                output_price = _microsoft_regional_price(tds[-1])
+                append_price_rows(
+                    model_id=model_id,
+                    display_name=display_name,
+                    context_window=None,
+                    modality=modality,
+                    input_price=input_price,
+                    cached_price=cached_price,
+                    output_price=output_price,
+                )
+
+    return rows_out
 
 
 def parse_deepseek(html):
@@ -2636,6 +2794,7 @@ def main():
             ("aws", AMAZON_BEDROCK_URL, parse_amazon_bedrock, http_get_json),
             ("deepseek", DEEPSEEK_URL, parse_deepseek, http_get),
             ("qwen", QWEN_URL, parse_qwen, http_get),
+            ("microsoft", MICROSOFT_URL, parse_microsoft, http_get),
         ]
 
         component_rows = []

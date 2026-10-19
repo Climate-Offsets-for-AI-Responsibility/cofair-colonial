@@ -1,13 +1,222 @@
 {
   "date": "2026-10-18",
-  "complete": true,
+  "complete": false,
   "estimated_spend_usd": 1.95221793,
-  "input_cost_usd": 0.4804060500000002,
-  "output_cost_usd": 1.1421850800000002,
+  "input_cost_usd": 0.48040605,
+  "output_cost_usd": 1.14218508,
   "supporting_cost_usd": 0.3296268,
   "event_count": 182,
   "incomplete_event_count": 0,
-  "missing_requests": [],
+  "missing_requests": [
+    {
+      "provider_id": "microsoft",
+      "tier": "flagship",
+      "source": "meter",
+      "task_id": "A",
+      "turn": null,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "flagship",
+      "source": "meter",
+      "task_id": "B",
+      "turn": null,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "flagship",
+      "source": "meter",
+      "task_id": "C",
+      "turn": null,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "flagship",
+      "source": "meter",
+      "task_id": "D",
+      "turn": null,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "flagship",
+      "source": "meter",
+      "task_id": "E",
+      "turn": 1,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "flagship",
+      "source": "meter",
+      "task_id": "E",
+      "turn": 2,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "flagship",
+      "source": "meter",
+      "task_id": "E",
+      "turn": 3,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "flagship",
+      "source": "meter",
+      "task_id": "F",
+      "turn": null,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "flagship",
+      "source": "ledger",
+      "task_id": "A",
+      "turn": null,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "flagship",
+      "source": "ledger",
+      "task_id": "B",
+      "turn": null,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "flagship",
+      "source": "ledger",
+      "task_id": "C",
+      "turn": null,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "flagship",
+      "source": "ledger",
+      "task_id": "D",
+      "turn": null,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "flagship",
+      "source": "ledger",
+      "task_id": "F",
+      "turn": null,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "workhorse",
+      "source": "meter",
+      "task_id": "A",
+      "turn": null,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "workhorse",
+      "source": "meter",
+      "task_id": "B",
+      "turn": null,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "workhorse",
+      "source": "meter",
+      "task_id": "C",
+      "turn": null,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "workhorse",
+      "source": "meter",
+      "task_id": "D",
+      "turn": null,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "workhorse",
+      "source": "meter",
+      "task_id": "E",
+      "turn": 1,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "workhorse",
+      "source": "meter",
+      "task_id": "E",
+      "turn": 2,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "workhorse",
+      "source": "meter",
+      "task_id": "E",
+      "turn": 3,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "workhorse",
+      "source": "meter",
+      "task_id": "F",
+      "turn": null,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "workhorse",
+      "source": "ledger",
+      "task_id": "A",
+      "turn": null,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "workhorse",
+      "source": "ledger",
+      "task_id": "B",
+      "turn": null,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "workhorse",
+      "source": "ledger",
+      "task_id": "C",
+      "turn": null,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "workhorse",
+      "source": "ledger",
+      "task_id": "D",
+      "turn": null,
+      "replicate": 1
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "workhorse",
+      "source": "ledger",
+      "task_id": "F",
+      "turn": null,
+      "replicate": 1
+    }
+  ],
   "duplicate_requests": [],
   "unexpected_requests": [],
   "provider_tiers": [
@@ -17,10 +226,10 @@
       "model_id": "claude-fable-5.1",
       "display_name": "Claude Fable 5.1",
       "on_panel": true,
-      "estimated_spend_usd": 0.66953,
+      "estimated_spend_usd": 0.6695300000000001,
       "input_cost_usd": 0.15817,
-      "output_cost_usd": 0.39775000000000005,
-      "supporting_cost_usd": 0.11361000000000002,
+      "output_cost_usd": 0.39775,
+      "supporting_cost_usd": 0.11361,
       "complete": true,
       "missing_requests": [],
       "duplicate_requests": [],
@@ -968,7 +1177,7 @@
       "model_id": "gpt-6.1-sol",
       "display_name": "gpt-6.1-sol",
       "on_panel": true,
-      "estimated_spend_usd": 0.06246799999999999,
+      "estimated_spend_usd": 0.062468,
       "input_cost_usd": 0.017708,
       "output_cost_usd": 0.02934,
       "supporting_cost_usd": 0.01542,
@@ -1169,8 +1378,8 @@
         {
           "task_id": "E",
           "estimated_spend_usd": 0.016498,
-          "input_cost_usd": 0.0030880000000000005,
-          "output_cost_usd": 0.013410000000000002,
+          "input_cost_usd": 0.003088,
+          "output_cost_usd": 0.01341,
           "supporting_cost_usd": 0,
           "complete": true,
           "missing_requests": [],
@@ -1285,7 +1494,7 @@
       "model_id": "gemini-4-argon",
       "display_name": "Gemini 4 Argon",
       "on_panel": true,
-      "estimated_spend_usd": 0.07148800000000001,
+      "estimated_spend_usd": 0.071488,
       "input_cost_usd": 0.022258,
       "output_cost_usd": 0.049229999999999996,
       "supporting_cost_usd": 0.0,
@@ -1603,7 +1812,7 @@
       "display_name": "Gemini 3.8 Flash",
       "on_panel": true,
       "estimated_spend_usd": 0.0279915,
-      "input_cost_usd": 0.008675249999999999,
+      "input_cost_usd": 0.00867525,
       "output_cost_usd": 0.01931625,
       "supporting_cost_usd": 0.0,
       "complete": true,
@@ -1803,8 +2012,8 @@
         {
           "task_id": "E",
           "estimated_spend_usd": 0.016197000000000003,
-          "input_cost_usd": 0.0029632499999999997,
-          "output_cost_usd": 0.013233750000000002,
+          "input_cost_usd": 0.00296325,
+          "output_cost_usd": 0.01323375,
           "supporting_cost_usd": 0,
           "complete": true,
           "missing_requests": [],
@@ -2236,7 +2445,7 @@
       "model_id": "grok-build-0.1",
       "display_name": "grok-build-0.1",
       "on_panel": true,
-      "estimated_spend_usd": 0.027000999999999997,
+      "estimated_spend_usd": 0.027001,
       "input_cost_usd": 0.01187,
       "output_cost_usd": 0.0070079999999999995,
       "supporting_cost_usd": 0.008123,
@@ -2553,8 +2762,8 @@
       "model_id": "nova-2.0-pro",
       "display_name": "Nova 2.0 Pro",
       "on_panel": true,
-      "estimated_spend_usd": 0.026025599999999996,
-      "input_cost_usd": 0.008117599999999999,
+      "estimated_spend_usd": 0.0260256,
+      "input_cost_usd": 0.0081176,
       "output_cost_usd": 0.0118528,
       "supporting_cost_usd": 0.0060552,
       "complete": true,
@@ -2754,8 +2963,8 @@
         {
           "task_id": "E",
           "estimated_spend_usd": 0.0099792,
-          "input_cost_usd": 0.0020784,
-          "output_cost_usd": 0.007900800000000001,
+          "input_cost_usd": 0.0020783999999999998,
+          "output_cost_usd": 0.0079008,
           "supporting_cost_usd": 0,
           "complete": true,
           "missing_requests": [],
@@ -2870,7 +3079,7 @@
       "model_id": "nova-2.0-lite",
       "display_name": "Nova 2.0 Lite",
       "on_panel": true,
-      "estimated_spend_usd": 0.022117369999999997,
+      "estimated_spend_usd": 0.02211737,
       "input_cost_usd": 0.0040062000000000006,
       "output_cost_usd": 0.015633750000000002,
       "supporting_cost_usd": 0.00247742,
@@ -3072,7 +3281,7 @@
           "task_id": "E",
           "estimated_spend_usd": 0.01297978,
           "input_cost_usd": 0.0015562800000000002,
-          "output_cost_usd": 0.011423500000000001,
+          "output_cost_usd": 0.0114235,
           "supporting_cost_usd": 0,
           "complete": true,
           "missing_requests": [],
@@ -3504,7 +3713,7 @@
       "model_id": "deepseek-flash",
       "display_name": "deepseek-flash",
       "on_panel": true,
-      "estimated_spend_usd": 0.029591400000000004,
+      "estimated_spend_usd": 0.0295914,
       "input_cost_usd": 0.0030876,
       "output_cost_usd": 0.0242556,
       "supporting_cost_usd": 0.0022482,
@@ -3704,7 +3913,7 @@
         },
         {
           "task_id": "E",
-          "estimated_spend_usd": 0.008796599999999998,
+          "estimated_spend_usd": 0.0087966,
           "input_cost_usd": 0.0008454,
           "output_cost_usd": 0.007951199999999999,
           "supporting_cost_usd": 0,
@@ -3822,7 +4031,7 @@
       "display_name": "qwen3.7-max",
       "on_panel": true,
       "estimated_spend_usd": 0.0774875,
-      "input_cost_usd": 0.026919999999999996,
+      "input_cost_usd": 0.02692,
       "output_cost_usd": 0.031785,
       "supporting_cost_usd": 0.0187825,
       "complete": true,
@@ -4138,10 +4347,10 @@
       "model_id": "qwen3.7-plus",
       "display_name": "qwen3.7-plus",
       "on_panel": true,
-      "estimated_spend_usd": 0.018271199999999998,
+      "estimated_spend_usd": 0.0182712,
       "input_cost_usd": 0.0046288,
       "output_cost_usd": 0.010635200000000001,
-      "supporting_cost_usd": 0.0030072,
+      "supporting_cost_usd": 0.0030072000000000002,
       "complete": true,
       "missing_requests": [],
       "duplicate_requests": [],
@@ -4338,7 +4547,7 @@
         },
         {
           "task_id": "E",
-          "estimated_spend_usd": 0.0088904,
+          "estimated_spend_usd": 0.008890400000000001,
           "input_cost_usd": 0.0016296000000000001,
           "output_cost_usd": 0.0072608,
           "supporting_cost_usd": 0,
@@ -4446,6 +4655,512 @@
               "estimated_cost_usd": 0.0007700000000000001
             }
           ]
+        }
+      ]
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "flagship",
+      "model_id": "mai-thinking-1-global",
+      "display_name": "MAI-Thinking-1 Global",
+      "on_panel": true,
+      "estimated_spend_usd": 0,
+      "input_cost_usd": 0,
+      "output_cost_usd": 0,
+      "supporting_cost_usd": 0,
+      "complete": false,
+      "missing_requests": [
+        {
+          "source": "meter",
+          "task_id": "A",
+          "turn": null,
+          "replicate": 1
+        },
+        {
+          "source": "meter",
+          "task_id": "B",
+          "turn": null,
+          "replicate": 1
+        },
+        {
+          "source": "meter",
+          "task_id": "C",
+          "turn": null,
+          "replicate": 1
+        },
+        {
+          "source": "meter",
+          "task_id": "D",
+          "turn": null,
+          "replicate": 1
+        },
+        {
+          "source": "meter",
+          "task_id": "E",
+          "turn": 1,
+          "replicate": 1
+        },
+        {
+          "source": "meter",
+          "task_id": "E",
+          "turn": 2,
+          "replicate": 1
+        },
+        {
+          "source": "meter",
+          "task_id": "E",
+          "turn": 3,
+          "replicate": 1
+        },
+        {
+          "source": "meter",
+          "task_id": "F",
+          "turn": null,
+          "replicate": 1
+        },
+        {
+          "source": "ledger",
+          "task_id": "A",
+          "turn": null,
+          "replicate": 1
+        },
+        {
+          "source": "ledger",
+          "task_id": "B",
+          "turn": null,
+          "replicate": 1
+        },
+        {
+          "source": "ledger",
+          "task_id": "C",
+          "turn": null,
+          "replicate": 1
+        },
+        {
+          "source": "ledger",
+          "task_id": "D",
+          "turn": null,
+          "replicate": 1
+        },
+        {
+          "source": "ledger",
+          "task_id": "F",
+          "turn": null,
+          "replicate": 1
+        }
+      ],
+      "duplicate_requests": [],
+      "unexpected_requests": [],
+      "incomplete_event_count": 0,
+      "tasks": [
+        {
+          "task_id": "A",
+          "estimated_spend_usd": 0,
+          "input_cost_usd": 0,
+          "output_cost_usd": 0,
+          "supporting_cost_usd": 0,
+          "complete": false,
+          "missing_requests": [
+            {
+              "source": "meter",
+              "task_id": "A",
+              "turn": null,
+              "replicate": 1
+            },
+            {
+              "source": "ledger",
+              "task_id": "A",
+              "turn": null,
+              "replicate": 1
+            }
+          ],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": []
+        },
+        {
+          "task_id": "B",
+          "estimated_spend_usd": 0,
+          "input_cost_usd": 0,
+          "output_cost_usd": 0,
+          "supporting_cost_usd": 0,
+          "complete": false,
+          "missing_requests": [
+            {
+              "source": "meter",
+              "task_id": "B",
+              "turn": null,
+              "replicate": 1
+            },
+            {
+              "source": "ledger",
+              "task_id": "B",
+              "turn": null,
+              "replicate": 1
+            }
+          ],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": []
+        },
+        {
+          "task_id": "C",
+          "estimated_spend_usd": 0,
+          "input_cost_usd": 0,
+          "output_cost_usd": 0,
+          "supporting_cost_usd": 0,
+          "complete": false,
+          "missing_requests": [
+            {
+              "source": "meter",
+              "task_id": "C",
+              "turn": null,
+              "replicate": 1
+            },
+            {
+              "source": "ledger",
+              "task_id": "C",
+              "turn": null,
+              "replicate": 1
+            }
+          ],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": []
+        },
+        {
+          "task_id": "D",
+          "estimated_spend_usd": 0,
+          "input_cost_usd": 0,
+          "output_cost_usd": 0,
+          "supporting_cost_usd": 0,
+          "complete": false,
+          "missing_requests": [
+            {
+              "source": "meter",
+              "task_id": "D",
+              "turn": null,
+              "replicate": 1
+            },
+            {
+              "source": "ledger",
+              "task_id": "D",
+              "turn": null,
+              "replicate": 1
+            }
+          ],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": []
+        },
+        {
+          "task_id": "E",
+          "estimated_spend_usd": 0,
+          "input_cost_usd": 0,
+          "output_cost_usd": 0,
+          "supporting_cost_usd": 0,
+          "complete": false,
+          "missing_requests": [
+            {
+              "source": "meter",
+              "task_id": "E",
+              "turn": 1,
+              "replicate": 1
+            },
+            {
+              "source": "meter",
+              "task_id": "E",
+              "turn": 2,
+              "replicate": 1
+            },
+            {
+              "source": "meter",
+              "task_id": "E",
+              "turn": 3,
+              "replicate": 1
+            }
+          ],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": []
+        },
+        {
+          "task_id": "F",
+          "estimated_spend_usd": 0,
+          "input_cost_usd": 0,
+          "output_cost_usd": 0,
+          "supporting_cost_usd": 0,
+          "complete": false,
+          "missing_requests": [
+            {
+              "source": "meter",
+              "task_id": "F",
+              "turn": null,
+              "replicate": 1
+            },
+            {
+              "source": "ledger",
+              "task_id": "F",
+              "turn": null,
+              "replicate": 1
+            }
+          ],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": []
+        }
+      ]
+    },
+    {
+      "provider_id": "microsoft",
+      "tier": "workhorse",
+      "model_id": "phi-4",
+      "display_name": "Phi-4",
+      "on_panel": true,
+      "estimated_spend_usd": 0,
+      "input_cost_usd": 0,
+      "output_cost_usd": 0,
+      "supporting_cost_usd": 0,
+      "complete": false,
+      "missing_requests": [
+        {
+          "source": "meter",
+          "task_id": "A",
+          "turn": null,
+          "replicate": 1
+        },
+        {
+          "source": "meter",
+          "task_id": "B",
+          "turn": null,
+          "replicate": 1
+        },
+        {
+          "source": "meter",
+          "task_id": "C",
+          "turn": null,
+          "replicate": 1
+        },
+        {
+          "source": "meter",
+          "task_id": "D",
+          "turn": null,
+          "replicate": 1
+        },
+        {
+          "source": "meter",
+          "task_id": "E",
+          "turn": 1,
+          "replicate": 1
+        },
+        {
+          "source": "meter",
+          "task_id": "E",
+          "turn": 2,
+          "replicate": 1
+        },
+        {
+          "source": "meter",
+          "task_id": "E",
+          "turn": 3,
+          "replicate": 1
+        },
+        {
+          "source": "meter",
+          "task_id": "F",
+          "turn": null,
+          "replicate": 1
+        },
+        {
+          "source": "ledger",
+          "task_id": "A",
+          "turn": null,
+          "replicate": 1
+        },
+        {
+          "source": "ledger",
+          "task_id": "B",
+          "turn": null,
+          "replicate": 1
+        },
+        {
+          "source": "ledger",
+          "task_id": "C",
+          "turn": null,
+          "replicate": 1
+        },
+        {
+          "source": "ledger",
+          "task_id": "D",
+          "turn": null,
+          "replicate": 1
+        },
+        {
+          "source": "ledger",
+          "task_id": "F",
+          "turn": null,
+          "replicate": 1
+        }
+      ],
+      "duplicate_requests": [],
+      "unexpected_requests": [],
+      "incomplete_event_count": 0,
+      "tasks": [
+        {
+          "task_id": "A",
+          "estimated_spend_usd": 0,
+          "input_cost_usd": 0,
+          "output_cost_usd": 0,
+          "supporting_cost_usd": 0,
+          "complete": false,
+          "missing_requests": [
+            {
+              "source": "meter",
+              "task_id": "A",
+              "turn": null,
+              "replicate": 1
+            },
+            {
+              "source": "ledger",
+              "task_id": "A",
+              "turn": null,
+              "replicate": 1
+            }
+          ],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": []
+        },
+        {
+          "task_id": "B",
+          "estimated_spend_usd": 0,
+          "input_cost_usd": 0,
+          "output_cost_usd": 0,
+          "supporting_cost_usd": 0,
+          "complete": false,
+          "missing_requests": [
+            {
+              "source": "meter",
+              "task_id": "B",
+              "turn": null,
+              "replicate": 1
+            },
+            {
+              "source": "ledger",
+              "task_id": "B",
+              "turn": null,
+              "replicate": 1
+            }
+          ],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": []
+        },
+        {
+          "task_id": "C",
+          "estimated_spend_usd": 0,
+          "input_cost_usd": 0,
+          "output_cost_usd": 0,
+          "supporting_cost_usd": 0,
+          "complete": false,
+          "missing_requests": [
+            {
+              "source": "meter",
+              "task_id": "C",
+              "turn": null,
+              "replicate": 1
+            },
+            {
+              "source": "ledger",
+              "task_id": "C",
+              "turn": null,
+              "replicate": 1
+            }
+          ],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": []
+        },
+        {
+          "task_id": "D",
+          "estimated_spend_usd": 0,
+          "input_cost_usd": 0,
+          "output_cost_usd": 0,
+          "supporting_cost_usd": 0,
+          "complete": false,
+          "missing_requests": [
+            {
+              "source": "meter",
+              "task_id": "D",
+              "turn": null,
+              "replicate": 1
+            },
+            {
+              "source": "ledger",
+              "task_id": "D",
+              "turn": null,
+              "replicate": 1
+            }
+          ],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": []
+        },
+        {
+          "task_id": "E",
+          "estimated_spend_usd": 0,
+          "input_cost_usd": 0,
+          "output_cost_usd": 0,
+          "supporting_cost_usd": 0,
+          "complete": false,
+          "missing_requests": [
+            {
+              "source": "meter",
+              "task_id": "E",
+              "turn": 1,
+              "replicate": 1
+            },
+            {
+              "source": "meter",
+              "task_id": "E",
+              "turn": 2,
+              "replicate": 1
+            },
+            {
+              "source": "meter",
+              "task_id": "E",
+              "turn": 3,
+              "replicate": 1
+            }
+          ],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": []
+        },
+        {
+          "task_id": "F",
+          "estimated_spend_usd": 0,
+          "input_cost_usd": 0,
+          "output_cost_usd": 0,
+          "supporting_cost_usd": 0,
+          "complete": false,
+          "missing_requests": [
+            {
+              "source": "meter",
+              "task_id": "F",
+              "turn": null,
+              "replicate": 1
+            },
+            {
+              "source": "ledger",
+              "task_id": "F",
+              "turn": null,
+              "replicate": 1
+            }
+          ],
+          "duplicate_requests": [],
+          "unexpected_requests": [],
+          "details": []
         }
       ]
     }

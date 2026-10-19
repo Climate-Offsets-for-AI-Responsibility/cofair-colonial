@@ -278,6 +278,10 @@ TIER_CANDIDATES = {
         "flagship": ["qwen3.7-max", "qwen3-max"],
         "workhorse": ["qwen3.7-plus", "qwen-flash", "qwen3.5-flash"],
     },
+    "microsoft": {
+        "flagship": ["mai-thinking-1-global", "mai-thinking-1"],
+        "workhorse": ["phi-4-mini", "mai-cyber-1-flash-global", "phi-4"],
+    },
 }
 
 PROVIDER_AUTH_REQUIREMENTS = {
@@ -1253,9 +1257,17 @@ def _clamp_to_month(year: int, month: int, day: int) -> Date:
 
 
 def _window_summary(
-    daily_index: dict[str, dict], start: Date, end: Date, floor: Date
+    daily_index: dict[str, dict],
+    start: Date,
+    end: Date,
+    floor: Date,
+    *,
+    amount_mode: str = "complete_only",
 ) -> dict | None:
     """Total a date range, and say whether the range is fully accounted for.
+
+    ``amount_mode`` is ``complete_only`` (meter cards that require a whole day)
+    or ``sum_reported`` (running spend totals that include partial days).
 
     Returns None when the range lies entirely before the completeness floor —
     that is an absent period, which reads differently from a period that was
@@ -1272,9 +1284,13 @@ def _window_summary(
     while day <= end:
         scheduled += 1
         entry = daily_index.get(day.isoformat())
-        if entry is not None and entry["complete"]:
-            complete += 1
-            amount += entry["estimated_spend_usd"]
+        if entry is not None:
+            if amount_mode == "sum_reported":
+                amount += entry["estimated_spend_usd"]
+            elif entry["complete"]:
+                amount += entry["estimated_spend_usd"]
+            if entry["complete"]:
+                complete += 1
         day += timedelta(days=1)
 
     clipped = window_start > start
@@ -1297,6 +1313,8 @@ def build_cost_comparison(
     current: dict | None,
     previous: dict | None,
     absent_current_reason: str = "current_window_incomplete",
+    *,
+    allow_incomplete_amount: bool = False,
 ) -> dict:
     """One period against its predecessor, refusing every comparison it cannot make.
 
@@ -1343,12 +1361,22 @@ def build_cost_comparison(
         "previous_window": window_facts(previous),
     }
 
-    if current is None or not current["complete"]:
+    if current is None:
+        result["reason"] = absent_current_reason
+        result["previous_window"] = None
+        return result
+
+    if not current["complete"] and not allow_incomplete_amount:
         result["reason"] = absent_current_reason
         result["previous_window"] = None
         return result
 
     result["amount_usd"] = current["amount_usd"]
+
+    if not current["complete"]:
+        result["reason"] = "current_window_incomplete"
+        result["previous_window"] = window_facts(previous)
+        return result
 
     if previous is None or not previous["scheduled_date_count"]:
         result["status"] = "new_baseline"
@@ -1427,7 +1455,8 @@ def build_costs(
             for period in ("current_run", "current_month", "year_to_date")
         }
     else:
-        latest = Date.fromisoformat(latest_complete)
+        published_dates = sorted(daily_index)
+        latest = Date.fromisoformat(published_dates[-1])
 
         # Run over run: the last complete day against the day scheduled before
         # it. Deliberately the previous *scheduled* day and not the previous day
@@ -1439,28 +1468,46 @@ def build_costs(
             _window_summary(daily_index, previous_day, previous_day, floor),
         )
 
-        # Month to date against the same stretch of the month before it.
-        previous_month_year = latest.year if latest.month > 1 else latest.year - 1
-        previous_month = latest.month - 1 if latest.month > 1 else 12
+        rolling_days = 30
+        current_month_start = latest - timedelta(days=rolling_days - 1)
+        previous_month_end = current_month_start - timedelta(days=1)
+        previous_month_start = previous_month_end - timedelta(days=rolling_days - 1)
         comparisons["current_month"] = build_cost_comparison(
-            _window_summary(daily_index, Date(latest.year, latest.month, 1), latest, floor),
             _window_summary(
                 daily_index,
-                Date(previous_month_year, previous_month, 1),
-                _clamp_to_month(previous_month_year, previous_month, latest.day),
+                current_month_start,
+                latest,
                 floor,
+                amount_mode="sum_reported",
             ),
+            _window_summary(
+                daily_index,
+                previous_month_start,
+                previous_month_end,
+                floor,
+                amount_mode="sum_reported",
+            ),
+            allow_incomplete_amount=True,
         )
 
-        # Year to date against the same stretch of the year before it.
+        # Year to date: running sum of reported daily spend; compare to the same
+        # calendar stretch in the prior year when that window is whole.
         comparisons["year_to_date"] = build_cost_comparison(
-            _window_summary(daily_index, Date(latest.year, 1, 1), latest, floor),
+            _window_summary(
+                daily_index,
+                Date(latest.year, 1, 1),
+                latest,
+                floor,
+                amount_mode="sum_reported",
+            ),
             _window_summary(
                 daily_index,
                 Date(latest.year - 1, 1, 1),
                 _clamp_to_month(latest.year - 1, latest.month, latest.day),
                 floor,
+                amount_mode="sum_reported",
             ),
+            allow_incomplete_amount=True,
         )
 
     return {

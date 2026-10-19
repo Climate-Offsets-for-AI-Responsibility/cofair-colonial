@@ -36,6 +36,8 @@ class ModelRoleTest(unittest.TestCase):
             ("qwen", "qwen3.7-plus", "workhorse"),
             ("qwen", "qwen-flash", "workhorse"),
             ("anthropic", "claude-sonnet-5", "workhorse"),
+            ("microsoft", "mai-thinking-1-global", "flagship"),
+            ("microsoft", "phi-4-mini", "workhorse"),
         ]
         for provider_id, model_id, expected in cases:
             with self.subTest(provider_id=provider_id, model_id=model_id):

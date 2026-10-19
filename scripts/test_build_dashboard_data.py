@@ -1595,42 +1595,38 @@ class CostComparisonTest(CostFixture):
         self.assertAlmostEqual(run["delta_usd"], self.ROW_DAY_USD)
         self.assertIsNone(run["delta_pct"])
 
-    def test_the_prior_month_window_clamps_to_the_shorter_month(self) -> None:
-        """31 March has no 31 February; the window ends on the 28th instead."""
+    def test_rolling_thirty_day_window_uses_the_latest_thirty_days(self) -> None:
         events = self.events_for_range(
-            "2027-02-01", "2027-02-28", panel=self.solo_panel, scale=1
-        )
-        events += self.events_for_range(
-            "2027-03-01", "2027-03-31", panel=self.solo_panel, scale=2
+            "2027-01-01", "2027-03-31", panel=self.solo_panel, scale=1
         )
 
         month = build_costs(events, self.solo_panel)["comparisons"]["current_month"]
 
         self.assertEqual(month["status"], "ok")
         self.assertWindow(
-            month["current_window"], "2027-03-01", "2027-03-31", scheduled=31, complete_count=31
+            month["current_window"], "2027-03-02", "2027-03-31", scheduled=30, complete_count=30
         )
         self.assertWindow(
-            month["previous_window"], "2027-02-01", "2027-02-28", scheduled=28, complete_count=28
+            month["previous_window"], "2027-01-31", "2027-03-01", scheduled=30, complete_count=30
         )
-        self.assertAlmostEqual(month["amount_usd"], 31 * self.ROW_DAY_USD * 2)
-        self.assertAlmostEqual(month["previous_amount_usd"], 28 * self.ROW_DAY_USD)
+        self.assertAlmostEqual(month["amount_usd"], 30 * self.ROW_DAY_USD)
+        self.assertAlmostEqual(month["previous_amount_usd"], 30 * self.ROW_DAY_USD)
 
-    def test_the_prior_month_of_january_is_the_previous_december(self) -> None:
+    def test_rolling_thirty_day_window_lines_up_across_a_year_boundary(self) -> None:
         events = self.events_for_range(
-            "2028-12-01", "2028-12-15", panel=self.solo_panel, scale=1
-        )
-        events += self.events_for_range(
-            "2029-01-01", "2029-01-15", panel=self.solo_panel, scale=1
+            "2028-11-01", "2029-01-15", panel=self.solo_panel, scale=1
         )
 
         month = build_costs(events, self.solo_panel)["comparisons"]["current_month"]
 
         self.assertEqual(month["status"], "ok")
         self.assertWindow(
-            month["previous_window"], "2028-12-01", "2028-12-15", scheduled=15, complete_count=15
+            month["current_window"], "2028-12-17", "2029-01-15", scheduled=30, complete_count=30
         )
-        self.assertAlmostEqual(month["previous_amount_usd"], 15 * self.ROW_DAY_USD)
+        self.assertWindow(
+            month["previous_window"], "2028-11-17", "2028-12-16", scheduled=30, complete_count=30
+        )
+        self.assertAlmostEqual(month["previous_amount_usd"], 30 * self.ROW_DAY_USD)
         self.assertAlmostEqual(month["delta_usd"], 0.0)
 
     def test_january_year_to_date_has_no_comparable_prior_year(self) -> None:
@@ -1650,11 +1646,9 @@ class CostComparisonTest(CostFixture):
         self.assertWindow(
             ytd["current_window"], "2027-01-01", "2027-01-05", scheduled=5, complete_count=5
         )
-        # The month either side of a year boundary still has a real predecessor.
-        self.assertEqual(comparisons["current_month"]["status"], "comparison_unavailable")
-        self.assertEqual(
-            comparisons["current_month"]["reason"], "previous_window_incomplete"
-        )
+        # Rolling month still publishes a total even when the prior block is short.
+        self.assertEqual(comparisons["current_month"]["reason"], "current_window_incomplete")
+        self.assertAlmostEqual(comparisons["current_month"]["amount_usd"], 5 * self.ROW_DAY_USD)
 
     def test_year_to_date_clamps_a_leap_day_against_a_common_year(self) -> None:
         events = self.events_for_range(
@@ -1693,12 +1687,12 @@ class CostComparisonTest(CostFixture):
         month = build_costs(events, self.solo_panel)["comparisons"]["current_month"]
 
         self.assertEqual(month["status"], "comparison_unavailable")
-        self.assertEqual(month["reason"], "previous_window_clipped")
+        self.assertEqual(month["reason"], "current_window_incomplete")
         self.assertAlmostEqual(month["amount_usd"], 5 * self.ROW_DAY_USD)
         self.assertIsNone(month["previous_amount_usd"])
         self.assertIsNone(month["delta_pct"])
         self.assertWindow(
-            month["current_window"], "2026-10-01", "2026-10-05", scheduled=5, complete_count=5
+            month["current_window"], "2026-09-06", "2026-10-05", scheduled=30, complete_count=5
         )
         self.assertWindow(
             month["previous_window"],
@@ -1731,7 +1725,7 @@ class CostComparisonTest(CostFixture):
                     clipped=True,
                 )
 
-    def test_a_missing_scheduled_day_withholds_the_calendar_comparisons(self) -> None:
+    def test_a_missing_scheduled_day_still_publishes_running_totals(self) -> None:
         events = self.complete_events(self.day(0), panel=self.solo_panel)
         events += self.complete_events(self.day(2), panel=self.solo_panel)
         comparisons = build_costs(events, self.solo_panel)["comparisons"]
@@ -1741,7 +1735,7 @@ class CostComparisonTest(CostFixture):
                 comparison = comparisons[period]
                 self.assertEqual(comparison["status"], "comparison_unavailable")
                 self.assertEqual(comparison["reason"], "current_window_incomplete")
-                self.assertIsNone(comparison["amount_usd"])
+                self.assertAlmostEqual(comparison["amount_usd"], 2 * self.ROW_DAY_USD)
                 self.assertEqual(comparison["current_window"]["scheduled_date_count"], 3)
                 self.assertEqual(comparison["current_window"]["complete_date_count"], 2)
 

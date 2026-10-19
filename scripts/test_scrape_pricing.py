@@ -12,9 +12,11 @@ from datetime import date
 from scrape_pricing import (
     is_amazon_owned_model,
     is_deepseek_owned_model,
+    is_microsoft_owned_model,
     parse_amazon_bedrock,
     parse_claude,
     parse_deepseek,
+    parse_microsoft,
     parse_openai,
     parse_qwen,
     parse_vertex,
@@ -560,6 +562,57 @@ class CurrentCatalogAccuracyTest(unittest.TestCase):
         self.assertEqual(_price(rows, "gemini-3.8-flash", "output"), 4.50)
         self.assertFalse(any(row["price"] == 1.5 and row["model_id"] == "gemini-3.8-flash" for row in rows))
         self.assertFalse(any(row["price"] == 4.0 and row["model_id"] == "gemini-4-argon" for row in rows))
+
+
+class IsMicrosoftOwnedModelTest(unittest.TestCase):
+    def test_accepts_phi_and_mai_text(self) -> None:
+        self.assertTrue(is_microsoft_owned_model("Phi-4-mini"))
+        self.assertTrue(is_microsoft_owned_model("MAI-Thinking-1 Global"))
+
+    def test_rejects_resold_and_non_text(self) -> None:
+        self.assertFalse(is_microsoft_owned_model("MAI-Image-2.5"))
+        self.assertFalse(is_microsoft_owned_model("gpt-6-astra"))
+
+
+class ParseMicrosoftTest(unittest.TestCase):
+    def test_reads_embedded_regional_prices(self) -> None:
+        html = """
+        <table>
+          <tr>
+            <th>Models</th>
+            <th>Context</th>
+            <th>Input (Per 1M tokens)</th>
+            <th>Output (Per 1M tokens)</th>
+          </tr>
+          <tr>
+            <td>Phi-4-mini</td>
+            <td>128K</td>
+            <td><span class="price-data" data-amount='{"regional":{"us-east":0.075}}'><span class="price-value">$-</span></span></td>
+            <td><span class="price-data" data-amount='{"regional":{"us-east":0.3}}'><span class="price-value">$-</span></span></td>
+          </tr>
+        </table>
+        <table>
+          <tr>
+            <th>Models</th>
+            <th>Input (Per 1M tokens)</th>
+            <th>Cached Input (Per 1M tokens)</th>
+            <th>Output (Per 1M tokens)</th>
+          </tr>
+          <tr>
+            <td>MAI-Thinking-1 Global</td>
+            <td><span class="price-data" data-amount='{"regional":{"us-east":2.0}}'></span></td>
+            <td><span class="price-data" data-amount='{"regional":{"us-east":0.2}}'></span></td>
+            <td><span class="price-data" data-amount='{"regional":{"us-east":8.0}}'></span></td>
+          </tr>
+        </table>
+        """
+        rows = parse_microsoft(html)
+        providers = {row["provider_id"] for row in rows}
+        self.assertEqual(providers, {"microsoft"})
+        by_key = {(r["model_id"], r["component"]): r for r in rows}
+        self.assertEqual(by_key[("phi-4-mini", "input")]["price"], 0.075)
+        self.assertEqual(by_key[("mai-thinking-1-global", "output")]["price"], 8.0)
+        self.assertEqual(by_key[("mai-thinking-1-global", "cached_input")]["price"], 0.2)
 
 
 if __name__ == "__main__":

@@ -135,6 +135,17 @@ def model_role(provider_id: str, model_id: str) -> str | None:
         # Plus is the step under Max. Flash is the floor. Price picks.
         if re.match(r"^qwen[\d.]*-(?:plus|flash)(?:-|$)", name):
             return "workhorse"
+    elif provider_id == "microsoft":
+        if re.match(r"^mai-thinking", name):
+            return "flagship"
+        if re.match(r"^mai-cyber", name):
+            return "workhorse"
+        if re.match(r"^phi-4-mini", name):
+            return "workhorse"
+        if re.fullmatch(r"phi-4(?:-reasoning|-reasoning-plus)?", name):
+            return "workhorse"
+        if re.match(r"^phi-3", name):
+            return "workhorse"
     return None
 
 

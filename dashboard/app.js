@@ -18,10 +18,15 @@ import {
   stitchPricingChains,
 } from "./labels.js";
 import { setupSignupForm } from "./signup.js";
+import {
+  cycleProviderMode as cycleProviderModeShared,
+  providerChipAriaLabel,
+  providerVisible as providerVisibleShared,
+} from "./provider-mode.js";
 
 const Chart = window.Chart;
 
-const SERIES_COUNT = 7; // --cofair-dataviz-1 … -7
+const SERIES_COUNT = 8; // --cofair-dataviz-1 … -8
 const MODALITY_ORDER = ["text", "multimodal", "audio", "image"];
 
 // Keep stable provider tinting across refreshes regardless of provider sort.
@@ -36,6 +41,7 @@ const PREFERRED_PROVIDER_SERIES = new Map([
   ["deepseek", 4], // magenta
   ["qwen", 5], // purple
   ["xai", 6], // neutral
+  ["microsoft", 7], // microsoft blue
 ]);
 
 // Display-only relabels: the immutable snapshot contract keeps provider_id
@@ -294,44 +300,12 @@ function renderHeader() {
 
 // ---- provider filter chips -------------------------------------------------
 
-function soloProvider(scope) {
-  for (const [pid, mode] of state.providerModes[scope]) {
-    if (mode === "solo") return pid;
-  }
-  return null;
-}
-
 function providerVisible(scope, providerId) {
-  const solo = soloProvider(scope);
-  if (solo) return providerId === solo;
-  return state.providerModes[scope].get(providerId) !== "hidden";
+  return providerVisibleShared(state.providerModes[scope], providerId);
 }
 
-/**
- * none → solo → hidden → none, with at most one provider soloed per surface.
- *
- * While a provider is isolated every other chip reads as "not shown", so a
- * click on one of them means "isolate this one instead" — whatever mode that
- * chip happened to be left in before the isolation took effect.
- */
 function cycleProviderMode(scope, providerId) {
-  const modes = state.providerModes[scope];
-  const solo = soloProvider(scope);
-  if (solo && solo !== providerId) {
-    modes.delete(solo);
-    modes.set(providerId, "solo");
-    return;
-  }
-  const mode = modes.get(providerId);
-  if (!mode) {
-    modes.set(providerId, "solo");
-    return;
-  }
-  if (mode === "solo") {
-    modes.set(providerId, "hidden");
-    return;
-  }
-  modes.delete(providerId);
+  cycleProviderModeShared(state.providerModes[scope], providerId);
 }
 
 /**
@@ -342,23 +316,16 @@ function cycleProviderMode(scope, providerId) {
  * was clicked.
  */
 function syncProviderChipRow(el, scope) {
-  const solo = soloProvider(scope);
+  const modes = state.providerModes[scope];
   el.querySelectorAll(".chip[data-provider]").forEach((chip) => {
     const pid = chip.dataset.provider;
-    const mode = state.providerModes[scope].get(pid) || "";
+    const mode = modes.get(pid) || "";
     chip.dataset.mode = mode;
     chip.setAttribute("aria-pressed", String(providerVisible(scope, pid)));
-    // State never rests on styling alone: say which of the three positions the
-    // chip is in and what clicking it does next.
-    const position =
-      mode === "solo"
-        ? "isolated — click to hide"
-        : mode === "hidden"
-          ? "hidden — click to restore"
-          : solo
-            ? "hidden while another provider is isolated — click to isolate"
-            : "shown — click to isolate";
-    chip.setAttribute("aria-label", `${providerLabel(pid)}: ${position}`);
+    chip.setAttribute(
+      "aria-label",
+      providerChipAriaLabel(providerLabel(pid), modes, pid),
+    );
   });
 }
 
