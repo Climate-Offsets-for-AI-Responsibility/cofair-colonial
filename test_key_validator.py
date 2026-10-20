@@ -5,6 +5,8 @@ TEST_ANTHROPIC = 'sk-ant-api03-' + 'A' * 93
 TEST_OPENAI_PROJECT = 'sk-abc123' + 'A' * 93
 TEST_OPENAI_LEGACY = 'sk-' + 'x9' * 24
 TEST_GOOGLE = 'AIzaSy' + 'D' * 33
+TEST_MICROSOFT_LEGACY = "0123456789abcdef" * 2
+TEST_MICROSOFT_NEW = "Ab3" * 28 
 
 @pytest.mark.parametrize(
     "key, provider",
@@ -74,3 +76,25 @@ def test_error_message_never_contains_the_key():
 )
 def test_detect_provider(key, expected):
     assert detect_provider(key) == expected
+
+@pytest.mark.parametrize("key", [TEST_MICROSOFT_LEGACY, TEST_MICROSOFT_NEW])
+def test_microsoft_valid(key):
+    assert validate_key_format(key, "microsoft")
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "0123456789abcdef" * 2 + "0",
+        "0123456789abcdeg" + "0" * 16,
+        "Ab3" * 28 + "-",
+        TEST_ANTHROPIC,
+        TEST_GOOGLE,
+        TEST_OPENAI_LEGACY
+    ],
+)
+def test_microsoft_malformed(key):
+    assert not validate_key_format(key, "microsoft")
+
+def test_detect_microsoft():
+    assert detect_provider(TEST_MICROSOFT_LEGACY) == "microsoft"
+    assert detect_provider(TEST_MICROSOFT_NEW) == "microsoft"

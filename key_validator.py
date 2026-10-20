@@ -3,11 +3,13 @@ import re
 ANTHROPIC = re.compile(r"^sk-ant-api\d{2}-[A-Za-z0-9_-]{20,}$")
 OPENAI = re.compile(r"^sk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{20,}$")
 GOOGLE = re.compile(r"^AIza[0-9A-Za-z_-]{35}$")
+MICROSOFT = re.compile(r"^(?:[0-9a-fA-F]{32}|[A-Za-z0-9]{80,90})$")
  
 PATTERNS = {
     "anthropic": ANTHROPIC,
     "openai": OPENAI,
     "google": GOOGLE,
+    'microsoft': MICROSOFT
 }
  
  
