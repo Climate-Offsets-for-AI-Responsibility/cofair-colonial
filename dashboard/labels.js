@@ -287,11 +287,41 @@ function pointDate(point) {
   return typeof point.x === "string" ? point.x.slice(0, 10) : "";
 }
 
+function utcDayNumber(iso) {
+  return Date.parse(`${iso.slice(0, 10)}T00:00:00Z`);
+}
+
+/**
+ * Keep a line from ramping across days we never observed.
+ *
+ * Chart.js connects consecutive points, so a price on Sep 22 and the next
+ * price on Oct 17 draws a three-week slope. A null on the first missing day
+ * breaks that segment (`spanGaps` is off). Daily observations are unchanged.
+ */
+export function breakUnobservedSpans(points) {
+  const out = [];
+  for (let i = 0; i < (points || []).length; i += 1) {
+    const point = points[i];
+    const prev = out.length ? out[out.length - 1] : null;
+    const prevDay = prev ? pointDate(prev) : "";
+    const day = pointDate(point);
+    if (prevDay && day) {
+      const gapDays = Math.round((utcDayNumber(day) - utcDayNumber(prevDay)) / 86400000);
+      if (gapDays > 1) {
+        const broken = new Date(utcDayNumber(prevDay) + 86400000).toISOString().slice(0, 10);
+        out.push({ x: broken, y: null });
+      }
+    }
+    out.push(point);
+  }
+  return out;
+}
+
 export function pointAtOrBefore(points, dateStr) {
   let found = null;
   for (const p of points) {
     const d = pointDate(p);
-    if (!d || d > dateStr) continue;
+    if (!d || d > dateStr || p.y == null) continue;
     found = p;
   }
   return found;

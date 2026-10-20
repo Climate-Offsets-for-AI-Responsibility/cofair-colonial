@@ -167,6 +167,45 @@ class ParseXaiTest(unittest.TestCase):
         self.assertEqual(by_component["cached_input"]["price"], 0.5)
         self.assertEqual(by_component["output"]["price"], 6.0)
 
+    def test_cache_write_column_does_not_shift_grouped_output(self) -> None:
+        html = """
+        <table>
+          <tr>
+            <th>Model</th>
+            <th>Context</th>
+            <th colspan="4">Short context</th>
+            <th colspan="4">Long context</th>
+          </tr>
+          <tr>
+            <th></th><th></th>
+            <th>Input</th><th>Cached</th><th>Cache writes</th><th>Output</th>
+            <th>Input</th><th>Cached</th><th>Cache writes</th><th>Output</th>
+          </tr>
+          <tr>
+            <td>grok-4</td><td>2M</td>
+            <td>$1.00</td><td>$0.20</td><td>$1.25</td><td>$4.00</td>
+            <td>$2.00</td><td>$0.40</td><td>$2.50</td><td>$8.00</td>
+          </tr>
+        </table>
+        """
+        rows = parse_xai(html)
+        short = {
+            row["component"]: row["price"]
+            for row in rows
+            if row["billing_variant"] == "lt-200k-prompt"
+        }
+        long = {
+            row["component"]: row["price"]
+            for row in rows
+            if row["billing_variant"] == "gte-200k-prompt"
+        }
+        self.assertEqual(short["output"], 4.0)
+        self.assertEqual(short["input"], 1.0)
+        self.assertEqual(short["cached_input"], 0.2)
+        self.assertEqual(long["output"], 8.0)
+        self.assertEqual(long["input"], 2.0)
+        self.assertNotEqual(short["output"], 1.25)
+
 
 class ParseDeepSeekTest(unittest.TestCase):
     def test_parses_standard_cache_and_output_rows(self) -> None:
@@ -516,6 +555,61 @@ class CurrentCatalogAccuracyTest(unittest.TestCase):
         self.assertIn("gpt-4o", models)
         self.assertIn("gpt-5.5", models)
         self.assertNotIn("gpt-5.5-272k-context-length", models)
+
+    def test_inserted_cache_write_column_is_not_read_as_output(self) -> None:
+        """A new column in the output slot must not become the output price.
+
+        The pre-D131 parser trusted column position. Cache writes landed in
+        that slot and were stored as output. If the cell at the expected
+        position is a different component, the row is re-read by header.
+        """
+        html = """
+        <h2>Flagship models</h2>
+        <h2>Standard</h2>
+        <table>
+          <tr>
+            <th>Model</th>
+            <th colspan="4">Short context</th>
+            <th colspan="4">Long context</th>
+          </tr>
+          <tr>
+            <th></th>
+            <th>Input</th><th>Cached input</th><th>Cache writes</th><th>Output</th>
+            <th>Input</th><th>Cached input</th><th>Cache writes</th><th>Output</th>
+          </tr>
+          <tr>
+            <td>gpt-6-astra</td>
+            <td>$10.00</td><td>$1.00</td><td>$12.50</td><td>$50.00</td>
+            <td>$20.00</td><td>$2.00</td><td>$25.00</td><td>$75.00</td>
+          </tr>
+        </table>
+        <h2>Multimodal models</h2>
+        <table>
+          <tr>
+            <th>Model</th><th>Modality</th><th>Input</th><th>Cached input</th>
+            <th>Cache writes</th><th>Output</th>
+          </tr>
+          <tr>
+            <td>gpt-4o</td><td>text</td><td>$2.50</td><td>$1.25</td><td>$3.125</td><td>$10.00</td>
+          </tr>
+        </table>
+        """
+        rows = parse_openai(html)
+        self.assertEqual(
+            _price(rows, "gpt-6-astra", "output", service_tier="standard", context_window="short_context"),
+            50.0,
+        )
+        self.assertEqual(
+            _price(rows, "gpt-6-astra", "output", service_tier="standard", context_window="long_context"),
+            75.0,
+        )
+        self.assertEqual(
+            _price(rows, "gpt-6-astra", "cache_write", service_tier="standard", context_window="short_context"),
+            12.5,
+        )
+        self.assertEqual(_price(rows, "gpt-4o", "output"), 10.0)
+        self.assertEqual(_price(rows, "gpt-4o", "input"), 2.5)
+        self.assertNotEqual(_price(rows, "gpt-4o", "output"), 3.125)
 
     def test_claude_grouped_header_strips_blurbs_and_splits_haiku_context(self) -> None:
         rows = parse_claude(CLAUDE_HTML)

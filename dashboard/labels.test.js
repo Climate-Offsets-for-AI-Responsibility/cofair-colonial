@@ -23,6 +23,7 @@ import {
   parseOptionalNumber,
   resolveCostDetailRequestState,
   priceAtOrBefore,
+  breakUnobservedSpans,
   sortDatasetsForDate,
   COST_DATE_PAGE_SIZE,
   costDatesForPage,
@@ -169,6 +170,29 @@ describe("priceAtOrBefore / sortDatasetsForDate", () => {
     assert.equal(priceAtOrBefore(a.data, "2026-05-15"), 10);
     assert.equal(priceAtOrBefore(a.data, "2026-06-01"), 4);
     assert.equal(priceAtOrBefore(c.data, "2026-05-01"), null);
+  });
+
+  it("breaks a multi-day hole so the line cannot ramp across it", () => {
+    const points = [
+      { x: "2026-09-22", y: 0.04 },
+      { x: "2026-10-17", y: 1.8 },
+    ];
+    assert.deepEqual(breakUnobservedSpans(points), [
+      { x: "2026-09-22", y: 0.04 },
+      { x: "2026-09-23", y: null },
+      { x: "2026-10-17", y: 1.8 },
+    ]);
+    assert.deepEqual(
+      breakUnobservedSpans([
+        { x: "2026-09-22", y: 1.8 },
+        { x: "2026-09-23", y: 1.8 },
+      ]),
+      [
+        { x: "2026-09-22", y: 1.8 },
+        { x: "2026-09-23", y: 1.8 },
+      ],
+    );
+    assert.equal(priceAtOrBefore(breakUnobservedSpans(points), "2026-09-30"), 0.04);
   });
 
   it("sorts by price at the hovered date; unseen series sink", () => {
@@ -573,6 +597,15 @@ describe("dashboard chrome", () => {
     assert.match(html, /class="control-pair date-range"[\s\S]*id="trendFrom"[\s\S]*id="trendTo"/);
     assert.match(html, /class="control-pair date-range"[\s\S]*id="ledgerFrom"[\s\S]*id="ledgerTo"/);
     assert.match(html, /class="control-pair date-range"[\s\S]*id="costFrom"[\s\S]*id="costTo"/);
+  });
+
+  it("keeps Price field and Y-axis on the Show row", () => {
+    const html = readFileSync(join(dashDir, "index.html"), "utf8");
+    assert.match(
+      html,
+      /class="controls__option-row"[\s\S]*id="activeOnly"[\s\S]*id="priceField"[\s\S]*id="yScale"/,
+    );
+    assert.equal(html.includes("controls__bottom-row"), false);
   });
 
   it("titles /pricing Model Pricing Tracker", () => {

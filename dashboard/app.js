@@ -16,6 +16,7 @@ import {
   pricingIdsWithFieldChange,
   sortDatasetsForDate,
   stitchPricingChains,
+  breakUnobservedSpans,
 } from "./labels.js";
 import { setupSignupForm } from "./signup.js";
 import {
@@ -681,7 +682,7 @@ function renderTrendChart() {
     datasets.push({
       label: formatLegendLabel(row, { showContext }),
       legendLabel: formatLegendLabel(row, { showContext }),
-      data: points,
+      data: breakUnobservedSpans(points),
       borderColor: color,
       backgroundColor: color,
       borderWidth: 0.5,
@@ -689,7 +690,7 @@ function renderTrendChart() {
       pointHoverRadius: 5,
       pointHitRadius: 10,
       tension: 0,
-      spanGaps: true,
+      spanGaps: false,
       providerId: row.provider_id,
       pricingId: chain.id,
     });

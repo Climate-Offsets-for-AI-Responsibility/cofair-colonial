@@ -145,8 +145,14 @@ a { color: var(--cofair-color-primary); }
   max-width: 100%;
 }
 
-.controls__bottom-row {
-  flex-basis: 100%;
+/* Show checkboxes share a row with Price field and Y-axis. The pair still
+   wraps underneath on a narrow viewport, but it is not pushed onto its own
+   line while there is room beside Show. */
+.controls__option-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--cofair-space-4);
 }
 
 .choice-row {

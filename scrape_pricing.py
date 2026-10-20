@@ -674,8 +674,29 @@ def parse_xai(html):
             and "long context" in mat[0][3].lower()
             and len(mat[1]) >= 6
         ):
+            sub = [cell.lower() for cell in mat[1]]
+            header_start = next(
+                (index for index, header in enumerate(sub) if _openai_price_component(header)),
+                None,
+            )
+            if header_start is None:
+                continue
+            price_headers = sub[header_start:]
+            input_at = [
+                index
+                for index, header in enumerate(price_headers)
+                if _openai_price_component(header) == "input"
+            ]
+            if len(input_at) < 2:
+                continue
+            groups = []
+            for group_index, start in enumerate(input_at[:2]):
+                end = input_at[group_index + 1] if group_index + 1 < len(input_at) else len(price_headers)
+                groups.append((start, price_headers[start:end]))
+            variants = ("lt-200k-prompt", "gte-200k-prompt")
+
             for row in mat[2:]:
-                if len(row) < 8:
+                if len(row) < 2 + input_at[1]:
                     continue
                 model_label = norm(row[0])
                 if not model_label or "grok" not in model_label.lower():
@@ -689,22 +710,16 @@ def parse_xai(html):
                 ).strip()
                 context_window = norm(row[1]) or None
 
-                append_text_row(
-                    model_name=base_name,
-                    context_window=context_window,
-                    input_price=money(row[2]),
-                    cached_price=money(row[3]),
-                    output_price=money(row[4]),
-                    billing_variant="lt-200k-prompt",
-                )
-                append_text_row(
-                    model_name=base_name,
-                    context_window=context_window,
-                    input_price=money(row[5]),
-                    cached_price=money(row[6]),
-                    output_price=money(row[7]),
-                    billing_variant="gte-200k-prompt",
-                )
+                for variant, (start, headers) in zip(variants, groups):
+                    segment = row[2 + start : 2 + start + len(headers)]
+                    append_text_row(
+                        model_name=base_name,
+                        context_window=context_window,
+                        input_price=read_labeled_price(segment, headers, "input", guess=0),
+                        cached_price=read_labeled_price(segment, headers, "cached_input", guess=1),
+                        output_price=read_labeled_price(segment, headers, "output", guess=2),
+                        billing_variant=variant,
+                    )
             continue
 
         # Fallback parser for single-row header table shapes.
@@ -1928,6 +1943,41 @@ def _openai_price_component(header):
     return None
 
 
+def read_labeled_price(row, headers, component, guess=None, allowed=None):
+    """Price for `component` on one row.
+
+    `guess` is the column a positional parse would read. That cell is kept
+    only when its header names `component` and the cell is a price. Otherwise
+    the headers are scanned for the column that does. An inserted cache-write
+    column therefore cannot be stored as output.
+    """
+
+    def matches(index):
+        if index < 0 or index >= len(headers):
+            return False
+        if allowed is not None and index not in allowed:
+            return False
+        return _openai_price_component(headers[index]) == component
+
+    def cell(index):
+        if index < 0 or index >= len(row):
+            return None
+        return money(row[index])
+
+    if guess is not None and matches(guess):
+        found = cell(guess)
+        if found is not None:
+            return found
+
+    for index in range(len(headers)):
+        if index == guess or not matches(index):
+            continue
+        found = cell(index)
+        if found is not None:
+            return found
+    return None
+
+
 def _openai_catalog_name(name):
     """Drop a parenthetical context note so ``gpt-5.5 (<272K ...)`` stays ``gpt-5.5``."""
     return norm(re.sub(r"\s*\([^)]*\)", "", name or ""))
@@ -1954,14 +2004,22 @@ def _flagship_price_columns(mat):
                 continue
             window = "long_context" if "long context" in header else "short_context"
             columns.append((index, window, component))
-        return columns, mat[1:]
+        return columns, mat[1:], row0
 
     if len(mat) < 3:
         return None
     row1 = [cell.lower() for cell in mat[1]]
-    if "model" not in row1 or not any("context" in cell for cell in row0):
+    # Model sits on the group row when the subheader row leaves that cell blank.
+    model_on_group = bool(row0) and row0[0] == "model"
+    if "model" not in row1 and not model_on_group:
         return None
-    model_idx = row1.index("model")
+    if not any("context" in cell for cell in row0):
+        return None
+    if not any(_openai_price_component(cell) == "input" for cell in row1):
+        return None
+    if not any(_openai_price_component(cell) == "output" for cell in row1):
+        return None
+    model_idx = row1.index("model") if "model" in row1 else 0
     sub = row1[model_idx + 1 :]
     groups = [cell for cell in row0 if "context" in cell]
     if len(groups) >= 2 and sub and len(sub) % len(groups) == 0:
@@ -1980,7 +2038,7 @@ def _flagship_price_columns(mat):
             if component is None:
                 continue
             columns.append((model_idx + 1 + header_index, window, component))
-    return columns, mat[2:]
+    return columns, mat[2:], row1
 
 
 def parse_openai_flagship_table(table, service_tier, category):
@@ -1988,7 +2046,10 @@ def parse_openai_flagship_table(table, service_tier, category):
     parsed = _flagship_price_columns(mat)
     if not parsed:
         return []
-    columns, data_rows = parsed
+    columns, data_rows, headers = parsed
+    window_columns = {}
+    for index, window, _component in columns:
+        window_columns.setdefault(window, set()).add(index)
 
     rows_out = []
     for row in data_rows:
@@ -2001,9 +2062,13 @@ def parse_openai_flagship_table(table, service_tier, category):
 
         model_id = slugify(name)
         for index, window, component in columns:
-            if index >= len(row):
-                continue
-            price = money(row[index])
+            price = read_labeled_price(
+                row,
+                headers,
+                component,
+                guess=index,
+                allowed=window_columns[window],
+            )
             if price is None:
                 continue
             rows_out.append(
@@ -2029,12 +2094,16 @@ def parse_openai_modality_table(table, category):
         return []
 
     headers = [header.lower() for header in mat[0]]
-    if headers[:5] != ["model", "modality", "input", "cached input", "output / cost"] and headers[:5] != ["model", "modality", "input", "cached input", "output"]:
+    if "model" not in headers or "modality" not in headers:
+        return []
+    if not any(_openai_price_component(header) == "input" for header in headers):
+        return []
+    if not any(_openai_price_component(header) == "output" for header in headers):
         return []
 
     rows_out = []
     for row in fill_down_first_cell(mat[1:], len(headers)):
-        if len(row) < 5:
+        if len(row) < 4:
             continue
 
         name = norm(row[0])
@@ -2043,9 +2112,11 @@ def parse_openai_modality_table(table, category):
             continue
 
         model_id = slugify(name)
-        input_price = money(row[2])
-        cached_input_price = money(row[3])
-        output_price = money(row[4])
+        # Historical positions: input, cached input, output. A column inserted
+        # in that run (cache writes) fails the header check and is re-found.
+        input_price = read_labeled_price(row, headers, "input", guess=2)
+        cached_input_price = read_labeled_price(row, headers, "cached_input", guess=3)
+        output_price = read_labeled_price(row, headers, "output", guess=4)
 
         if input_price is not None:
             rows_out.append(
