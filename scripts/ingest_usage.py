@@ -35,6 +35,17 @@ def get_connection(local: bool = True):
     )
 
 
+def strip_nulls(value):
+    # Remove NUL characters (\x00), which Postgres JSONB cannot store
+    if isinstance(value, str):
+        return value.replace("\x00", "")
+    if isinstance(value, dict):
+        return {k: strip_nulls(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [strip_nulls(v) for v in value]
+    return value
+
+
 def ingest_usage(local: bool = True):
     """
     Fetch dataclaw datasets from HuggingFace and insert into raw.usage.
@@ -75,7 +86,7 @@ def ingest_usage(local: bool = True):
                             INSERT INTO raw.usage (dataset_id, payload)
                             VALUES (%s, %s);
                             """,
-                            (d_id, Json(dict(row))),
+                            (d_id, Json(strip_nulls(dict(row)))),
                         )
                         count += 1
                 conn.commit()
