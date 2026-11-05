@@ -729,7 +729,9 @@ function renderHealth() {
       chip.title = entry.dark
         .map((row) => {
           const stats = row.sources[METRICS[state.metric].source || "meter"];
-          return `${row.tier}: ${stats.last_error_model || "?"} — ${String(stats.last_error || "").slice(0, 140)}`;
+          const remedy = stats.last_unavailable_remedy;
+          const detail = remedy || String(stats.last_error || "").slice(0, 140);
+          return `${row.tier}: ${stats.last_error_model || "?"} — ${detail}`;
         })
         .join("\n");
     } else if (entry.unavailable.length) {

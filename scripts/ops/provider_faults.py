@@ -15,6 +15,7 @@ _ACCOUNT_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"invalid_api_key", re.I), "invalid_api_key"),
     (re.compile(r"incorrect api key", re.I), "invalid_api_key"),
     (re.compile(r"credit balance is too low", re.I), "credit_balance_low"),
+    (re.compile(r"insufficient[_\s-]?balance", re.I), "credit_balance_low"),
     (re.compile(r"payment required", re.I), "payment_required"),
 ]
 
@@ -79,6 +80,8 @@ def account_signature(body: str) -> str | None:
 
 def classify_provider_error(status: int | None, body: str) -> FaultCategory:
     """Map an HTTP status + body to a fault category."""
+    if status == 402:
+        return "account"
     if body:
         if account_signature(body):
             return "account"

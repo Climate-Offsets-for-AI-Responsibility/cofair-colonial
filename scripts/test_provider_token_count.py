@@ -263,6 +263,16 @@ class ProviderFaultsTest(unittest.TestCase):
         self.assertEqual(classify_provider_error(429, body), "account")
         self.assertEqual(run_status_for_http(429, body), "provider_unavailable")
 
+    def test_deepseek_insufficient_balance_402_is_account(self) -> None:
+        from ops.provider_faults import classify_provider_error, run_status_for_http
+
+        body = (
+            '{"error":{"message":"Insufficient Balance (request_id: x)",'
+            '"type":"insufficient_balance_error","param":null,"code":"invalid_request_error"}}'
+        )
+        self.assertEqual(classify_provider_error(402, body), "account")
+        self.assertEqual(run_status_for_http(402, body), "provider_unavailable")
+
 
 class HttpErrorPathTest(unittest.TestCase):
     """Exercise the real error path, not just the classifier behind it.
@@ -291,6 +301,13 @@ class HttpErrorPathTest(unittest.TestCase):
     def test_billing_outage_is_classified_not_raised(self) -> None:
         body = '{"error":{"code":"billing_not_active","message":"not active"}}'
         self.assertEqual(self._status(429, body), "provider_unavailable")
+
+    def test_deepseek_402_insufficient_balance_is_provider_unavailable(self) -> None:
+        body = (
+            '{"error":{"message":"Insufficient Balance (request_id: x)",'
+            '"type":"insufficient_balance_error","code":"invalid_request_error"}}'
+        )
+        self.assertEqual(self._status(402, body), "provider_unavailable")
 
     def test_ordinary_rate_limit_stays_an_error(self) -> None:
         self.assertEqual(self._status(429, '{"error":{"message":"slow down"}}'), "error")

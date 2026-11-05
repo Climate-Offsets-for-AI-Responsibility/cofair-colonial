@@ -48,7 +48,7 @@ from model_families import (  # noqa: E402
     order_workhorses,
     rank_ids_for_tier,
 )
-from provider_faults import remedy_for_error  # noqa: E402
+from provider_faults import remedy_for_error, account_signature  # noqa: E402
 from task_corpus import (  # noqa: E402
     CHAT_CORPUS_VERSION,
     CHAT_TASK,
@@ -735,11 +735,15 @@ def build_provider_health(
             failed = unavailable_rows + error_rows
             last_error = max(failed, key=lambda r: r.get("run_at") or "", default=None)
             last_unavailable_remedy = None
-            if last_error and last_error.get("run_status") == "provider_unavailable":
-                last_unavailable_remedy = remedy_for_error(
-                    last_error.get("error") or "",
-                    last_error.get("provider_id"),
-                )
+            if last_error:
+                err_text = last_error.get("error") or ""
+                if last_error.get("run_status") == "provider_unavailable" or account_signature(
+                    err_text
+                ):
+                    last_unavailable_remedy = remedy_for_error(
+                        err_text,
+                        last_error.get("provider_id"),
+                    )
             item["sources"][name] = {
                 "latest_observed": latest,
                 "ok_count": len(ok_rows),
