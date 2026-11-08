@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0.0",
+  "incident_id": "38d38cdf-3eae-4fa7-9dca-71de0e7368f1",
+  "run_id": "2f41e0aa-6bdd-4438-8acb-d033fbd2b56e",
+  "pipeline": "colonial-daily-scrape",
+  "repo": "Climate-Offsets-for-AI-Responsibility/cofair-colonial",
+  "workflow": "Daily Pricing Scraper",
+  "status": "degraded",
+  "started_at": "2026-11-08T15:56:50Z",
+  "finished_at": "2026-11-08T15:57:08Z",
+  "commit_sha": "f8eeff6570ac2aeae0601a6aa3e9362d49d11fc9",
+  "workflow_run_id": "42497156998",
+  "workflow_run_url": "https://github.com/Climate-Offsets-for-AI-Responsibility/cofair-colonial/actions/runs/42497156998",
+  "artifact_links": [
+    "https://github.com/Climate-Offsets-for-AI-Responsibility/cofair-colonial/actions/runs/42497156998#artifacts"
+  ],
+  "remediation": {
+    "attempted": true,
+    "actions": [
+      "deepseek"
+    ],
+    "result": "success",
+    "autonomy_tier": 0
+  },
+  "verification": {
+    "passed": false,
+    "checks": []
+  },
+  "context": {
+    "row_count": 366
+  }
+}
