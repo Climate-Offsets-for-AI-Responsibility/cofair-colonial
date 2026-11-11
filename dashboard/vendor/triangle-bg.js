@@ -4,6 +4,22 @@
  * React component; they load this module and stamp `data-cofair-triangles`
  * on the same `.cofair-triangle-bg` shell.
  */
+/** Brand footer field. Prerendered articles call this; they do not hydrate SiteFooter. */
+export const brandFooterTriangleConfig = {
+  baseColor: "var(--cofair-color-primary)",
+  palette: [
+    "var(--cofair-color-primary-hover)",
+    "var(--cofair-color-primary-active)",
+    "var(--cofair-color-primary)",
+    "var(--cofair-color-primary-border)",
+    "var(--cofair-color-success)",
+  ],
+  maxOpacity: 0.36,
+  animatedRatio: 0.14,
+  minPulseDuration: 10,
+  maxPulseDuration: 18,
+};
+
 const DEFAULTS = {
   columns: 12,
   maxOpacity: 0.28,
@@ -163,4 +179,14 @@ export function mountTriangleBackground(el, config = {}) {
   observer.observe(el);
   paint();
   return () => observer.disconnect();
+}
+
+/** Paint every brand-footer field under `root`. Static article HTML has the shell and no React effect. */
+export function mountBrandFooterTriangles(root = globalThis.document) {
+  const stops = [...root.querySelectorAll("[data-cofair-triangles]")].map((el) =>
+    mountTriangleBackground(el, brandFooterTriangleConfig),
+  );
+  return () => {
+    for (const stop of stops) stop();
+  };
 }

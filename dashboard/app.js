@@ -18,7 +18,6 @@ import {
   stitchPricingChains,
   breakUnobservedSpans,
 } from "./labels.js";
-import { setupSignupForm } from "./signup.js";
 import {
   cycleProviderMode as cycleProviderModeShared,
   providerChipAriaLabel,
@@ -1042,12 +1041,7 @@ function bindControls() {
 // ---- init ------------------------------------------------------------------
 
 async function main() {
-  // Bound before the data load, which can bail out: the narrative and its
-  // signup are static and should still work on a day the artifacts don't.
-  setupSignupForm("pricing");
-
-  const footerYear = document.getElementById("footerYear");
-  if (footerYear) footerYear.textContent = String(new Date().getFullYear());
+  // The independently loaded shared chrome must not gate chart initialization.
 
   try {
     await loadData();

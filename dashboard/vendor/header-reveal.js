@@ -14,7 +14,7 @@ export function applyHeaderSignupReveal(el, shouldReveal) {
 }
 
 export function mountHeaderSignupReveal(header, options = {}) {
-  const revealEls = [...header.querySelectorAll(".cofair-site-header__actions")];
+  const revealEls = [...header.querySelectorAll(".cofair-site-header__signup")];
   if (revealEls.length === 0) return () => {};
 
   for (const el of revealEls) {

@@ -31,7 +31,6 @@ import {
   ledgerRowsForDate,
   ledgerDayTotals,
 } from "../labels.js";
-import { setupSignupForm } from "../signup.js";
 import {
   cycleProviderMode as cycleProviderModeShared,
   providerChipAriaLabel,
@@ -2120,9 +2119,7 @@ function setupTabs() {
 }
 
 async function main() {
-  // Bound before the data load, which can throw: the narrative and its signup
-  // are static and should still work on a day the artifacts don't.
-  setupSignupForm("tokens");
+  // The independently loaded shared chrome must not gate chart initialization.
 
   const res = await fetch("../data/equivalence.json");
   const eq = await res.json();
@@ -2136,9 +2133,6 @@ async function main() {
   setupTabs();
   setupTrendFilters();
   setupLedgerFilters();
-
-  const footerYear = document.getElementById("footerYear");
-  if (footerYear) footerYear.textContent = String(new Date().getFullYear());
 
   document.getElementById("ledgerTask").addEventListener("change", (e) => {
     state.ledgerTask = e.target.value;

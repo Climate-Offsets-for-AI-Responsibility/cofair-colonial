@@ -91,9 +91,22 @@ function tagsMarkup(tags) {
   return `<ul class="cofair-insights-carousel__tags" aria-label="Topics">${items}</ul>`;
 }
 
+/** Stable stand-in until live comment counts are wired. */
+export function placeholderCommentCount(href) {
+  const value = String(href ?? "");
+  let n = 0;
+  for (let i = 0; i < value.length; i += 1) n = (n + value.charCodeAt(i) * (i + 1)) % 97;
+  return 4 + (n % 42);
+}
+
+function commentsMarkup(href) {
+  const count = placeholderCommentCount(href);
+  return `<p class="cofair-insights-carousel__comments" aria-label="${count} comments"><svg class="cofair-insights-carousel__comment-icon" viewBox="0 0 24 24" aria-hidden="true" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>${count}</span></p>`;
+}
+
 function imageMarkup(item) {
   if (!item.imageSrc) return "";
-  return `<img class="cofair-insights-carousel__image" src="${escapeCarouselText(item.imageSrc)}" alt="${escapeCarouselText(item.imageAlt ?? "")}" />`;
+  return `<span class="tile-media"><img class="cofair-insights-carousel__image" src="${escapeCarouselText(item.imageSrc)}" alt="${escapeCarouselText(item.imageAlt ?? "")}" /></span>`;
 }
 
 export function renderCarouselCard(item) {
@@ -105,10 +118,13 @@ export function renderCarouselCard(item) {
   <a class="cofair-insights-carousel__link" href="${href}">
     ${imageMarkup(item)}
     <div class="cofair-insights-carousel__body">
-      ${tagsMarkup(item.tags)}
       <h3 class="cofair-insights-carousel__title">${title}</h3>
       <p class="cofair-insights-carousel__excerpt">${excerpt}</p>
-      ${date ? `<time class="cofair-insights-carousel__date" datetime="${escapeCarouselText(item.publishedAt)}">${date}</time>` : ""}
+      ${tagsMarkup(item.tags)}
+      <div class="cofair-insights-carousel__meta">
+        ${date ? `<time class="cofair-insights-carousel__date" datetime="${escapeCarouselText(item.publishedAt)}">${date}</time>` : ""}
+        ${commentsMarkup(item.href)}
+      </div>
     </div>
   </a>
 </article>`;
@@ -120,11 +136,26 @@ export function renderCarouselTrack(items) {
     .join("");
 }
 
-export function parseInsightsFeed(payload) {
+function feedNavigationHref(href, baseUrl) {
+  if (baseUrl === undefined) return href;
+  const base = baseUrl.replace(/\/+$/, "");
+  if (href.startsWith("/") && !href.startsWith("//")) return `${base}${href}`;
+  try {
+    const url = new URL(href);
+    if (["cofair.org", "www.cofair.org"].includes(url.hostname) && ["http:", "https:"].includes(url.protocol)) {
+      return `${base}${url.pathname}${url.search}${url.hash}`;
+    }
+  } catch {
+    // Leave anchors and offsite resources unchanged.
+  }
+  return href;
+}
+
+export function parseInsightsFeed(payload, baseUrl) {
   const posts = Array.isArray(payload?.posts) ? payload.posts : [];
   return posts
     .map((post) => ({
-      href: post.href ?? post.canonical ?? "",
+      href: feedNavigationHref(post.href ?? post.canonical ?? "", baseUrl),
       title: displayCarouselTitle(post.title ?? ""),
       excerpt: post.excerpt ?? "",
       tags: Array.isArray(post.tags) ? post.tags : [],
@@ -231,7 +262,7 @@ export function mountInsightsCarousel(root, options = {}) {
   firstLoad
     .then((payload) => {
       if (cancelled) return;
-      const next = parseInsightsFeed(payload);
+      const next = parseInsightsFeed(payload, options.baseUrl);
       if (!next.length) {
         if (!items?.length) root.hidden = true;
         return;

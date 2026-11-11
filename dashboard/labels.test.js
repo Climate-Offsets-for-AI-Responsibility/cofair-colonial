@@ -615,19 +615,13 @@ describe("dashboard chrome", () => {
     assert.equal(html.includes("Platform Pricing Tracker"), false);
   });
 
-  it("keeps the header tagline visible without scroll-reveal", () => {
+  it("delegates header and footer content to the current shared modules", () => {
     for (const file of ["index.html", "tokens/index.html"]) {
       const html = readFileSync(join(dashDir, file), "utf8");
-      assert.match(html, /class="cofair-site-header__tagline">Climate Offsets for AI Responsibility/);
-      assert.equal(html.includes("cofair-site-header__tagline cofair-site-header__reveal"), false);
-    }
-  });
-
-  it("uses the shared Data Centers in America footer label", () => {
-    for (const file of ["index.html", "tokens/index.html"]) {
-      const html = readFileSync(join(dashDir, file), "utf8");
-      assert.match(html, />Data Centers in America<\/a>/);
-      assert.equal(html.includes(">Datacenter Ledger</a>"), false);
+      assert.match(html, /id="instrument-header"/);
+      assert.match(html, /id="instrument-footer"/);
+      assert.equal(html.includes("cofair-site-header__tagline"), false);
+      assert.equal(html.includes("cofair-site-footer__"), false);
     }
   });
 });

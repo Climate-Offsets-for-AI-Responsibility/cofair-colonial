@@ -34,6 +34,14 @@
   --cofair-dataviz-4: #6f8043;
   --cofair-dataviz-5: #dc2626;
   --cofair-dataviz-6: #8a785b;
+  --cofair-color-bg-exchange: #8a785b;
+  --cofair-color-exchange-text: #ffffff;
+  --cofair-color-sand-600: #6b5b42;
+  --cofair-color-sand-700: #514633;
+  --cofair-color-sand-800: #3a3225;
+  --cofair-color-sand-900: #271f17;
+  --cofair-color-partner-berkeley-bg: #003262;
+  --cofair-color-partner-berkeley-mark: #FDB515;
   --cofair-font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --cofair-font-serif: "IBM Plex Serif", Georgia, "Times New Roman", Times, serif;
   --cofair-font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -61,7 +69,7 @@
   --cofair-radius-lg: 8px;
   --cofair-border-width-thin: 1px;
   --cofair-border-width-medium: 2px;
-  --cofair-border-width-stripe: 5px;
+  --cofair-border-width-stripe: 3px;
   --cofair-shadow-sm: 0 1px 2px rgb(39 31 23 / 0.06);
   --cofair-shadow-md: 0 4px 12px rgb(39 31 23 / 0.10);
   --cofair-sidebar-width: 240px;
@@ -103,6 +111,14 @@
   --cofair-dataviz-4: #adbb7f;
   --cofair-dataviz-5: #f87171;
   --cofair-dataviz-6: #cdbfa7;
+  --cofair-color-bg-exchange: #8a785b;
+  --cofair-color-exchange-text: #ffffff;
+  --cofair-color-sand-600: #6b5b42;
+  --cofair-color-sand-700: #514633;
+  --cofair-color-sand-800: #3a3225;
+  --cofair-color-sand-900: #271f17;
+  --cofair-color-partner-berkeley-bg: #003262;
+  --cofair-color-partner-berkeley-mark: #FDB515;
   --cofair-font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --cofair-font-serif: "IBM Plex Serif", Georgia, "Times New Roman", Times, serif;
   --cofair-font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -130,7 +146,7 @@
   --cofair-radius-lg: 8px;
   --cofair-border-width-thin: 1px;
   --cofair-border-width-medium: 2px;
-  --cofair-border-width-stripe: 5px;
+  --cofair-border-width-stripe: 3px;
   --cofair-shadow-sm: 0 1px 2px rgb(39 31 23 / 0.06);
   --cofair-shadow-md: 0 4px 12px rgb(39 31 23 / 0.10);
   --cofair-sidebar-width: 240px;
@@ -186,6 +202,7 @@
   --cofair-sidebar-item-active-text: var(--cofair-color-primary);
   --cofair-empty-min-height: 12.5rem;
   --cofair-content-max-width-narrow: 22.5rem;
+  --cofair-exchange-content-shadow: 0 2px 4px rgb(39 31 23 / 0.48);
   --cofair-site-header-mark: 2.2rem;
   --cofair-site-footer-legal-height: calc((var(--cofair-site-header-mark) + (var(--cofair-space-3) * 2)) / 2);
 }
@@ -381,13 +398,14 @@ a {
    (nav, footer) where the affordance is otherwise thin. */
 p a {
   text-decoration: none;
-  font-weight: var(--cofair-heading-weight);
+  /* NO TOKEN: 600 — heading weight is 400, same as body, so it does not lift a link. */
+  font-weight: 600;
   color: var(--cofair-color-primary);
 }
 
 .cofair-text a {
   color: var(--cofair-color-primary);
-  font-weight: var(--cofair-heading-weight);
+  font-weight: 600;
   text-decoration: none;
 }
 
@@ -1026,10 +1044,18 @@ p a {
 .cofair-site-header--sticky {
   position: sticky;
   top: 0;
-  z-index: var(--cofair-z-panel);
+  /* Above the hero triangle field, which also uses --cofair-z-panel. */
+  z-index: var(--cofair-z-overlay);
+  /* NO TOKEN: 180ms — no --cofair-duration-* family. */
+  transition: transform 180ms ease;
 }
 
-.cofair-site-header--inverted {
+.cofair-site-header--away {
+  transform: translateY(-100%);
+}
+
+.cofair-site-header--inverted,
+.cofair-site-header--inverted.cofair-site-header--solid {
   background: var(--cofair-color-primary);
   color: var(--cofair-color-text-inverse);
 }
@@ -1204,11 +1230,28 @@ p a {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: var(--cofair-space-4);
   max-width: var(--cofair-layout-max-width, 72rem);
   min-height: var(--cofair-site-footer-legal-height);
   margin: 0 auto;
-  padding: 0 var(--cofair-space-8);
+  padding: var(--cofair-space-3) var(--cofair-space-8);
+}
+
+.cofair-site-footer__policies {
+  display: flex;
+  align-items: center;
+  gap: var(--cofair-space-4);
+}
+
+.cofair-site-footer__policies a {
+  color: var(--cofair-color-text-inverse);
+  font-size: var(--cofair-font-size-sm);
+  text-decoration: none;
+}
+
+.cofair-site-footer__policies a:hover {
+  color: var(--cofair-color-primary-muted);
 }
 
 .cofair-site-footer__copyright {
@@ -1399,6 +1442,30 @@ p a {
   width: auto;
 }
 
+/* Keep the full lockup within the original chrome bounds. */
+.cofair-site-header__brand .cofair-logo--site-lockup {
+  display: block;
+  width: auto;
+  height: var(--cofair-site-header-mark);
+}
+
+.cofair-site-footer__brand > a {
+  display: inline-flex;
+  align-items: center;
+}
+
+.cofair-site-footer__brand .cofair-logo--site-lockup {
+  display: block;
+  width: 7.5rem;
+  height: auto;
+}
+
+@media (max-width: 45rem) {
+  .cofair-site-footer__brand .cofair-logo--site-lockup {
+    width: 6.5rem;
+  }
+}
+
 /* ── Insights carousel (gauge.io-style strip above the footer) ────────── */
 .cofair-insights-carousel {
   width: 100%;
@@ -1476,6 +1543,7 @@ p a {
 .cofair-insights-carousel__image {
   display: block;
   width: 100%;
+  height: auto;
   aspect-ratio: 16 / 9;
   object-fit: cover;
   border-radius: var(--cofair-radius-lg) var(--cofair-radius-lg) 0 0;
@@ -1531,10 +1599,30 @@ p a {
   overflow: hidden;
 }
 
-.cofair-insights-carousel__date {
+.cofair-insights-carousel__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--cofair-space-3);
   margin-top: auto;
+}
+
+.cofair-insights-carousel__date {
   color: var(--cofair-color-text-muted);
   font-size: var(--cofair-font-size-sm);
+}
+
+.cofair-insights-carousel__comments {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cofair-space-1);
+  margin: 0 0 0 auto;
+  color: var(--cofair-color-text-muted);
+  font-size: var(--cofair-font-size-sm);
+}
+
+.cofair-insights-carousel__comment-icon {
+  display: block;
+  flex-shrink: 0;
 }
 
 .cofair-insights-carousel__prev,
