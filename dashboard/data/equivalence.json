@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-11-26T18:19:43Z",
-  "pricing_snapshot_date": "2026-11-25",
+  "generated_at": "2026-11-26T18:59:37Z",
+  "pricing_snapshot_date": "2026-11-26",
   "corpus_version": "3.0.0",
   "chat_corpus_version": "2.0.0",
   "output_policy_version": "4.0.0",
@@ -282306,7 +282306,7 @@
           "ANTHROPIC_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": true
+        "configured": false
       },
       "openai": {
         "env": [
@@ -282314,7 +282314,7 @@
           "OPENAI_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": true
+        "configured": false
       },
       "google": {
         "env": [
@@ -282323,7 +282323,7 @@
           "GOOGLE_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": true
+        "configured": false
       },
       "xai": {
         "env": [
@@ -282331,7 +282331,7 @@
           "XAI_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": true
+        "configured": false
       },
       "aws": {
         "env": [
@@ -282341,7 +282341,7 @@
           "AWS_ACCESS_KEY_ID"
         ],
         "purpose": "weekly task billing runs + tokenizer ledger (Bedrock Converse)",
-        "configured": true
+        "configured": false
       },
       "deepseek": {
         "env": [
@@ -282349,7 +282349,7 @@
           "DEEPSEEK_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": true
+        "configured": false
       },
       "qwen": {
         "env": [
@@ -282357,11 +282357,19 @@
           "QWEN_API_KEY"
         ],
         "purpose": "weekly task billing runs",
-        "configured": true
+        "configured": false
       }
     },
-    "missing_providers": [],
-    "env_visible_to_builder": true,
+    "missing_providers": [
+      "anthropic",
+      "openai",
+      "google",
+      "xai",
+      "aws",
+      "deepseek",
+      "qwen"
+    ],
+    "env_visible_to_builder": false,
     "ready_for_live_runs": false
   },
   "provider_health": {
@@ -285432,7 +285440,7 @@
   },
   "window": {
     "first_date": "2026-09-03",
-    "last_date": "2026-11-25",
-    "snapshot_count": 84
+    "last_date": "2026-11-26",
+    "snapshot_count": 85
   }
 }
